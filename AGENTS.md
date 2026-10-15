@@ -76,6 +76,6 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 
 ## Git
 
-- Ветки: `feat/…`, `fix/…`, `chore/…`, ключ задачи Jira в имени, если есть: `feat/ORBIT-12-join-room`.
+- Задачи — в Jira, проект SCRUM (эпик SCRUM-5). Ветки: `feat/…`, `fix/…`, `chore/…`, ключ задачи Jira в имени: `feat/SCRUM-9-join-room`.
 - Сообщения коммитов — на английском, в повелительном наклонении: `Add join room feature`.
 - Не коммить `.env.local` и секреты. Не делай push и не создавай PR без просьбы.
