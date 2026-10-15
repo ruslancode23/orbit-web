@@ -21,8 +21,8 @@ Node 22+, pnpm 11. Не используй npm или yarn — lockfile толь
 ## Стек
 
 React 19, TypeScript (strict, `noUncheckedIndexedAccess`), Vite 8, React Router, Radix UI (`radix-ui`),
-Tailwind CSS 4, `class-variance-authority`, Vitest + Testing Library. Медиа — `livekit-client`.
-По PRD позже добавятся TanStack Query, Zustand, TanStack Virtual — не тащи другие аналоги.
+Tailwind CSS 4, `class-variance-authority`, TanStack Query, Vitest + Testing Library. Медиа — `livekit-client`.
+По PRD позже добавятся Zustand и TanStack Virtual — не тащи другие аналоги.
 
 Не добавляй: Material UI и любой CSS-in-JS (Emotion, styled-components), Redux, axios, moment, lodash целиком.
 Новая зависимость — только если без неё никак; решение уровня стека фиксируй в `docs/adr/`.
@@ -54,7 +54,11 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 - Компоненты — функции, файл компонента в PascalCase (`Button.tsx`), тест рядом (`Button.test.tsx`).
 - Обращения к ОС и браузерным API (уведомления, устройства, захват экрана, автозапуск) — только через
   `PlatformAdapter` из `shared/platform`. Компоненты не вызывают Tauri и браузерные API напрямую (PRD 11.0).
-- Переменные окружения — только через `@/shared/config`; новые описываются в `src/vite-env.d.ts` и `.env.example`.
+- Переменные окружения — только через `@/shared/config`; новые описываются в `src/vite-env.d.ts`, `.env.example`
+  и `.env.test` (значения для Vitest и CI).
+- Запросы к orbit-server — только через `@/shared/api`: функции вроде `requestVoiceToken` поверх `api()`.
+  Все ошибки — `ApiError` (`status: 0` — нет сети). Не вызывай `fetch` напрямую из слайсов.
+- Серверное состояние — TanStack Query (`useQuery`/`useMutation`); не дублируй его в локальном стейте.
 
 ## UI и стили
 
