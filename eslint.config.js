@@ -1,4 +1,5 @@
 import js from '@eslint/js'
+import pluginQuery from '@tanstack/eslint-plugin-query'
 import prettier from 'eslint-config-prettier'
 import boundaries from 'eslint-plugin-boundaries'
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
@@ -42,6 +43,7 @@ export default defineConfig([
       jsxA11y.flatConfigs.recommended,
       importX.flatConfigs.recommended,
       importX.flatConfigs.typescript,
+      pluginQuery.configs['flat/recommended'],
     ],
     languageOptions: {
       globals: globals.browser,
