@@ -29,3 +29,7 @@ coverage
 
 # Generated from api/orbit-server.openapi.yaml (pnpm api:generate)
 src/shared/api/generated/
+
+# Playwright
+test-results/
+playwright-report/

@@ -51,6 +51,17 @@ pnpm api:pull feat/some-branch                  # ветка или коммит
 pnpm api:pull ../orbit-server/api/openapi.yaml  # локальный checkout
 ```
 
+## E2E-тесты
+
+Сквозные сценарии в `e2e/` идут против настоящих orbit-server и LiveKit. Браузеры запускаются с фейковым
+микрофоном, который играет тон, поэтому тест проверяет, что звук действительно доходит до собеседника.
+
+```bash
+cd ../orbit-server && make up && make run   # в отдельном терминале, ORBIT_ENV=development
+pnpm exec playwright install chromium       # один раз
+pnpm test:e2e
+```
+
 ## Структура
 
 ```

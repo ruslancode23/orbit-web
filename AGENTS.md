@@ -14,6 +14,7 @@ pnpm dev          # http://localhost:5173, нужен .env.local (cp .env.exampl
 pnpm check        # typecheck + lint + lint:fsd + format:check + test — запускай перед тем, как считать задачу готовой
 pnpm lint:fix && pnpm format   # автоисправления
 pnpm test         # Vitest; один файл: pnpm vitest run src/shared/ui/button
+pnpm test:e2e     # Playwright против живых orbit-server + LiveKit (make up && make run в orbit-server)
 ```
 
 Node 22+, pnpm 11. Не используй npm или yarn — lockfile только `pnpm-lock.yaml`.
@@ -75,7 +76,18 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 ## Тесты
 
 Каждая функция — с тестами. Тестируй поведение через роли и тексты (`getByRole`), а не детали реализации.
-Сквозные сценарии (Playwright) добавятся вместе с первым экраном комнаты.
+Компоненты с запросами рендери через `renderWithProviders` из `@/shared/lib/test`; `fetch` подменяй `vi.stubGlobal`,
+`livekit-client` — фейковым `Room` через `vi.mock` (пример — `features/join-room/ui/JoinRoom.test.tsx`).
+Сценарии с медиа проверяй в `e2e/` (Playwright, фейковый микрофон): юнит-тест не докажет, что звук доходит.
+
+## Медиа (LiveKit)
+
+- Комната — `livekit-client` внутри фичи/виджета; страницы с медиа грузятся лениво, чтобы livekit-client не попал в
+  начальный бандл.
+- При уходе со страницы и выходе — `room.disconnect()`: он останавливает локальные треки и освобождает микрофон.
+- Удалённое аудио прикрепляется `track.attach()` в скрытый контейнер и снимается на `TrackUnsubscribed`.
+- React Compiler считает ref-ом любое значение с суффиксом `Ref` и всё, что передаётся в проп `ref`: не возвращай из хуков
+  объект с ref внутри, деструктурируй результат.
 
 ## Производительность (PRD, раздел 10)
 
