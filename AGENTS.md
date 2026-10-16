@@ -62,6 +62,7 @@ src/shared    → ui, lib, api, config — без бизнес-логики
   Не пиши `fetch`, типы ответов и query keys вручную; не импортируй `shared/api/generated` напрямую.
 - Все ошибки запросов — `ApiError` (`status: 0` — нет сети, `error.code` — код сервера).
 - API изменился на сервере → `pnpm api:pull` (из `main`, ветки или локального пути) и закоммить новый снимок.
+- Workflow `API drift` сверяет снимок с `main` orbit-server (еженедельно, вручную, в PR — без блокировки); упал — `pnpm api:pull`.
 - Серверное состояние — TanStack Query; не дублируй его в локальном стейте.
 
 ## UI и стили

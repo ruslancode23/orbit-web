@@ -51,6 +51,11 @@ pnpm api:pull feat/some-branch                  # ветка или коммит
 pnpm api:pull ../orbit-server/api/openapi.yaml  # локальный checkout
 ```
 
+Расхождение снимка с `api/openapi.yaml` в `main` orbit-server ловит workflow
+[`API drift`](.github/workflows/api-drift.yml): раз в неделю, по кнопке и в каждом PR он скачивает спецификацию и
+сравнивает её со снимком. В PR это только предупреждение, по расписанию и при ручном запуске — падение с сообщением
+«orbit-server API changed — run `pnpm api:pull` and commit the snapshot».
+
 ## Структура
 
 ```
