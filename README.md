@@ -25,6 +25,32 @@ pnpm dev
 | `pnpm test`     | Vitest                              |
 | `pnpm check`    | всё перечисленное разом, как в CI   |
 
+## API
+
+Клиент orbit-server генерируется из снимка спецификации [`api/orbit-server.openapi.yaml`](api/orbit-server.openapi.yaml)
+с помощью [Hey API](https://heyapi.dev): типы, SDK и функции для TanStack Query. Генерация запускается сама перед
+`dev`, `build`, `typecheck`, `lint` и `test`; результат в `src/shared/api/generated/` не коммитится.
+
+```tsx
+import { useMutation, useQuery } from '@tanstack/react-query'
+
+import { createVoiceTokenMutation, getReadinessOptions } from '@/shared/api'
+
+const readiness = useQuery(getReadinessOptions())
+const join = useMutation(createVoiceTokenMutation())
+join.mutate({ body: { room: 'dev-room', displayName: 'Anna' } })
+```
+
+Любой неуспешный запрос — `ApiError` с `status` (0, если ответа нет) и `error.code` от сервера.
+
+Сервер поменял API — обнови снимок и закоммить его:
+
+```bash
+pnpm api:pull                                   # orbit-server main
+pnpm api:pull feat/some-branch                  # ветка или коммит
+pnpm api:pull ../orbit-server/api/openapi.yaml  # локальный checkout
+```
+
 ## Структура
 
 ```

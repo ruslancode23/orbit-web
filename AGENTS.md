@@ -56,9 +56,13 @@ src/shared    → ui, lib, api, config — без бизнес-логики
   `PlatformAdapter` из `shared/platform`. Компоненты не вызывают Tauri и браузерные API напрямую (PRD 11.0).
 - Переменные окружения — только через `@/shared/config`; новые описываются в `src/vite-env.d.ts`, `.env.example`
   и `.env.test` (значения для Vitest и CI).
-- Запросы к orbit-server — только через `@/shared/api`: функции вроде `requestVoiceToken` поверх `api()`.
-  Все ошибки — `ApiError` (`status: 0` — нет сети). Не вызывай `fetch` напрямую из слайсов.
-- Серверное состояние — TanStack Query (`useQuery`/`useMutation`); не дублируй его в локальном стейте.
+- API orbit-server генерируется из `api/orbit-server.openapi.yaml` (Hey API) в `src/shared/api/generated/`
+  перед `dev`, `build`, `typecheck`, `lint` и `test`. Сгенерированное не коммитится и не правится руками.
+- Запросы — только через `@/shared/api`: `useQuery(getReadinessOptions())`, `useMutation(createVoiceTokenMutation())`.
+  Не пиши `fetch`, типы ответов и query keys вручную; не импортируй `shared/api/generated` напрямую.
+- Все ошибки запросов — `ApiError` (`status: 0` — нет сети, `error.code` — код сервера).
+- API изменился на сервере → `pnpm api:pull` (из `main`, ветки или локального пути) и закоммить новый снимок.
+- Серверное состояние — TanStack Query; не дублируй его в локальном стейте.
 
 ## UI и стили
 
