@@ -14,6 +14,32 @@ interface FakeLocalTrackPublication {
   source: string
 }
 
+export interface FakeRemoteParticipant {
+  identity: string
+  name: string
+  isSpeaking: boolean
+  isMicrophoneEnabled: boolean
+  attributes: Record<string, string>
+  setVolume: (volume: number, source?: string) => void
+}
+
+/** A remote participant with a published, unmuted microphone. */
+export function fakeRemoteParticipant(
+  identity: string,
+  name: string,
+  overrides: Partial<FakeRemoteParticipant> = {},
+): FakeRemoteParticipant {
+  return {
+    identity,
+    name,
+    isSpeaking: false,
+    isMicrophoneEnabled: true,
+    attributes: {},
+    setVolume: vi.fn(),
+    ...overrides,
+  }
+}
+
 export const fakeLiveKit = {
   rooms: [] as FakeRoom[],
   /** Makes the next microphone publish fail. */
@@ -39,9 +65,20 @@ export class FakeRoom {
     identity: 'guest-me',
     name: '',
     isScreenShareEnabled: false,
-    setMicrophoneEnabled: vi.fn(() =>
-      fakeLiveKit.micError ? Promise.reject(fakeLiveKit.micError) : Promise.resolve(),
-    ),
+    isMicrophoneEnabled: false,
+    isSpeaking: false,
+    attributes: {} as Record<string, string>,
+    setMicrophoneEnabled: vi.fn((enabled: boolean) => {
+      if (fakeLiveKit.micError) return Promise.reject(fakeLiveKit.micError)
+      this.localParticipant.isMicrophoneEnabled = enabled
+      this.emit(enabled ? 'trackUnmuted' : 'trackMuted', { source: 'microphone' })
+      return Promise.resolve()
+    }),
+    setAttributes: vi.fn((attributes: Record<string, string>) => {
+      this.localParticipant.attributes = { ...this.localParticipant.attributes, ...attributes }
+      this.emit('participantAttributesChanged', attributes, this.localParticipant)
+      return Promise.resolve()
+    }),
     // Only stopping goes through LiveKit: the app captures the screen with the platform adapter.
     setScreenShareEnabled: vi.fn((enabled: boolean) => {
       this.localParticipant.isScreenShareEnabled = enabled
@@ -58,7 +95,7 @@ export class FakeRoom {
     }),
   }
 
-  remoteParticipants = new Map<string, { identity: string; name: string }>()
+  remoteParticipants = new Map<string, FakeRemoteParticipant>()
 
   connect = vi.fn(() => {
     this.localParticipant.name = 'Anna'
@@ -78,6 +115,14 @@ export class FakeRoom {
 
   on(event: string, handler: Handler) {
     this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler])
+    return this
+  }
+
+  off(event: string, handler: Handler) {
+    this.handlers.set(
+      event,
+      (this.handlers.get(event) ?? []).filter((h) => h !== handler),
+    )
     return this
   }
 

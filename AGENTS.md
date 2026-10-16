@@ -94,6 +94,10 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 - Переподключение после потери сети делает сам LiveKit (resume, затем full reconnect, ~45 с) и сам переопубликует
   микрофон и экран; провайдер в это время отдаёт `status: 'reconnecting'`. Если LiveKit сдался — `status: 'disconnected'` и
   `connectionLoss`; повторный вход со свежим токеном — `features/reconnect-room`. Офлайн в e2e — `context.setOffline()`.
+- Mute, deafen и громкость участника — действия `useVoiceRoom()`. Deafen — громкость всех на 0 через
+  `RemoteParticipant.setVolume()` плюс атрибут участника `deafened`, чтобы его видели другие (в токене нужен
+  `canUpdateOwnMetadata`). Индикатор говорящего — по `ActiveSpeakersChanged`, без опроса уровней; задержку задаёт
+  `audio.update_interval` LiveKit (`deploy/livekit.yaml` в orbit-server).
 - React Compiler считает ref-ом любое значение с суффиксом `Ref` и всё, что передаётся в проп `ref`: не возвращай из хуков
   объект с ref внутри, деструктурируй результат.
 

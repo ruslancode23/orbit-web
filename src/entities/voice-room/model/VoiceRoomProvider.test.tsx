@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DisconnectReason } from 'livekit-client'
 
-import { fakeLiveKit } from '@/shared/lib/test'
+import { fakeLiveKit, fakeRemoteParticipant } from '@/shared/lib/test'
 
 import { useVoiceRoom } from './context'
 import { VoiceRoomProvider } from './VoiceRoomProvider'
@@ -74,7 +74,7 @@ describe('VoiceRoomProvider reconnection', () => {
       room.emit('reconnecting')
     })
 
-    room.remoteParticipants.set('guest-bob', { identity: 'guest-bob', name: 'Bob' })
+    room.remoteParticipants.set('guest-bob', fakeRemoteParticipant('guest-bob', 'Bob'))
     act(() => {
       room.emit('reconnected')
     })

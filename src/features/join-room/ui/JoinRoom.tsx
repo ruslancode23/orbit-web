@@ -17,7 +17,7 @@ export function JoinRoom({ room }: JoinRoomProps) {
   const nameId = useId()
   const errorId = useId()
   const [displayName, setDisplayName] = useState('')
-  const { status, participants, error: voiceError, join, leave } = useVoiceRoom()
+  const { status, error: voiceError, join, leave } = useVoiceRoom()
   const tokenMutation = useMutation(createVoiceTokenMutation())
 
   const busy = tokenMutation.isPending || status === 'connecting'
@@ -44,14 +44,6 @@ export function JoinRoom({ room }: JoinRoomProps) {
           <p role="status" className="text-sm text-fg-muted">
             {status === 'reconnecting' ? 'Переподключаемся…' : 'Вы в комнате'}
           </p>
-          <ul aria-label="Участники" className="flex flex-col gap-1">
-            {participants.map((p) => (
-              <li key={p.identity} className="rounded-md bg-surface px-3 py-2 text-sm">
-                {p.name}
-                {p.isLocal && <span className="text-fg-muted"> (вы)</span>}
-              </li>
-            ))}
-          </ul>
           <Button variant="danger" onClick={() => void leave()}>
             Выйти
           </Button>

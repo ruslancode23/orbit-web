@@ -2,7 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { VoiceRoomProvider } from '@/entities/voice-room'
-import { fakeLiveKit, renderWithProviders } from '@/shared/lib/test'
+import { fakeLiveKit, fakeRemoteParticipant, renderWithProviders } from '@/shared/lib/test'
 
 import { JoinRoom } from './JoinRoom'
 
@@ -64,10 +64,9 @@ describe('JoinRoom', () => {
     expect(room.connect).toHaveBeenCalledWith('ws://lk.test', 'jwt')
     expect(room.startAudio).toHaveBeenCalled()
     expect(room.localParticipant.setMicrophoneEnabled).toHaveBeenCalledWith(true)
-    expect(screen.getByRole('list', { name: 'Участники' })).toHaveTextContent('Anna (вы)')
   })
 
-  it('shows remote participants and plays their audio', async () => {
+  it('plays remote participants audio', async () => {
     const { container } = renderJoinRoom()
     await joinAs('Anna')
     await screen.findByText('Вы в комнате')
@@ -75,8 +74,9 @@ describe('JoinRoom', () => {
 
     const audio = document.createElement('audio')
     act(() => {
-      room.remoteParticipants.set('guest-bob', { identity: 'guest-bob', name: 'Bob' })
-      room.emit('participantConnected')
+      const bob = fakeRemoteParticipant('guest-bob', 'Bob')
+      room.remoteParticipants.set(bob.identity, bob)
+      room.emit('participantConnected', bob)
       room.emit(
         'trackSubscribed',
         { kind: 'audio', attach: () => audio, detach: () => [audio] },
@@ -85,7 +85,6 @@ describe('JoinRoom', () => {
       )
     })
 
-    expect(screen.getByRole('list', { name: 'Участники' })).toHaveTextContent('Bob')
     expect(container.contains(audio)).toBe(true)
 
     act(() => {

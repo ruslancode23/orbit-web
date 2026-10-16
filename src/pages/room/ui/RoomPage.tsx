@@ -4,6 +4,7 @@ import { VoiceRoomProvider } from '@/entities/voice-room'
 import { JoinRoom } from '@/features/join-room'
 import { ReconnectRoom } from '@/features/reconnect-room'
 import { ScreenShares, ShareScreenButton } from '@/features/share-screen'
+import { VoiceRoom } from '@/widgets/voice-room'
 
 // Same rule as the server's VoiceTokenRequest.room.
 const ROOM_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
@@ -30,6 +31,7 @@ export function RoomPage() {
         <div className="flex w-full max-w-sm flex-col gap-4">
           <ReconnectRoom room={roomId} />
           <JoinRoom room={roomId} />
+          <VoiceRoom />
           <ShareScreenButton />
         </div>
         <div className="w-full max-w-4xl">
