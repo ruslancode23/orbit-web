@@ -77,13 +77,15 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 
 Каждая функция — с тестами. Тестируй поведение через роли и тексты (`getByRole`), а не детали реализации.
 Компоненты с запросами рендери через `renderWithProviders` из `@/shared/lib/test`; `fetch` подменяй `vi.stubGlobal`,
-`livekit-client` — фейковым `Room` через `vi.mock` (пример — `features/join-room/ui/JoinRoom.test.tsx`).
+`livekit-client` — фейковым `FakeRoom` из `@/shared/lib/test` через `vi.mock` (пример — `features/share-screen/ui/ShareScreen.test.tsx`).
 Сценарии с медиа проверяй в `e2e/` (Playwright, фейковый микрофон): юнит-тест не докажет, что звук доходит.
 
 ## Медиа (LiveKit)
 
-- Комната — `livekit-client` внутри фичи/виджета; страницы с медиа грузятся лениво, чтобы livekit-client не попал в
-  начальный бандл.
+- Комнатой владеет сущность `entities/voice-room`: `VoiceRoomProvider` (подключение, микрофон, удалённое аудио,
+  участники, чужие экраны) и `useVoiceRoom()`. Фичи (`join-room`, `share-screen`, дальше устройства) работают через
+  неё и не создают свой `Room`. Страница оборачивает себя в провайдер.
+- Страницы с медиа грузятся лениво, чтобы livekit-client не попал в начальный бандл.
 - При уходе со страницы и выходе — `room.disconnect()`: он останавливает локальные треки и освобождает микрофон.
 - Удалённое аудио прикрепляется `track.attach()` в скрытый контейнер и снимается на `TrackUnsubscribed`.
 - React Compiler считает ref-ом любое значение с суффиксом `Ref` и всё, что передаётся в проп `ref`: не возвращай из хуков
