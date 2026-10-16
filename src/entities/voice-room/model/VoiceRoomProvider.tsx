@@ -4,6 +4,7 @@ import {
   RoomEvent,
   Track,
   type LocalTrackPublication,
+  type Participant,
   type RemoteParticipant,
   type RemoteTrack,
   type RemoteTrackPublication,
@@ -11,6 +12,7 @@ import {
 } from 'livekit-client'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { DEAFENED_ATTRIBUTE, useAudioControls, useParticipantsWithAudio } from './audio-controls'
 import {
   VoiceRoomContext,
   type JoinParams,
@@ -92,6 +94,13 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
           for (const element of track.detach()) element.remove()
           setScreenShares((shares) => shares.filter((s) => s.track !== track))
         })
+        // Speaking comes as events from the server's audio level observer, not by polling levels.
+        .on(RoomEvent.ActiveSpeakersChanged, sync)
+        .on(RoomEvent.TrackPublished, sync)
+        .on(RoomEvent.TrackUnpublished, sync)
+        .on(RoomEvent.TrackMuted, sync)
+        .on(RoomEvent.TrackUnmuted, sync)
+        .on(RoomEvent.ParticipantAttributesChanged, sync)
         // Also fires when the browser's own "Stop sharing" ends the track: LiveKit unpublishes it.
         .on(RoomEvent.LocalTrackPublished, syncLocalScreen)
         .on(RoomEvent.LocalTrackUnpublished, syncLocalScreen)
@@ -132,6 +141,10 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
     setStatus('idle')
   }, [reset])
 
+  const { isDeafened, volumes, setDeafened, setMicrophoneMuted, setParticipantVolume } =
+    useAudioControls(room)
+  const participantsWithAudio = useParticipantsWithAudio(participants, isDeafened, volumes)
+
   useEffect(
     () => () => {
       void roomRef.current?.disconnect()
@@ -141,8 +154,32 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<VoiceRoomValue>(
-    () => ({ status, participants, screenShares, isSharingScreen, error, room, join, leave }),
-    [status, participants, screenShares, isSharingScreen, error, room, join, leave],
+    () => ({
+      status,
+      participants: participantsWithAudio,
+      screenShares,
+      isSharingScreen,
+      error,
+      room,
+      join,
+      leave,
+      setMicrophoneMuted,
+      setDeafened,
+      setParticipantVolume,
+    }),
+    [
+      status,
+      participantsWithAudio,
+      screenShares,
+      isSharingScreen,
+      error,
+      room,
+      join,
+      leave,
+      setMicrophoneMuted,
+      setDeafened,
+      setParticipantVolume,
+    ],
   )
 
   return (
@@ -162,17 +199,23 @@ function isScreenShare(
 
 function listParticipants(room: Room): VoiceParticipant[] {
   return [
-    {
-      identity: room.localParticipant.identity,
-      name: displayName(room.localParticipant),
-      isLocal: true,
-    },
-    ...[...room.remoteParticipants.values()].map((p: RemoteParticipant) => ({
-      identity: p.identity,
-      name: displayName(p),
-      isLocal: false,
-    })),
+    toVoiceParticipant(room.localParticipant, true),
+    ...[...room.remoteParticipants.values()].map((p: RemoteParticipant) =>
+      toVoiceParticipant(p, false),
+    ),
   ]
+}
+
+function toVoiceParticipant(participant: Participant, isLocal: boolean): VoiceParticipant {
+  return {
+    identity: participant.identity,
+    name: displayName(participant),
+    isLocal,
+    isSpeaking: participant.isSpeaking,
+    isMicrophoneMuted: !participant.isMicrophoneEnabled,
+    isDeafened: participant.attributes[DEAFENED_ATTRIBUTE] === 'true',
+    volume: 1,
+  }
 }
 
 // LiveKit reports a participant without a name as an empty string.

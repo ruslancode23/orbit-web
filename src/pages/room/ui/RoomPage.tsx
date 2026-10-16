@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { VoiceRoomProvider } from '@/entities/voice-room'
 import { JoinRoom } from '@/features/join-room'
 import { ScreenShares, ShareScreenButton } from '@/features/share-screen'
+import { VoiceRoom } from '@/widgets/voice-room'
 
 // Same rule as the server's VoiceTokenRequest.room.
 const ROOM_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
@@ -28,6 +29,7 @@ export function RoomPage() {
       <main className="flex min-h-full flex-col items-center gap-6 p-6 lg:flex-row lg:items-start lg:justify-center">
         <div className="flex w-full max-w-sm flex-col gap-4">
           <JoinRoom room={roomId} />
+          <VoiceRoom />
           <ShareScreenButton />
         </div>
         <div className="w-full max-w-4xl">

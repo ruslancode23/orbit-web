@@ -89,6 +89,10 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 - Страницы с медиа грузятся лениво, чтобы livekit-client не попал в начальный бандл.
 - При уходе со страницы и выходе — `room.disconnect()`: он останавливает локальные треки и освобождает микрофон.
 - Удалённое аудио прикрепляется `track.attach()` в скрытый контейнер и снимается на `TrackUnsubscribed`.
+- Mute, deafen и громкость участника — действия `useVoiceRoom()`. Deafen — громкость всех на 0 через
+  `RemoteParticipant.setVolume()` плюс атрибут участника `deafened`, чтобы его видели другие (в токене нужен
+  `canUpdateOwnMetadata`). Индикатор говорящего — по `ActiveSpeakersChanged`, без опроса уровней; задержку задаёт
+  `audio.update_interval` LiveKit (`deploy/livekit.yaml` в orbit-server).
 - React Compiler считает ref-ом любое значение с суффиксом `Ref` и всё, что передаётся в проп `ref`: не возвращай из хуков
   объект с ref внутри, деструктурируй результат.
 
