@@ -18,27 +18,27 @@ paths:
       tags: [system]
       summary: Liveness probe — the process is running.
       responses:
-        '200':
+        "200":
           description: Alive.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Liveness' }
+              schema: { $ref: "#/components/schemas/Liveness" }
   /readyz:
     get:
       operationId: getReadiness
       tags: [system]
       summary: Readiness probe — the instance can serve traffic.
       responses:
-        '200':
+        "200":
           description: Ready.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Readiness' }
-        '503':
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
           description: A dependency is down.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Readiness' }
+              schema: { $ref: "#/components/schemas/Readiness" }
   /api/v1/voice/token:
     post:
       operationId: createVoiceToken
@@ -52,31 +52,31 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/VoiceTokenRequest' }
+            schema: { $ref: "#/components/schemas/VoiceTokenRequest" }
       responses:
-        '201':
+        "201":
           description: Token issued.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/VoiceToken' }
-        '400': { $ref: '#/components/responses/Error' }
-        '404': { $ref: '#/components/responses/Error' }
-        '413': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
+              schema: { $ref: "#/components/schemas/VoiceToken" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
 components:
   responses:
     Error:
       description: Error in the common API format.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
   schemas:
     Error:
       type: object
       additionalProperties: false
       required: [error]
       properties:
-        error: { $ref: '#/components/schemas/ErrorDetail' }
+        error: { $ref: "#/components/schemas/ErrorDetail" }
     ErrorDetail:
       type: object
       additionalProperties: false
@@ -113,7 +113,7 @@ components:
       properties:
         room:
           type: string
-          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$'
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
           description: Room name. Latin letters, digits, '-' and '_', starting with a letter or digit.
           example: dev-room
         displayName:
