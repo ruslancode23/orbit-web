@@ -119,3 +119,46 @@ test('a shared screen reaches the other participant and stops at once', async ({
   await anna.context().close()
   await bob.context().close()
 })
+
+test('after 10 s offline the room comes back with voice and screen share', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const offlineRoom = `${room}-offline`
+  const anna = await (await browser.newContext()).newPage()
+  const bob = await (await browser.newContext()).newPage()
+  for (const [page, name] of [
+    [anna, 'Anna'],
+    [bob, 'Bob'],
+  ] as const) {
+    await page.goto(`/room/${offlineRoom}`)
+    await page.getByLabel('Ваше имя').fill(name)
+    await page.getByRole('button', { name: 'Войти в комнату' }).click()
+    await expect(page.getByText('Вы в комнате')).toBeVisible()
+  }
+  await anna.getByRole('button', { name: 'Показать экран' }).click()
+  const bobSeesScreen = bob.getByText('Anna показывает экран')
+  await expect(bobSeesScreen).toBeVisible({ timeout: 15_000 })
+
+  const reconnecting = anna.getByRole('status').filter({ hasText: 'Связь прервалась' })
+  await anna.context().setOffline(true)
+  await expect(reconnecting).toBeVisible({ timeout: 20_000 })
+  await anna.waitForTimeout(10_000)
+  await anna.context().setOffline(false)
+
+  await expect(reconnecting).toBeHidden({ timeout: 45_000 })
+  await expect(anna.getByText('Вы в комнате')).toBeVisible()
+  await expect(anna.getByRole('alert')).toBeHidden()
+  await expect(anna.getByText('Вы показываете экран')).toBeVisible()
+
+  // Voice and the screen flow again both ways, without a reload.
+  await expect.poll(() => remoteAudioPeak(bob), { timeout: 20_000 }).toBeGreaterThan(0)
+  await expect.poll(() => remoteAudioPeak(anna), { timeout: 20_000 }).toBeGreaterThan(0)
+  await expect(bobSeesScreen).toBeVisible({ timeout: 20_000 })
+  await expect
+    .poll(() => bob.getByLabel('Экран: Anna').evaluate((el: HTMLVideoElement) => el.videoWidth), {
+      timeout: 20_000,
+    })
+    .toBeGreaterThan(0)
+
+  await anna.context().close()
+  await bob.context().close()
+})

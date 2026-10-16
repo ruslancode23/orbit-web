@@ -2,7 +2,13 @@ import { createContext, use } from 'react'
 
 import type { RemoteVideoTrack, Room } from 'livekit-client'
 
-export type VoiceRoomStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error'
+/**
+ * `reconnecting` — the network dropped and LiveKit is retrying on its own;
+ * `disconnected` — the room was lost and did not come back (see `connectionLoss`);
+ * `error` — joining failed.
+ */
+export type VoiceRoomStatus =
+  'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error'
 
 export interface VoiceParticipant {
   identity: string
@@ -14,6 +20,15 @@ export interface RemoteScreenShare {
   participantIdentity: string
   participantName: string
   track: RemoteVideoTrack
+}
+
+/** Why a joined room was lost without the user leaving it. */
+export interface ConnectionLoss {
+  message: string
+  /** False when joining again would not help, e.g. the participant was removed. */
+  canRetry: boolean
+  /** The name the user joined with, to ask for a fresh token. */
+  displayName: string
 }
 
 export interface JoinParams {
@@ -28,6 +43,8 @@ export interface VoiceRoomValue {
   screenShares: RemoteScreenShare[]
   isSharingScreen: boolean
   error: string | null
+  /** Set while `status` is `disconnected`. */
+  connectionLoss: ConnectionLoss | null
   /** The connected room, for features that act on it (screen share, devices). */
   room: Room | null
   join: (params: JoinParams) => Promise<void>

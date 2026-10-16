@@ -1,5 +1,6 @@
 export {
   useVoiceRoom,
+  type ConnectionLoss,
   type RemoteScreenShare,
   type VoiceParticipant,
   type VoiceRoomStatus,
