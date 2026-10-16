@@ -21,8 +21,9 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          // A fake microphone that plays a tone, and no permission prompt.
+          // A fake microphone that plays a tone, a fake screen to share, and no permission prompts.
           args: [
+            '--auto-select-desktop-capture-source=Entire screen',
             '--use-fake-ui-for-media-stream',
             '--use-fake-device-for-media-stream',
             '--autoplay-policy=no-user-gesture-required',

@@ -63,3 +63,59 @@ test('two people in one room hear each other, and leaving frees the room', async
   await anna.context().close()
   await bob.context().close()
 })
+
+test('a shared screen reaches the other participant and stops at once', async ({ browser }) => {
+  const screenRoom = `${room}-screen`
+  const anna = await (await browser.newContext()).newPage()
+  const bob = await (await browser.newContext()).newPage()
+  // Keep the captured screen tracks, to imitate the browser's own "Stop sharing" button.
+  await anna.addInitScript(() => {
+    const original = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices)
+    const tracks: MediaStreamTrack[] = []
+    Object.assign(window, { __screenTracks: tracks })
+    navigator.mediaDevices.getDisplayMedia = async (options) => {
+      const stream = await original(options)
+      tracks.push(...stream.getVideoTracks())
+      return stream
+    }
+  })
+  for (const [page, name] of [
+    [anna, 'Anna'],
+    [bob, 'Bob'],
+  ] as const) {
+    await page.goto(`/room/${screenRoom}`)
+    await page.getByLabel('Ваше имя').fill(name)
+    await page.getByRole('button', { name: 'Войти в комнату' }).click()
+    await expect(page.getByText('Вы в комнате')).toBeVisible()
+  }
+  const bobSeesScreen = bob.getByText('Anna показывает экран')
+
+  await anna.getByRole('button', { name: 'Показать экран' }).click()
+  await expect(anna.getByText('Вы показываете экран')).toBeVisible()
+
+  // Bob receives frames, not just an element.
+  await expect(bobSeesScreen).toBeVisible({ timeout: 15_000 })
+  await expect
+    .poll(() => bob.getByLabel('Экран: Anna').evaluate((el: HTMLVideoElement) => el.videoWidth), {
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(0)
+
+  await anna.getByRole('button', { name: 'Остановить показ' }).click()
+  await expect(bobSeesScreen).toBeHidden({ timeout: 5_000 })
+
+  // The browser's "Stop sharing" ends the track; the share must stop just the same.
+  await anna.getByRole('button', { name: 'Показать экран' }).click()
+  await expect(bobSeesScreen).toBeVisible({ timeout: 15_000 })
+  await anna.evaluate(() => {
+    const { __screenTracks: tracks } = window as unknown as { __screenTracks: MediaStreamTrack[] }
+    const track = tracks.at(-1)
+    track?.stop()
+    track?.dispatchEvent(new Event('ended'))
+  })
+  await expect(anna.getByRole('button', { name: 'Показать экран' })).toBeVisible()
+  await expect(bobSeesScreen).toBeHidden({ timeout: 5_000 })
+
+  await anna.context().close()
+  await bob.context().close()
+})

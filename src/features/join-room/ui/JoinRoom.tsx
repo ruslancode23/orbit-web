@@ -1,12 +1,11 @@
 import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 
+import { useVoiceRoom } from '@/entities/voice-room'
 import { createVoiceTokenMutation, isApiError } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-
-import { useVoiceRoom } from '../model/use-voice-room'
 
 const MAX_NAME_LENGTH = 32
 
@@ -18,14 +17,7 @@ export function JoinRoom({ room }: JoinRoomProps) {
   const nameId = useId()
   const errorId = useId()
   const [displayName, setDisplayName] = useState('')
-  const {
-    status,
-    participants,
-    error: voiceError,
-    join,
-    leave,
-    attachAudioContainer,
-  } = useVoiceRoom()
+  const { status, participants, error: voiceError, join, leave } = useVoiceRoom()
   const tokenMutation = useMutation(createVoiceTokenMutation())
 
   const busy = tokenMutation.isPending || status === 'connecting'
@@ -96,8 +88,6 @@ export function JoinRoom({ room }: JoinRoomProps) {
           </Button>
         </form>
       )}
-
-      <div ref={attachAudioContainer} hidden />
     </section>
   )
 }

@@ -1,76 +1,22 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { renderWithProviders } from '@/shared/lib/test'
+import { VoiceRoomProvider } from '@/entities/voice-room'
+import { fakeLiveKit, renderWithProviders } from '@/shared/lib/test'
 
 import { JoinRoom } from './JoinRoom'
 
 import type * as LiveKit from 'livekit-client'
 
-type Handler = (...args: unknown[]) => void
-
-// `micError` makes the next Room fail to publish the microphone.
-const fake = vi.hoisted(() => ({ rooms: [] as FakeRoom[], micError: null as Error | null }))
-const { rooms } = fake
-
-interface FakeRoom {
-  connect: ReturnType<typeof vi.fn>
-  disconnect: ReturnType<typeof vi.fn>
-  startAudio: ReturnType<typeof vi.fn>
-  localParticipant: {
-    identity: string
-    name: string
-    setMicrophoneEnabled: ReturnType<typeof vi.fn>
-  }
-  remoteParticipants: Map<string, { identity: string; name: string }>
-  emit: (event: string, ...args: unknown[]) => void
-}
-
-vi.mock('livekit-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof LiveKit>()
-
-  class Room implements FakeRoom {
-    private handlers = new Map<string, Handler[]>()
-    localParticipant = {
-      identity: 'guest-me',
-      name: '',
-      setMicrophoneEnabled: vi.fn(() =>
-        fake.micError ? Promise.reject(fake.micError) : Promise.resolve(),
-      ),
-    }
-    remoteParticipants = new Map<string, { identity: string; name: string }>()
-    connect = vi.fn(() => {
-      this.localParticipant.name = 'Anna'
-      return Promise.resolve()
-    })
-    startAudio = vi.fn(() => Promise.resolve())
-    disconnect = vi.fn(() => {
-      this.emit('disconnected')
-      return Promise.resolve()
-    })
-
-    constructor() {
-      rooms.push(this)
-    }
-
-    on(event: string, handler: Handler) {
-      this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler])
-      return this
-    }
-
-    emit(event: string, ...args: unknown[]) {
-      for (const handler of this.handlers.get(event) ?? []) handler(...args)
-    }
-  }
-
-  return { ...actual, Room }
-})
+vi.mock('livekit-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof LiveKit>()),
+  Room: (await import('@/shared/lib/test')).FakeRoom,
+}))
 
 const fetchMock = vi.fn<typeof fetch>()
 
 beforeEach(() => {
-  rooms.length = 0
-  fake.micError = null
+  fakeLiveKit.reset()
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockResolvedValue(
     new Response(
@@ -90,10 +36,14 @@ afterEach(() => {
   fetchMock.mockReset()
 })
 
-function lastRoom(): FakeRoom {
-  const room = rooms.at(-1)
-  if (!room) throw new Error('no Room was created')
-  return room
+const lastRoom = () => fakeLiveKit.lastRoom()
+
+function renderJoinRoom() {
+  return renderWithProviders(
+    <VoiceRoomProvider>
+      <JoinRoom room="dev-room" />
+    </VoiceRoomProvider>,
+  )
 }
 
 async function joinAs(name: string) {
@@ -103,7 +53,7 @@ async function joinAs(name: string) {
 
 describe('JoinRoom', () => {
   it('gets a token, connects to LiveKit and publishes the microphone', async () => {
-    renderWithProviders(<JoinRoom room="dev-room" />)
+    renderJoinRoom()
 
     await joinAs('  Anna ')
 
@@ -118,7 +68,7 @@ describe('JoinRoom', () => {
   })
 
   it('shows remote participants and plays their audio', async () => {
-    const { container } = renderWithProviders(<JoinRoom room="dev-room" />)
+    const { container } = renderJoinRoom()
     await joinAs('Anna')
     await screen.findByText('Вы в комнате')
     const room = lastRoom()
@@ -127,7 +77,12 @@ describe('JoinRoom', () => {
     act(() => {
       room.remoteParticipants.set('guest-bob', { identity: 'guest-bob', name: 'Bob' })
       room.emit('participantConnected')
-      room.emit('trackSubscribed', { kind: 'audio', attach: () => audio, detach: () => [audio] })
+      room.emit(
+        'trackSubscribed',
+        { kind: 'audio', attach: () => audio, detach: () => [audio] },
+        {},
+        {},
+      )
     })
 
     expect(screen.getByRole('list', { name: 'Участники' })).toHaveTextContent('Bob')
@@ -140,7 +95,7 @@ describe('JoinRoom', () => {
   })
 
   it('leaves the room and releases the microphone', async () => {
-    renderWithProviders(<JoinRoom room="dev-room" />)
+    renderJoinRoom()
     await joinAs('Anna')
     await screen.findByText('Вы в комнате')
 
@@ -151,7 +106,7 @@ describe('JoinRoom', () => {
   })
 
   it('disconnects when the page goes away', async () => {
-    const { unmount } = renderWithProviders(<JoinRoom room="dev-room" />)
+    const { unmount } = renderJoinRoom()
     await joinAs('Anna')
     await screen.findByText('Вы в комнате')
 
@@ -161,8 +116,8 @@ describe('JoinRoom', () => {
   })
 
   it('explains a denied microphone and does not stay connected', async () => {
-    fake.micError = new DOMException('Permission denied', 'NotAllowedError')
-    renderWithProviders(<JoinRoom room="dev-room" />)
+    fakeLiveKit.micError = new DOMException('Permission denied', 'NotAllowedError')
+    renderJoinRoom()
 
     await joinAs('Anna')
 
@@ -181,16 +136,16 @@ describe('JoinRoom', () => {
         },
       ),
     )
-    renderWithProviders(<JoinRoom room="dev-room" />)
+    renderJoinRoom()
 
     await joinAs('Anna')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Имя слишком длинное')
-    expect(rooms).toHaveLength(0)
+    expect(fakeLiveKit.rooms).toHaveLength(0)
   })
 
   it('does not submit an empty name', async () => {
-    renderWithProviders(<JoinRoom room="dev-room" />)
+    renderJoinRoom()
 
     await userEvent.type(screen.getByLabelText('Ваше имя'), '   ')
 
