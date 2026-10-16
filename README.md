@@ -53,8 +53,19 @@ pnpm api:pull ../orbit-server/api/openapi.yaml  # локальный checkout
 
 Расхождение снимка с `api/openapi.yaml` в `main` orbit-server ловит workflow
 [`API drift`](.github/workflows/api-drift.yml): раз в неделю, по кнопке и в каждом PR он скачивает спецификацию и
-сравнивает её со снимком. В PR это только предупреждение, по расписанию и при ручном запуске — падение с сообщением
+сравнивает её со снимком. В PR это только предупреждение (проверка остаётся зелёной), по расписанию и при ручном запуске — падение с сообщением
 «orbit-server API changed — run `pnpm api:pull` and commit the snapshot».
+
+## E2E-тесты
+
+Сквозные сценарии в `e2e/` идут против настоящих orbit-server и LiveKit. Браузеры запускаются с фейковым
+микрофоном, который играет тон, поэтому тест проверяет, что звук действительно доходит до собеседника.
+
+```bash
+cd ../orbit-server && make up && make run   # в отдельном терминале, ORBIT_ENV=development
+pnpm exec playwright install chromium       # один раз
+pnpm test:e2e
+```
 
 ## Структура
 
