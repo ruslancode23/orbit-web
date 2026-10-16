@@ -30,6 +30,41 @@ const fsdPolicies = FSD_LAYERS.map((layer) => ({
   },
 }))
 
+const PUBLIC_API_IMPORT_PATTERNS = [
+  {
+    group: SLICED_LAYERS.map((layer) => `@/${layer}/*/**`),
+    message: 'Import the slice through its public API: @/<layer>/<slice>.',
+  },
+  {
+    group: ['@/shared/*/*/**'],
+    message: 'Import shared through its public API: @/shared/<segment>/<module>.',
+  },
+  {
+    group: [
+      '../**/app/**',
+      '../**/pages/**',
+      '../**/widgets/**',
+      '../**/features/**',
+      '../**/entities/**',
+      '../**/shared/**',
+    ],
+    message: 'Use the @/ alias to import from another layer.',
+  },
+]
+
+// PRD 11.0: the OS (notifications, devices, screen capture, autostart) is reached only through
+// PlatformAdapter from @/shared/platform, so the Tauri build can swap the implementation.
+const PLATFORM_MESSAGE = 'Use getPlatform() from @/shared/platform.'
+const PLATFORM_ONLY_FILES = 'src/shared/platform/**'
+const TAURI_IMPORT_PATTERN = { group: ['@tauri-apps/*'], message: PLATFORM_MESSAGE }
+// livekit-client helpers that capture on their own, bypassing the adapter.
+const LIVEKIT_CAPTURE_IMPORTS = {
+  name: 'livekit-client',
+  importNames: ['createLocalScreenTracks', 'createLocalTracks', 'createLocalVideoTrack'],
+  allowTypeImports: true,
+  message: `Capture through the platform adapter and publishTrack() the result. ${PLATFORM_MESSAGE}`,
+}
+
 export default defineConfig([
   globalIgnores(['dist', 'coverage', 'src/shared/api/generated']),
   {
@@ -73,29 +108,35 @@ export default defineConfig([
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: SLICED_LAYERS.map((layer) => `@/${layer}/*/**`),
-              message: 'Import the slice through its public API: @/<layer>/<slice>.',
-            },
-            {
-              group: ['@/shared/*/*/**'],
-              message: 'Import shared through its public API: @/shared/<segment>/<module>.',
-            },
-            {
-              group: [
-                '../**/app/**',
-                '../**/pages/**',
-                '../**/widgets/**',
-                '../**/features/**',
-                '../**/entities/**',
-                '../**/shared/**',
-              ],
-              message: 'Use the @/ alias to import from another layer.',
-            },
-          ],
+          paths: [LIVEKIT_CAPTURE_IMPORTS],
+          patterns: [...PUBLIC_API_IMPORT_PATTERNS, TAURI_IMPORT_PATTERN],
         },
       ],
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [PLATFORM_ONLY_FILES],
+    rules: {
+      'no-restricted-globals': ['error', { name: 'Notification', message: PLATFORM_MESSAGE }],
+      'no-restricted-properties': [
+        'error',
+        ...['navigator', 'window', 'globalThis', 'self'].flatMap((object) => [
+          { object, property: 'mediaDevices', message: PLATFORM_MESSAGE },
+          { object, property: 'Notification', message: PLATFORM_MESSAGE },
+        ]),
+        // Catches calls on an aliased mediaDevices too.
+        ...['getUserMedia', 'getDisplayMedia', 'enumerateDevices'].map((property) => ({
+          property,
+          message: PLATFORM_MESSAGE,
+        })),
+      ],
+    },
+  },
+  {
+    files: [PLATFORM_ONLY_FILES],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: PUBLIC_API_IMPORT_PATTERNS }],
     },
   },
   {

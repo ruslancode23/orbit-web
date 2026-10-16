@@ -54,7 +54,8 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 - `import type` для типов. Без `any`, без `as` ради обхода типов, без `// @ts-ignore` и `eslint-disable`.
 - Компоненты — функции, файл компонента в PascalCase (`Button.tsx`), тест рядом (`Button.test.tsx`).
 - Обращения к ОС и браузерным API (уведомления, устройства, захват экрана, автозапуск) — только через
-  `PlatformAdapter` из `shared/platform`. Компоненты не вызывают Tauri и браузерные API напрямую (PRD 11.0).
+  `getPlatform()` из `@/shared/platform` (`PlatformAdapter`). Компоненты не вызывают Tauri и браузерные API
+  напрямую (PRD 11.0), это проверяет ESLint. Что остаётся внутри livekit-client — `docs/adr/0004-platform-adapter.md`.
 - Переменные окружения — только через `@/shared/config`; новые описываются в `src/vite-env.d.ts`, `.env.example`
   и `.env.test` (значения для Vitest и CI).
 - API orbit-server генерируется из `api/orbit-server.openapi.yaml` (Hey API) в `src/shared/api/generated/`
@@ -78,7 +79,8 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 
 Каждая функция — с тестами. Тестируй поведение через роли и тексты (`getByRole`), а не детали реализации.
 Компоненты с запросами рендери через `renderWithProviders` из `@/shared/lib/test`; `fetch` подменяй `vi.stubGlobal`,
-`livekit-client` — фейковым `FakeRoom` из `@/shared/lib/test` через `vi.mock` (пример — `features/share-screen/ui/ShareScreen.test.tsx`).
+`livekit-client` — фейковым `FakeRoom` из `@/shared/lib/test` через `vi.mock`, платформу — `setPlatform(createFakePlatform())`
+и `setPlatform(null)` в `afterEach` (пример — `features/share-screen/ui/ShareScreen.test.tsx`).
 Сценарии с медиа проверяй в `e2e/` (Playwright, фейковый микрофон): юнит-тест не докажет, что звук доходит.
 
 ## Медиа (LiveKit)

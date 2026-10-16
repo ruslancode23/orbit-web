@@ -18,12 +18,12 @@ export const fakeLiveKit = {
   rooms: [] as FakeRoom[],
   /** Makes the next microphone publish fail. */
   micError: null as Error | null,
-  /** Makes the next screen share start fail. */
-  screenError: null as Error | null,
+  /** Makes the next publishTrack fail. */
+  publishError: null as Error | null,
   reset() {
     this.rooms.length = 0
     this.micError = null
-    this.screenError = null
+    this.publishError = null
   },
   lastRoom(): FakeRoom {
     const room = this.rooms.at(-1)
@@ -42,12 +42,19 @@ export class FakeRoom {
     setMicrophoneEnabled: vi.fn(() =>
       fakeLiveKit.micError ? Promise.reject(fakeLiveKit.micError) : Promise.resolve(),
     ),
+    // Only stopping goes through LiveKit: the app captures the screen with the platform adapter.
     setScreenShareEnabled: vi.fn((enabled: boolean) => {
-      if (enabled && fakeLiveKit.screenError) return Promise.reject(fakeLiveKit.screenError)
       this.localParticipant.isScreenShareEnabled = enabled
       const publication: FakeLocalTrackPublication = { source: 'screen_share' }
       this.emit(enabled ? 'localTrackPublished' : 'localTrackUnpublished', publication)
       return Promise.resolve()
+    }),
+    publishTrack: vi.fn((_track: unknown, { source }: { source: string }) => {
+      if (fakeLiveKit.publishError) return Promise.reject(fakeLiveKit.publishError)
+      if (source === 'screen_share') this.localParticipant.isScreenShareEnabled = true
+      const publication: FakeLocalTrackPublication = { source }
+      this.emit('localTrackPublished', publication)
+      return Promise.resolve(publication)
     }),
   }
 

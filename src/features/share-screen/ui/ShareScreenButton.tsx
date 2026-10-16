@@ -1,6 +1,8 @@
+import { Track, type Room } from 'livekit-client'
 import { useState } from 'react'
 
 import { useVoiceRoom } from '@/entities/voice-room'
+import { getPlatform, type ScreenCapture } from '@/shared/platform'
 import { Button } from '@/shared/ui/button'
 
 /** Starts or stops showing a window or the whole screen, with system audio where the browser allows it. */
@@ -16,8 +18,12 @@ export function ShareScreenButton() {
     setPending(true)
     setError(null)
     try {
-      // Stopping unpublishes and stops the track at once, so nothing more is sent.
-      await room.localParticipant.setScreenShareEnabled(!isSharingScreen, { audio: true })
+      if (isSharingScreen) {
+        // Unpublishes and stops the screen and its audio at once, so nothing more is sent.
+        await room.localParticipant.setScreenShareEnabled(false)
+      } else {
+        await publishScreen(room, await getPlatform().screenCapture.capture({ audio: true }))
+      }
     } catch (cause) {
       setError(describeShareError(cause))
     } finally {
@@ -42,6 +48,25 @@ export function ShareScreenButton() {
       )}
     </div>
   )
+}
+
+/**
+ * Publishes a capture as the screen share. LiveKit unpublishes a screen track when it ends,
+ * so the OS "Stop sharing" button keeps working for tracks the adapter captured.
+ */
+async function publishScreen(room: Room, { video, audio }: ScreenCapture) {
+  try {
+    await room.localParticipant.publishTrack(video, { source: Track.Source.ScreenShare })
+    if (audio) {
+      await room.localParticipant.publishTrack(audio, { source: Track.Source.ScreenShareAudio })
+    }
+  } catch (cause) {
+    // Half a share is worse than none: take back what was published and free the capture.
+    await room.localParticipant.setScreenShareEnabled(false)
+    video.stop()
+    audio?.stop()
+    throw cause
+  }
 }
 
 function describeShareError(cause: unknown): string | null {
