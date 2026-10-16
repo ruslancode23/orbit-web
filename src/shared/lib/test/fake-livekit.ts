@@ -61,7 +61,7 @@ export class FakeRoom {
   startAudio = vi.fn(() => Promise.resolve())
 
   disconnect = vi.fn(() => {
-    this.emit('disconnected')
+    this.emit('disconnected', 1) // DisconnectReason.CLIENT_INITIATED
     return Promise.resolve()
   })
 

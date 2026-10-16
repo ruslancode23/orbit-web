@@ -1,5 +1,5 @@
 import {
-  ConnectionState,
+  DisconnectReason,
   Room,
   RoomEvent,
   Track,
@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import {
   VoiceRoomContext,
+  type ConnectionLoss,
   type JoinParams,
   type RemoteScreenShare,
   type VoiceParticipant,
@@ -23,6 +24,10 @@ import {
 /**
  * Owns one LiveKit voice room for the subtree: connects, publishes the microphone,
  * plays remote audio, tracks remote screen shares, and releases everything on leave or unmount.
+ *
+ * When the network drops, LiveKit retries on its own (resume, then a full reconnect, ~45 s in all) and
+ * republishes the microphone and screen share; meanwhile the status is `reconnecting`. If it gives up,
+ * the status becomes `disconnected` with a `connectionLoss` explaining why, so the UI can offer to join again.
  */
 export function VoiceRoomProvider({ children }: { children: ReactNode }) {
   const roomRef = useRef<Room | null>(null)
@@ -33,6 +38,7 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
   const [screenShares, setScreenShares] = useState<RemoteScreenShare[]>([])
   const [isSharingScreen, setIsSharingScreen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [connectionLoss, setConnectionLoss] = useState<ConnectionLoss | null>(null)
 
   const reset = useCallback(() => {
     setRoom(null)
@@ -47,6 +53,7 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
 
       const next = new Room({ adaptiveStream: true, dynacast: true })
       roomRef.current = next
+      let joined = false
       const sync = () => {
         setParticipants(listParticipants(next))
       }
@@ -56,16 +63,19 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      const markReconnecting = () => {
+        if (joined) setStatus('reconnecting')
+      }
+
       next
-        .on(RoomEvent.ConnectionStateChanged, (state) => {
-          if (
-            state === ConnectionState.Reconnecting ||
-            state === ConnectionState.SignalReconnecting
-          ) {
-            setStatus('reconnecting')
-          } else if (state === ConnectionState.Connected) {
-            setStatus('connected')
-          }
+        // Signal-only first (media keeps flowing), then the whole connection.
+        .on(RoomEvent.SignalReconnecting, markReconnecting)
+        .on(RoomEvent.Reconnecting, markReconnecting)
+        .on(RoomEvent.Reconnected, () => {
+          if (!joined) return
+          // A full reconnect re-adds remote participants; their tracks come back through TrackSubscribed.
+          sync()
+          setStatus('connected')
         })
         .on(RoomEvent.ParticipantConnected, sync)
         .on(RoomEvent.ParticipantDisconnected, (participant) => {
@@ -95,14 +105,21 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
         // Also fires when the browser's own "Stop sharing" ends the track: LiveKit unpublishes it.
         .on(RoomEvent.LocalTrackPublished, syncLocalScreen)
         .on(RoomEvent.LocalTrackUnpublished, syncLocalScreen)
-        .on(RoomEvent.Disconnected, () => {
+        // leave() and failed joins clear roomRef first; any other drop after joining is a lost room.
+        .on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
           if (roomRef.current !== next) return
           roomRef.current = null
           reset()
-          setStatus('idle')
+          if (!joined || reason === DisconnectReason.CLIENT_INITIATED) {
+            setStatus('idle')
+            return
+          }
+          setConnectionLoss(describeLoss(reason, next.localParticipant.name ?? ''))
+          setStatus('disconnected')
         })
 
       setError(null)
+      setConnectionLoss(null)
       setStatus('connecting')
       try {
         await next.connect(url, token)
@@ -111,6 +128,7 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
         await next.localParticipant.setMicrophoneEnabled(true)
         sync()
         setRoom(next)
+        joined = true
         setStatus('connected')
       } catch (cause) {
         roomRef.current = null
@@ -129,6 +147,7 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
     // disconnect() stops local tracks: the microphone and any screen share are released.
     await current?.disconnect()
     reset()
+    setConnectionLoss(null)
     setStatus('idle')
   }, [reset])
 
@@ -141,8 +160,18 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<VoiceRoomValue>(
-    () => ({ status, participants, screenShares, isSharingScreen, error, room, join, leave }),
-    [status, participants, screenShares, isSharingScreen, error, room, join, leave],
+    () => ({
+      status,
+      participants,
+      screenShares,
+      isSharingScreen,
+      error,
+      connectionLoss,
+      room,
+      join,
+      leave,
+    }),
+    [status, participants, screenShares, isSharingScreen, error, connectionLoss, room, join, leave],
   )
 
   return (
@@ -188,4 +217,28 @@ function describeJoinError(cause: unknown): string {
     return 'Микрофон не найден.'
   }
   return 'Не удалось подключиться к комнате. Попробуйте ещё раз.'
+}
+
+function describeLoss(reason: DisconnectReason | undefined, displayName: string): ConnectionLoss {
+  switch (reason) {
+    case DisconnectReason.PARTICIPANT_REMOVED:
+      return { message: 'Вас удалили из комнаты.', canRetry: false, displayName }
+    case DisconnectReason.DUPLICATE_IDENTITY:
+      return {
+        message: 'Вы вошли в эту комнату в другой вкладке или на другом устройстве.',
+        canRetry: false,
+        displayName,
+      }
+    case DisconnectReason.SERVER_SHUTDOWN:
+      return { message: 'Сервер перезапускается.', canRetry: true, displayName }
+    case DisconnectReason.ROOM_DELETED:
+    case DisconnectReason.ROOM_CLOSED:
+      return { message: 'Комната закрылась.', canRetry: true, displayName }
+    default:
+      return {
+        message: 'Связь с комнатой потеряна и не восстановилась.',
+        canRetry: true,
+        displayName,
+      }
+  }
 }

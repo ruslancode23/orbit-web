@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router'
 
 import { VoiceRoomProvider } from '@/entities/voice-room'
 import { JoinRoom } from '@/features/join-room'
+import { ReconnectRoom } from '@/features/reconnect-room'
 import { ScreenShares, ShareScreenButton } from '@/features/share-screen'
 
 // Same rule as the server's VoiceTokenRequest.room.
@@ -27,6 +28,7 @@ export function RoomPage() {
     <VoiceRoomProvider>
       <main className="flex min-h-full flex-col items-center gap-6 p-6 lg:flex-row lg:items-start lg:justify-center">
         <div className="flex w-full max-w-sm flex-col gap-4">
+          <ReconnectRoom room={roomId} />
           <JoinRoom room={roomId} />
           <ShareScreenButton />
         </div>
