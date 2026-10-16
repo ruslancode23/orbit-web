@@ -1,0 +1,38 @@
+name: API drift
+
+# Is api/orbit-server.openapi.yaml still identical to api/openapi.yaml on orbit-server main?
+# On pull requests it only warns (the check stays green); on the weekly schedule and manual runs it fails.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          # Only a Node script runs here; without this setup-node reads packageManager
+          # from package.json and fails looking for pnpm to cache.
+          package-manager-cache: false
+      - run: node scripts/pull-openapi.mjs main
+      - name: Compare with the committed snapshot
+        env:
+          IS_PR: ${{ github.event_name == 'pull_request' }}
+          MESSAGE: orbit-server API changed — run `pnpm api:pull` and commit the snapshot
+        run: |
+          if git diff --exit-code api/; then
+            echo "Snapshot matches orbit-server main."
+            exit 0
+          fi
+          echo "$MESSAGE" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$IS_PR" = "true" ]; then
+            echo "::warning file=api/orbit-server.openapi.yaml::$MESSAGE"
+          else
+            echo "::error file=api/orbit-server.openapi.yaml::$MESSAGE"
+            exit 1
+          fi
