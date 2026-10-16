@@ -124,7 +124,7 @@ export default defineConfig([
   },
   {
     // Tooling configs are required to use default exports.
-    files: ['*.config.{js,ts}', 'scripts/**'],
+    files: ['*.config.{js,ts}', 'scripts/**', 'e2e/global-setup.ts'],
     rules: { 'import-x/no-default-export': 'off' },
   },
   {

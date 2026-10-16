@@ -8,5 +8,4 @@ function required(name: string): string {
 
 export const env = {
   apiUrl: required('VITE_API_URL'),
-  livekitUrl: required('VITE_LIVEKIT_URL'),
 } as const
