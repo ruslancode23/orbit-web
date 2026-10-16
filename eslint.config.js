@@ -31,7 +31,7 @@ const fsdPolicies = FSD_LAYERS.map((layer) => ({
 }))
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage']),
+  globalIgnores(['dist', 'coverage', 'src/shared/api/generated']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -124,7 +124,7 @@ export default defineConfig([
   },
   {
     // Tooling configs are required to use default exports.
-    files: ['*.config.{js,ts}'],
+    files: ['*.config.{js,ts}', 'scripts/**'],
     rules: { 'import-x/no-default-export': 'off' },
   },
   {
