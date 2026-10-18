@@ -20,11 +20,13 @@ test('register, stay signed in across a reload, sign out', async ({ page }) => {
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
 
-  await expect(page.getByText(`Вы вошли как ${nickname}`)).toBeVisible()
+  // The shell greets a fresh account with no servers yet, and names it in the sidebar.
+  await expect(page.getByText('Создайте свой первый сервер')).toBeVisible()
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible()
 
   // The session lives in a cookie, so it survives a reload.
   await page.reload()
-  await expect(page.getByText(`Вы вошли как ${nickname}`)).toBeVisible()
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Выйти' }).click()
   await expect(page).toHaveURL(/\/login$/)
@@ -40,7 +42,7 @@ test('a wrong password says so without saying which half was wrong', async ({ pa
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
-  await expect(page.getByText(`Вы вошли как ${nickname}`)).toBeVisible()
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Выйти' }).click()
 
   await page.getByLabel('Ник или email').fill(nickname)
@@ -53,7 +55,7 @@ test('a wrong password says so without saying which half was wrong', async ({ pa
   // The right one gets in.
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Войти' }).click()
-  await expect(page.getByText(`Вы вошли как ${nickname}`)).toBeVisible()
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible()
 })
 
 test('a taken nickname is refused', async ({ page }) => {
@@ -62,7 +64,7 @@ test('a taken nickname is refused', async ({ page }) => {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
-  await expect(page.getByText(`Вы вошли как ${nickname}`)).toBeVisible()
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Выйти' }).click()
 
   await page.goto('/register')
