@@ -12,7 +12,10 @@ export { createVoiceToken, getLiveness, getReadiness } from './generated/sdk.gen
 export type {
   ErrorDetail,
   Liveness,
+  LoginRequest,
   Readiness,
+  RegisterRequest,
+  User,
   VoiceToken,
   VoiceTokenRequest,
 } from './generated/types.gen'

@@ -83,6 +83,16 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 и `setPlatform(null)` в `afterEach` (пример — `features/share-screen/ui/ShareScreen.test.tsx`).
 Сценарии с медиа проверяй в `e2e/` (Playwright, фейковый микрофон): юнит-тест не докажет, что звук доходит.
 
+## Аккаунты и сессии
+
+Сессия живёт в cookie `orbit_session` (HttpOnly), поэтому запросы идут с `credentials: 'include'`
+(`shared/api/client-config.ts`), а кто вошёл — знает только сервер: `useSession()` из
+`entities/session` спрашивает `GET /auth/me`. Маршруты за `RequireSession` (`app/routes`) ждут первого
+ответа и только потом решают, пускать или вести на `/login`. Ответ 401 на любом запросе чистит кеш
+TanStack Query и сбрасывает сессию (`shared/api/query-client.ts`), после чего guard уводит на вход.
+Страница комнаты пока открыта: голос работает на dev-эндпоинте токена, она уйдёт за сессию вместе с
+оболочкой приложения (2.12).
+
 ## Медиа (LiveKit)
 
 - Комнатой владеет сущность `entities/voice-room`: `VoiceRoomProvider` (подключение, микрофон, удалённое аудио,
