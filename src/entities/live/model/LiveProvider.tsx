@@ -1,7 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import { listMessagesQueryKey, listUnreadQueryKey } from '@/shared/api'
+import {
+  listMessagesInfiniteQueryKey,
+  listMessagesQueryKey,
+  listUnreadQueryKey,
+} from '@/shared/api'
 
 import { LiveConnection, type LiveEvent, type LiveStatus } from './connection'
 import { LiveContext, type LiveValue } from './context'
@@ -66,9 +70,10 @@ export function LiveProvider({ children, enabled }: LiveProviderProps) {
  */
 function applyEvent(queryClient: ReturnType<typeof useQueryClient>, event: LiveEvent) {
   if (event.type.startsWith('message.') && event.channelId) {
-    void queryClient.invalidateQueries({
-      queryKey: listMessagesQueryKey({ path: { channelId: event.channelId } }),
-    })
+    const path = { channelId: event.channelId }
+    // Both shapes of the same history: the chat reads it page by page.
+    void queryClient.invalidateQueries({ queryKey: listMessagesQueryKey({ path }) })
+    void queryClient.invalidateQueries({ queryKey: listMessagesInfiniteQueryKey({ path }) })
   }
   if (event.workspaceId && (event.type.startsWith('message.') || event.type === 'read.changed')) {
     void queryClient.invalidateQueries({

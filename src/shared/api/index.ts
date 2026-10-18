@@ -14,6 +14,8 @@ export type {
   ErrorDetail,
   Liveness,
   LoginRequest,
+  Message,
+  MessagePage,
   Readiness,
   RegisterRequest,
   User,

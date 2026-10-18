@@ -164,6 +164,13 @@ export default defineConfig([
     },
   },
   {
+    // TanStack Virtual is the PRD's choice for long lists, and its hook returns
+    // functions React Compiler refuses to memoize: the list below opts out of
+    // compilation instead of giving up virtualization.
+    files: ['src/widgets/channel-chat/ui/ChannelChat.tsx'],
+    rules: { 'react-hooks/incompatible-library': 'off' },
+  },
+  {
     // Tooling configs are required to use default exports.
     files: ['*.config.{js,ts}', 'scripts/**', 'e2e/global-setup.ts'],
     rules: { 'import-x/no-default-export': 'off' },

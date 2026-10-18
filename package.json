@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.2",
+    "@tanstack/react-virtual": "^3.14.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "livekit-client": "^2.22.4",
