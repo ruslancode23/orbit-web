@@ -1,0 +1,204 @@
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+
+import { type Message } from '@/entities/message'
+import { useSession } from '@/entities/session'
+import { SendMessage } from '@/features/send-message'
+import { isApiError } from '@/shared/api'
+import { Button } from '@/shared/ui/button'
+
+import { MessageRow } from './MessageRow'
+import { useChannelHistory } from './useChannelHistory'
+
+interface ChannelChatProps {
+  workspaceId: string
+  channelId: string
+  /** False in a read-only channel: the composer is then not offered. */
+  canWrite: boolean
+}
+
+/** How close to the bottom still counts as "reading the newest", in pixels. */
+const BOTTOM_THRESHOLD = 80
+/** A first guess at a message's height; the virtualizer measures the real one. */
+const ESTIMATED_ROW = 56
+/** How long the message the reader jumped to stays marked. */
+const HIGHLIGHT_MS = 2000
+
+/**
+ * The messages of one channel. The list is virtualized, so a long history
+ * scrolls at the same speed as a short one; older pages load as the reader
+ * goes up, and new messages stick to the bottom only while the reader is there.
+ */
+export function ChannelChat({ workspaceId, channelId, canWrite }: ChannelChatProps) {
+  const { user } = useSession()
+  const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useChannelHistory(channelId)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [atBottom, setAtBottom] = useState(true)
+  const [replyTo, setReplyTo] = useState<Message | undefined>(undefined)
+  const [editingId, setEditingId] = useState<string | undefined>(undefined)
+  const [highlightedId, setHighlightedId] = useState<string | undefined>(undefined)
+
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ESTIMATED_ROW,
+    overscan: 12,
+    getItemKey: (index) => messages[index]?.id ?? index,
+  })
+
+  // Someone reading older messages must not be yanked back down by a new one.
+  useEffect(() => {
+    if (atBottom) virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+  }, [messages.length, atBottom, virtualizer])
+
+  // The mark on a jumped-to message is temporary.
+  useEffect(() => {
+    if (highlightedId === undefined) return undefined
+    const timer = setTimeout(() => {
+      setHighlightedId(undefined)
+    }, HIGHLIGHT_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [highlightedId])
+
+  // Opening a channel starts at the newest message, as a chat should.
+  useLayoutEffect(() => {
+    setAtBottom(true)
+    setReplyTo(undefined)
+    setEditingId(undefined)
+    setHighlightedId(undefined)
+  }, [channelId])
+
+  function jumpTo(messageId: string) {
+    const index = messages.findIndex((message) => message.id === messageId)
+    if (index === -1) return
+    virtualizer.scrollToIndex(index, { align: 'center' })
+    setHighlightedId(messageId)
+  }
+
+  function handleScroll(event: React.UIEvent<HTMLDivElement>) {
+    const element = event.currentTarget
+    const distance = element.scrollHeight - element.scrollTop - element.clientHeight
+    setAtBottom(distance <= BOTTOM_THRESHOLD)
+
+    // Near the top: bring in what came before.
+    if (element.scrollTop < ESTIMATED_ROW * 2 && hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage()
+    }
+  }
+
+  // The history is the source of truth: a reply preview follows the message it
+  // answers, including its edit or delete, instead of keeping an old copy.
+  const activeReply =
+    replyTo === undefined ? undefined : messages.find((message) => message.id === replyTo.id)
+
+  return (
+    <section aria-label="Чат" className="flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="min-h-0 flex-1 overflow-y-auto"
+        role="log"
+        aria-live="polite"
+        aria-label="Сообщения"
+      >
+        {isPending && (
+          <p role="status" className="p-4 text-sm text-fg-muted">
+            Загружаем сообщения…
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="p-4 text-sm text-danger">
+            {isApiError(error) && error.isNetworkError
+              ? 'Нет соединения с сервером.'
+              : 'Не получилось загрузить историю.'}
+          </p>
+        )}
+        {isFetchingNextPage && (
+          <p role="status" className="p-2 text-center text-xs text-fg-muted">
+            Загружаем старые сообщения…
+          </p>
+        )}
+        {!isPending && !error && messages.length === 0 && (
+          <p className="p-4 text-sm text-fg-muted">Здесь пока ничего не написано.</p>
+        )}
+
+        <div
+          className="relative w-full"
+          style={{ height: `${String(virtualizer.getTotalSize())}px` }}
+        >
+          {virtualizer.getVirtualItems().map((row) => {
+            const message = messages[row.index]
+            if (!message) return null
+            const replyTarget =
+              message.replyToId === undefined
+                ? undefined
+                : messages.find((item) => item.id === message.replyToId)
+            return (
+              <div
+                key={row.key}
+                ref={virtualizer.measureElement}
+                data-index={row.index}
+                className="absolute top-0 left-0 w-full"
+                style={{ transform: `translateY(${String(row.start)}px)` }}
+              >
+                <MessageRow
+                  message={message}
+                  previous={messages[row.index - 1]}
+                  mentionsMe={user ? message.mentions.includes(user.id) : false}
+                  myNickname={user?.nickname}
+                  canWrite={canWrite}
+                  replyTo={replyTarget}
+                  editing={editingId === message.id}
+                  highlighted={highlightedId === message.id}
+                  onStartEdit={() => {
+                    setEditingId(message.id)
+                  }}
+                  onStopEdit={() => {
+                    setEditingId(undefined)
+                  }}
+                  onReply={() => {
+                    setReplyTo(message)
+                  }}
+                  onJumpTo={jumpTo}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {!atBottom && (
+        <Button
+          variant="ghost"
+          className="mx-auto mb-1"
+          onClick={() => {
+            setAtBottom(true)
+          }}
+        >
+          К новым сообщениям
+        </Button>
+      )}
+
+      {canWrite ? (
+        <SendMessage
+          workspaceId={workspaceId}
+          channelId={channelId}
+          {...(activeReply === undefined ? {} : { replyTo: activeReply })}
+          onCancelReply={() => {
+            setReplyTo(undefined)
+          }}
+          onSent={() => {
+            setReplyTo(undefined)
+          }}
+        />
+      ) : (
+        <p className="border-t border-border p-4 text-sm text-fg-muted">
+          В этом канале пишут только администраторы.
+        </p>
+      )}
+    </section>
+  )
+}

@@ -9,6 +9,47 @@ info:
 tags:
   - name: system
     description: Probes for orchestrators and load balancers.
+  - name: auth
+    description: |
+      Accounts and sessions. A session lives in the `orbit_session` cookie: it is set on
+      register and login and cleared on logout. The cookie is HttpOnly, so a script cannot
+      read it, and the browser sends it on a WebSocket upgrade as well, which a header
+      cannot do. Endpoints marked below as needing a session answer 401 without a live one.
+  - name: workspaces
+    description: |
+      Servers (a workspace) and their members. Every operation checks the caller's role
+      on the server itself: a hidden button is not protection. A caller who is not a member
+      gets 404, not 403, so the API does not reveal which servers exist.
+  - name: channels
+    description: |
+      Text channels inside a server. Reading follows membership; writing is open to
+      every member unless the channel is read-only, where only admins and the owner write.
+      Channels are created, renamed, reordered and deleted by admins and the owner.
+  - name: messages
+    description: |
+      Messages in a channel. Sending carries the client's own id, so a resend after a
+      network failure returns the message already stored instead of a second copy.
+      History comes in pages ordered by `seq`, a number that only grows inside a channel.
+  - name: invites
+    description: |
+      Invite links and the guest entrance. From the link to the room in three steps:
+      open the link, give a name, join — a guest needs no account, and keeps its history
+      when it signs up later.
+  - name: unread
+    description: |
+      How far each person has read. The cursor is a `seq` per channel; it only moves
+      forward, and it is the same on every device that account is signed in on.
+  - name: files
+    description: |
+      Files and images in a channel (FR-05). The upload goes through the server, which
+      checks the size and reads the first bytes to see what the file really is — the
+      name proves nothing. Downloads go straight from the object store by a short-lived
+      signed link, issued only to someone who may read the channel.
+  - name: conversations
+    description: |
+      Direct messages and small group chats. A conversation is a channel without a
+      server, so messages, files and read cursors work for it through the same
+      endpoints; only who may read it is decided differently — by being in it.
   - name: voice
     description: Voice rooms on LiveKit.
 paths:
@@ -39,6 +80,912 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Readiness" }
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create an account and start a session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: Account created; the session cookie is set.
+          headers:
+            Set-Cookie:
+              description: The session cookie, HttpOnly.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/Error" }
+        "409":
+          description: The nickname or email is taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Start a session for an existing account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Session started; the cookie is set.
+          headers:
+            Set-Cookie:
+              description: The session cookie, HttpOnly.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401":
+          description: Wrong login or password. The response does not say which.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: End this session. Needs a session.
+      description: Revokes only the session that made the request; other devices stay signed in.
+      responses:
+        "204":
+          description: Session ended; the cookie is cleared.
+          headers:
+            Set-Cookie:
+              description: The cleared session cookie.
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: The account of this session. Needs a session.
+      responses:
+        "200":
+          description: The current account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change the password. Needs a session.
+      description: |
+        Every session of the account is revoked, this one included: a stolen session
+        dies with the password change, and the client signs in again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordChangeRequest" }
+      responses:
+        "204":
+          description: Password changed; every session is revoked and the cookie is cleared.
+          headers:
+            Set-Cookie:
+              description: The cleared session cookie.
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces:
+    get:
+      operationId: listWorkspaces
+      tags: [workspaces]
+      summary: The servers this account belongs to, with its role in each. Needs a session.
+      responses:
+        "200":
+          description: The servers of this account.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceMembership" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createWorkspace
+      tags: [workspaces]
+      summary: Create a server. Needs a session.
+      description: The caller becomes its owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceCreateRequest" }
+      responses:
+        "201":
+          description: Server created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMembership" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: getWorkspace
+      tags: [workspaces]
+      summary: One server and the caller's role in it. Needs membership.
+      responses:
+        "200":
+          description: The server.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMembership" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateWorkspace
+      tags: [workspaces]
+      summary: Rename a server. Admin or owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceUpdateRequest" }
+      responses:
+        "200":
+          description: The renamed server.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMembership" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteWorkspace
+      tags: [workspaces]
+      summary: Delete a server with everything in it. Owner only.
+      responses:
+        "204":
+          description: Server deleted.
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listWorkspaceMembers
+      tags: [workspaces]
+      summary: Members of a server and their roles. Needs membership.
+      responses:
+        "200":
+          description: The members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceMember" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/members/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/UserId"
+    patch:
+      operationId: setWorkspaceMemberRole
+      tags: [workspaces]
+      summary: Change a member's role. Owner only.
+      description: |
+        Only the owner moves people between roles, and a server always keeps an owner:
+        the owner can hand the role over, which makes them an admin, but cannot leave the
+        server without one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceMemberRoleRequest" }
+      responses:
+        "200":
+          description: The member with their new role.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMember" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: removeWorkspaceMember
+      tags: [workspaces]
+      summary: Remove a member. Admin or owner; anyone may remove themselves.
+      description: |
+        An admin cannot remove another admin or the owner. Removal takes effect at once:
+        the next request or event subscription of that member is refused.
+      responses:
+        "204":
+          description: Member removed.
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/bans:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listWorkspaceBans
+      tags: [workspaces]
+      summary: Who is banned from this server. Admin or owner.
+      responses:
+        "200":
+          description: The bans.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceBan" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/bans/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/UserId"
+    put:
+      operationId: banWorkspaceMember
+      tags: [workspaces]
+      summary: Ban someone from a server. Admin or owner.
+      description: |
+        Removes the member and keeps them out: an invite link does not let them back.
+        An admin cannot ban another admin or the owner.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceBanRequest" }
+      responses:
+        "200":
+          description: The ban.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceBan" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: unbanWorkspaceMember
+      tags: [workspaces]
+      summary: Lift a ban. Admin or owner.
+      responses:
+        "204":
+          description: Ban lifted.
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/channels:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listChannels
+      tags: [channels]
+      summary: Channels of a server, in their order. Needs membership.
+      responses:
+        "200":
+          description: The channels.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Channel" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createChannel
+      tags: [channels]
+      summary: Create a channel. Admin or owner.
+      description: The channel goes to the end of the list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChannelCreateRequest" }
+      responses:
+        "201":
+          description: Channel created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Channel" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: A channel of this server already has that name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/channels/order:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    put:
+      operationId: reorderChannels
+      tags: [channels]
+      summary: Set the order of the channels. Admin or owner.
+      description: |
+        The body lists every channel of the server once, in the order people will see.
+        A list that misses a channel or names a foreign one is refused, so the order
+        never ends up half applied.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChannelOrderRequest" }
+      responses:
+        "200":
+          description: The channels in their new order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Channel" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/channels/{channelId}:
+    parameters:
+      - $ref: "#/components/parameters/ChannelId"
+    get:
+      operationId: getChannel
+      tags: [channels]
+      summary: One channel. Needs membership in its server.
+      responses:
+        "200":
+          description: The channel.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Channel" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateChannel
+      tags: [channels]
+      summary: Rename a channel, change its topic or its write access. Admin or owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChannelUpdateRequest" }
+      responses:
+        "200":
+          description: The updated channel.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Channel" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: A channel of this server already has that name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteChannel
+      tags: [channels]
+      summary: Delete a channel with its messages and attachments. Admin or owner.
+      responses:
+        "204":
+          description: Channel deleted.
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/channels/{channelId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/ChannelId"
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: A page of history, newest first. Needs membership in the server.
+      parameters:
+        - name: before
+          in: query
+          required: false
+          description: Return messages older than this `seq`. Omit for the newest page.
+          schema: { type: integer, format: int64, minimum: 1 }
+        - name: limit
+          in: query
+          required: false
+          description: How many messages to return.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: The page.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessagePage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message. Needs the right to write in the channel.
+      description: |
+        `clientMessageId` makes the send idempotent: the same id in the same channel
+        from the same account returns the message already stored, with 200 instead of 201.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MessageCreateRequest" }
+      responses:
+        "200":
+          description: This message was already sent; the stored one comes back.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "201":
+          description: Message sent.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/messages/{messageId}:
+    parameters:
+      - $ref: "#/components/parameters/MessageId"
+    patch:
+      operationId: editMessage
+      tags: [messages]
+      summary: Edit your own message.
+      responses:
+        "200":
+          description: The edited message.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MessageUpdateRequest" }
+    delete:
+      operationId: deleteMessage
+      tags: [messages]
+      summary: Delete your own message.
+      description: |
+        The message stays in the history as deleted, without its text: replies to it
+        and read cursors keep working.
+      responses:
+        "200":
+          description: The deleted message.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/messages/{messageId}/reactions/{emoji}:
+    parameters:
+      - $ref: "#/components/parameters/MessageId"
+      - name: emoji
+        in: path
+        required: true
+        description: The reaction itself, for example 👍.
+        schema: { type: string, minLength: 1, maxLength: 32 }
+    put:
+      operationId: addReaction
+      tags: [messages]
+      summary: React to a message. Needs the right to write in the channel.
+      responses:
+        "200":
+          description: The message with its reactions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: removeReaction
+      tags: [messages]
+      summary: Take your reaction back.
+      responses:
+        "200":
+          description: The message with its reactions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/invites:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listInvites
+      tags: [invites]
+      summary: Invite links of a server. Admin or owner.
+      responses:
+        "200":
+          description: The links.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Invite" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createInvite
+      tags: [invites]
+      summary: Create an invite link. Admin or owner.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InviteCreateRequest" }
+      responses:
+        "201":
+          description: The link.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invite" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/invites/{inviteId}:
+    parameters:
+      - name: inviteId
+        in: path
+        required: true
+        description: Invite identifier.
+        schema: { type: string, format: uuid }
+    delete:
+      operationId: revokeInvite
+      tags: [invites]
+      summary: Revoke an invite link. Admin or owner.
+      responses:
+        "204":
+          description: The link no longer works.
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/invites/{code}/preview:
+    parameters:
+      - $ref: "#/components/parameters/InviteCode"
+    get:
+      operationId: previewInvite
+      tags: [invites]
+      summary: What this link leads to. No session needed.
+      description: |
+        Shows the server behind a link to whoever holds it, so the page can say what
+        they are joining before they give a name. A dead link answers 404.
+      responses:
+        "200":
+          description: The server behind the link.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitePreview" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/invites/{code}/accept:
+    parameters:
+      - $ref: "#/components/parameters/InviteCode"
+    post:
+      operationId: acceptInvite
+      tags: [invites]
+      summary: Join the server behind the link. Needs a session.
+      responses:
+        "200":
+          description: The server and your role in it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMembership" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403":
+          description: You are banned from this server.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/invites/{code}/guest:
+    parameters:
+      - $ref: "#/components/parameters/InviteCode"
+    post:
+      operationId: joinAsGuest
+      tags: [invites]
+      summary: Enter as a guest, by name alone. No account, no session needed.
+      description: |
+        Creates a guest account, starts a session and joins the server in one step.
+        The guest keeps its id, so signing up later keeps its history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GuestJoinRequest" }
+      responses:
+        "201":
+          description: The guest is in; the session cookie is set.
+          headers:
+            Set-Cookie:
+              description: The session cookie, HttpOnly.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GuestJoin" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: The nickname is taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/claim:
+    post:
+      operationId: claimGuestAccount
+      tags: [auth]
+      summary: Turn this guest into a full account. Needs a guest session.
+      description: |
+        Keeps the same account, so servers, messages and read cursors stay where they
+        are; it only adds a password, and an email when given.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "200":
+          description: The account, now a full one; the session continues.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403":
+          description: This session is not a guest.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The nickname or email is taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspaceId}/unread:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listUnread
+      tags: [unread]
+      summary: Unread counts for every channel of a server. Needs membership.
+      description: One request for the whole sidebar, not one per channel.
+      responses:
+        "200":
+          description: The counts, one entry per channel.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ChannelUnread" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/channels/{channelId}/read:
+    parameters:
+      - $ref: "#/components/parameters/ChannelId"
+    put:
+      operationId: markChannelRead
+      tags: [unread]
+      summary: Move the read cursor of this channel. Needs membership.
+      description: |
+        The cursor only moves forward, so a device that was offline cannot make
+        messages unread again. Other devices of the same account are told at once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReadCursorRequest" }
+      responses:
+        "200":
+          description: Where the cursor now stands, with what is left unread.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChannelUnread" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/channels/{channelId}/attachments:
+    parameters:
+      - $ref: "#/components/parameters/ChannelId"
+    post:
+      operationId: uploadAttachment
+      tags: [files]
+      summary: Upload a file for a message in this channel. Needs the right to write.
+      description: |
+        The file is stored on its own; it belongs to nobody until a message names it in
+        `attachmentIds`. A file whose message never arrives is swept away later.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: The file is stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "413":
+          description: The file is larger than this instance allows.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "415":
+          description: This kind of file is not accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/attachments/{attachmentId}:
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        description: Attachment identifier.
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getAttachmentLink
+      tags: [files]
+      summary: A short-lived link to download the file. Needs to read its channel.
+      responses:
+        "200":
+          description: The link and when it stops working.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentLink" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: Your conversations, the liveliest first. Needs a session.
+      responses:
+        "200":
+          description: The conversations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Conversation" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: startConversation
+      tags: [conversations]
+      summary: Open a conversation with one or more people. Needs a session.
+      description: |
+        With one other person this returns the dialogue you already have, if there is
+        one: a pair has a single conversation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConversationStartRequest" }
+      responses:
+        "200":
+          description: The dialogue this pair already had.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "201":
+          description: A new conversation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /api/v1/conversations/{conversationId}:
+    parameters:
+      - name: conversationId
+        in: path
+        required: true
+        description: Conversation identifier; it is also the channel id for messages.
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getConversation
+      tags: [conversations]
+      summary: One conversation you are in.
+      responses:
+        "200":
+          description: The conversation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
   /api/v1/voice/token:
     post:
       operationId: createVoiceToken
@@ -64,6 +1011,43 @@ paths:
         "413": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/Error" }
 components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      description: Server identifier.
+      schema: { type: string, format: uuid }
+    ChannelId:
+      name: channelId
+      in: path
+      required: true
+      description: Channel identifier.
+      schema: { type: string, format: uuid }
+    InviteCode:
+      name: code
+      in: path
+      required: true
+      description: The code from the invite link.
+      schema: { type: string, minLength: 8, maxLength: 64 }
+    MessageId:
+      name: messageId
+      in: path
+      required: true
+      description: Message identifier.
+      schema: { type: string, format: uuid }
+    UserId:
+      name: userId
+      in: path
+      required: true
+      description: Account identifier.
+      schema: { type: string, format: uuid }
+  securitySchemes:
+    # Documented here; enforced by the server's own middleware, not by schema validation.
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: orbit_session
   responses:
     Error:
       description: Error in the common API format.
@@ -84,7 +1068,9 @@ components:
       properties:
         code:
           type: string
-          description: Machine-readable code, e.g. invalid_request, not_found, body_too_large, internal.
+          description: |
+            Machine-readable code: invalid_request, unauthorized, forbidden, not_found,
+            conflict, method_not_allowed, body_too_large, internal.
           example: invalid_request
         message:
           type: string
@@ -106,6 +1092,476 @@ components:
         database:
           type: string
           enum: [up, down]
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, nickname, isGuest, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+          minLength: 1
+          maxLength: 32
+          example: Anna
+        email:
+          type: string
+          format: email
+          description: Absent for an account registered by nickname alone, and for a guest.
+        isGuest:
+          type: boolean
+          description: A guest has no password and keeps its id when it signs up.
+        createdAt:
+          type: string
+          format: date-time
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [nickname, password]
+      properties:
+        nickname:
+          type: string
+          pattern: "^[A-Za-z0-9А-Яа-яЁё][A-Za-z0-9А-Яа-яЁё _.-]{0,31}$"
+          description: |
+            Shown to other people. Compared without case, so "Anna" and "anna" collide.
+            Latin and Cyrillic letters, digits, space, '.', '_' and '-'; the same rule as
+            for a guest name, so signing up never rejects the name someone came in with.
+          example: Anna
+        email:
+          type: string
+          format: email
+          description: Optional; lets the account sign in by email as well.
+        password:
+          type: string
+          minLength: 10
+          maxLength: 256
+          description: Stored only as an argon2id hash.
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [login, password]
+      properties:
+        login:
+          type: string
+          minLength: 1
+          maxLength: 254
+          description: Nickname or email, either case.
+          example: Anna
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+    PasswordChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 256
+        newPassword:
+          type: string
+          minLength: 10
+          maxLength: 256
+    WorkspaceRole:
+      type: string
+      enum: [owner, admin, member]
+      description: |
+        owner — one per server: everything, including deleting it and handing the role over.
+        admin — renames the server, manages channels, removes and bans members.
+        member — reads and writes where the channel allows it.
+    Workspace:
+      type: object
+      additionalProperties: false
+      required: [id, name, ownerId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          example: Команда Orbit
+        ownerId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    WorkspaceMembership:
+      type: object
+      additionalProperties: false
+      required: [workspace, role]
+      description: A server together with the caller's role in it.
+      properties:
+        workspace: { $ref: "#/components/schemas/Workspace" }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+    WorkspaceMember:
+      type: object
+      additionalProperties: false
+      required: [user, role, joinedAt]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+        joinedAt: { type: string, format: date-time }
+    WorkspaceBan:
+      type: object
+      additionalProperties: false
+      required: [user, createdAt]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        reason:
+          type: string
+          maxLength: 500
+        bannedBy:
+          type: string
+          format: uuid
+          description: Absent when the account that banned has been deleted.
+        createdAt: { type: string, format: date-time }
+    WorkspaceCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          example: Команда Orbit
+    WorkspaceUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+    WorkspaceMemberRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+    WorkspaceBanRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          description: Shown to admins in the ban list, not to the banned person.
+    Channel:
+      type: object
+      additionalProperties: false
+      required: [id, workspaceId, name, position, isReadOnly, canWrite, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          example: общий
+        topic:
+          type: string
+          maxLength: 500
+          description: What the channel is for; absent when nobody set one.
+        position:
+          type: integer
+          description: Place in the server's list, from 0.
+        isReadOnly:
+          type: boolean
+          description: Only admins and the owner may write here.
+        canWrite:
+          type: boolean
+          description: Whether the caller may write in this channel right now.
+        createdAt: { type: string, format: date-time }
+    ChannelCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          example: общий
+        topic:
+          type: string
+          maxLength: 500
+        isReadOnly:
+          type: boolean
+          default: false
+    ChannelUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: "Only the fields present are changed; an empty topic clears it."
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        topic:
+          type: string
+          maxLength: 500
+          description: An empty string removes the topic.
+        isReadOnly:
+          type: boolean
+    ChannelOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [channelIds]
+      properties:
+        channelIds:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
+          description: Every channel of the server, once, in the order people will see.
+    Message:
+      type: object
+      additionalProperties: false
+      required: [id, channelId, seq, content, mentions, reactions, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        channelId: { type: string, format: uuid }
+        seq:
+          type: integer
+          format: int64
+          description: Order inside the channel; also the cursor for the next page.
+        author:
+          allOf:
+            - $ref: "#/components/schemas/User"
+          description: Absent when the account has been deleted; the message stays.
+        content:
+          type: string
+          maxLength: 4000
+        replyToId:
+          type: string
+          format: uuid
+          description: The message this one answers, if any.
+        mentions:
+          type: array
+          items: { type: string, format: uuid }
+          description: Accounts mentioned here, already parsed out of the text.
+        reactions:
+          type: array
+          items: { $ref: "#/components/schemas/Reaction" }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/Attachment" }
+        createdAt: { type: string, format: date-time }
+        editedAt: { type: string, format: date-time }
+        deletedAt:
+          type: string
+          format: date-time
+          description: Set for a deleted message; its content is then empty.
+    Reaction:
+      type: object
+      additionalProperties: false
+      required: [emoji, count, reacted]
+      properties:
+        emoji:
+          type: string
+          maxLength: 32
+        count: { type: integer }
+        reacted:
+          type: boolean
+          description: Whether the caller is among those who reacted.
+    MessagePage:
+      type: object
+      additionalProperties: false
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/Message" }
+          description: Newest first.
+        nextBefore:
+          type: integer
+          format: int64
+          description: Pass as `before` for the next page; absent at the start of the history.
+    MessageCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [clientMessageId, content]
+      properties:
+        clientMessageId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: The client's own id for this message; a resend repeats it.
+        content:
+          type: string
+          maxLength: 4000
+          description: May be empty when the message carries files.
+        replyToId:
+          type: string
+          format: uuid
+        mentions:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: Accounts mentioned in the text; those outside the server are ignored.
+        attachmentIds:
+          type: array
+          maxItems: 10
+          items: { type: string, format: uuid }
+          description: Files uploaded beforehand, by this account, for this channel.
+    MessageUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    Invite:
+      type: object
+      additionalProperties: false
+      required: [id, code, uses, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        code:
+          type: string
+          description: Goes at the end of the invite link.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Absent for a link without an end.
+        maxUses:
+          type: integer
+          description: Absent for a link without a limit.
+        uses: { type: integer }
+        createdAt: { type: string, format: date-time }
+    InviteCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expiresInHours:
+          type: integer
+          minimum: 1
+          maximum: 8760
+          description: How long the link lives. Omit for a link without an end.
+        maxUses:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: How many people may come through it. Omit for no limit.
+    InvitePreview:
+      type: object
+      additionalProperties: false
+      required: [workspaceId, workspaceName, memberCount]
+      properties:
+        workspaceId: { type: string, format: uuid }
+        workspaceName: { type: string }
+        memberCount: { type: integer }
+    GuestJoinRequest:
+      type: object
+      additionalProperties: false
+      required: [nickname]
+      properties:
+        nickname:
+          type: string
+          pattern: "^[A-Za-z0-9А-Яа-яЁё][A-Za-z0-9А-Яа-яЁё _.-]{0,31}$"
+          description: Shown to the others in the room.
+          example: Аня
+    GuestJoin:
+      type: object
+      additionalProperties: false
+      required: [user, membership]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        membership: { $ref: "#/components/schemas/WorkspaceMembership" }
+    ChannelUnread:
+      type: object
+      additionalProperties: false
+      required: [channelId, lastReadSeq, unread, mentions]
+      properties:
+        channelId: { type: string, format: uuid }
+        lastReadSeq:
+          type: integer
+          format: int64
+          description: The `seq` this account has read up to; 0 when it never opened the channel.
+        unread:
+          type: integer
+          description: Messages after the cursor, not counting this account's own.
+        mentions:
+          type: integer
+          description: How many of those mention this account.
+    ReadCursorRequest:
+      type: object
+      additionalProperties: false
+      required: [seq]
+      properties:
+        seq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The `seq` read up to. A value below the current cursor changes nothing.
+    Attachment:
+      type: object
+      additionalProperties: false
+      required: [id, fileName, mimeType, sizeBytes, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        fileName: { type: string, maxLength: 255 }
+        mimeType:
+          type: string
+          description: What the file turned out to be, read from its first bytes.
+        sizeBytes: { type: integer, format: int64 }
+        width:
+          type: integer
+          description: For an image, its width in pixels.
+        height:
+          type: integer
+          description: For an image, its height in pixels.
+        createdAt: { type: string, format: date-time }
+    AttachmentLink:
+      type: object
+      additionalProperties: false
+      required: [url, expiresAt, attachment]
+      properties:
+        url:
+          type: string
+          description: Signed link straight to the object store.
+        expiresAt: { type: string, format: date-time }
+        attachment: { $ref: "#/components/schemas/Attachment" }
+    Conversation:
+      type: object
+      additionalProperties: false
+      required: [id, kind, members, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Also the channel id — messages and files use the channel endpoints."
+        kind:
+          type: string
+          enum: [direct, group]
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/ConversationMember" }
+        createdAt: { type: string, format: date-time }
+    ConversationMember:
+      type: object
+      additionalProperties: false
+      required: [id, nickname, isGuest, joinedAt]
+      properties:
+        id: { type: string, format: uuid }
+        nickname: { type: string }
+        isGuest: { type: boolean }
+        joinedAt: { type: string, format: date-time }
+    ConversationStartRequest:
+      type: object
+      additionalProperties: false
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, format: uuid }
+          description: Whom to talk to, besides yourself.
     VoiceTokenRequest:
       type: object
       additionalProperties: false

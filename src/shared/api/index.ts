@@ -10,9 +10,19 @@ export * from './generated/@tanstack/react-query.gen'
 // Plain SDK functions for code outside React Query.
 export { createVoiceToken, getLiveness, getReadiness } from './generated/sdk.gen'
 export type {
+  Channel,
   ErrorDetail,
   Liveness,
+  LoginRequest,
+  Message,
+  MessagePage,
   Readiness,
+  RegisterRequest,
+  User,
   VoiceToken,
+  Workspace,
+  WorkspaceMember,
+  WorkspaceMembership,
+  WorkspaceRole,
   VoiceTokenRequest,
 } from './generated/types.gen'
