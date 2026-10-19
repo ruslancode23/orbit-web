@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
 import { addReactionMutation, removeReactionMutation, type Message } from '@/shared/api'
+import { pluralRu } from '@/shared/lib/plural'
 import { Button } from '@/shared/ui/button'
 
 import { describeActionError } from '../model/describe-error'
@@ -138,10 +139,4 @@ export const ReactionBar = ({ message, canWrite }: ReactionBarProps) => {
 }
 
 /** Counts in Russian: 1 реакция, 2 реакции, 5 реакций. */
-const reactionWord = (count: number): string => {
-  const lastTwo = count % 100
-  const last = count % 10
-  if (last === 1 && lastTwo !== 11) return 'реакция'
-  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return 'реакции'
-  return 'реакций'
-}
+const reactionWord = (count: number): string => pluralRu(count, ['реакция', 'реакции', 'реакций'])

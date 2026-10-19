@@ -18,6 +18,10 @@ export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'un
 export interface PlatformNotification {
   title: string
   body?: string
+  /** Notifications with the same tag replace each other instead of piling up. */
+  tag?: string
+  /** Called when the person clicks the notification; the app window is focused first. */
+  onClick?: () => void
 }
 
 export interface PlatformNotifications {

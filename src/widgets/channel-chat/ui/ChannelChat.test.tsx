@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { Message } from '@/entities/message'
@@ -52,9 +52,10 @@ interface Posted {
  * mutations with the changed message and counts history reads, so a test can
  * tell a cache update from a refetch.
  */
-const stubApi = (initial: Message[] = [second, first]) => {
+const stubApi = (initial: Message[] = [second, first], { lastReadSeq = 0 } = {}) => {
   let messages = initial
   const calls = {
+    read: [] as number[],
     history: 0,
     posted: [] as Posted[],
     patched: [] as string[],
@@ -69,6 +70,16 @@ const stubApi = (initial: Message[] = [second, first]) => {
 
       if (url.pathname.endsWith('/auth/me')) return json(anna)
       if (url.pathname.endsWith('/members')) return json(members)
+      if (url.pathname.endsWith('/unread')) {
+        return json([{ channelId, lastReadSeq, unread: 0, mentions: 0 }])
+      }
+      if (method === 'PUT' && url.pathname.endsWith('/read')) {
+        // The server reads seq as a JSON number; a string would be a 400 there.
+        const { seq } = (await request.clone().json()) as { seq: unknown }
+        if (typeof seq !== 'number') return new Response('{}', { status: 400 })
+        calls.read.push(seq)
+        return json({ channelId, lastReadSeq: seq, unread: 0, mentions: 0 })
+      }
 
       if (url.pathname.includes('/reactions/')) {
         const emoji = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf('/') + 1))
@@ -159,6 +170,64 @@ const renderChat = (canWrite = true) => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+})
+
+const setPageHidden = (hidden: boolean) => {
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue(hidden ? 'hidden' : 'visible')
+  document.dispatchEvent(new Event('visibilitychange'))
+}
+
+it('marks the channel read up to the newest message on screen', async () => {
+  const calls = stubApi()
+  renderChat()
+
+  await waitFor(() => {
+    expect(calls.read).toEqual([2])
+  })
+})
+
+it('does not mark anything read in a hidden tab, and does once it is shown', async () => {
+  setPageHidden(true)
+  const calls = stubApi()
+  renderChat()
+  await screen.findByText('второе')
+  // Give the effects a turn: nothing should go out while hidden.
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  expect(calls.read).toEqual([])
+
+  act(() => {
+    setPageHidden(false)
+  })
+  await waitFor(() => {
+    expect(calls.read).toEqual([2])
+  })
+})
+
+it('shows where the new messages begin, skipping my own', async () => {
+  const fromBoris = makeMessage({ id: 'm-3', seq: 3n, content: 'от Бориса', author: boris })
+  const mine = makeMessage({ id: 'm-4', seq: 4n, content: 'мой ответ' })
+  stubApi([mine, fromBoris, second, first], { lastReadSeq: 2 })
+  renderChat()
+  await screen.findByText('от Бориса')
+
+  const divider = await screen.findByRole('separator', { name: 'Новые сообщения' })
+  const log = screen.getByRole('log', { name: 'Сообщения' })
+  const order = [...log.querySelectorAll('article, [role="separator"]')].map((node) =>
+    node.getAttribute('role') === 'separator' ? '—' : node.textContent,
+  )
+  const at = order.indexOf('—')
+  expect(order[at + 1]).toContain('от Бориса')
+  expect(order[at - 1]).toContain('второе')
+  expect(divider).toBeInTheDocument()
+})
+
+it('shows no divider when everything was read', async () => {
+  const read = makeMessage({ id: 'm-2', seq: 2n, content: 'уже прочитано', author: boris })
+  stubApi([read, first], { lastReadSeq: 2 })
+  renderChat()
+  await screen.findByText('уже прочитано')
+
+  expect(screen.queryByRole('separator', { name: 'Новые сообщения' })).not.toBeInTheDocument()
 })
 
 it('shows the history oldest first', async () => {

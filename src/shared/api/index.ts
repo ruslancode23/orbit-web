@@ -11,6 +11,7 @@ export * from './generated/@tanstack/react-query.gen'
 export { createVoiceToken, getLiveness, getReadiness } from './generated/sdk.gen'
 export type {
   Channel,
+  ChannelUnread,
   ErrorDetail,
   Liveness,
   LoginRequest,
@@ -23,6 +24,8 @@ export type {
   Workspace,
   WorkspaceMember,
   WorkspaceMembership,
+  WorkspacePermissions,
   WorkspaceRole,
+  WorkspaceUpdateRequest,
   VoiceTokenRequest,
 } from './generated/types.gen'

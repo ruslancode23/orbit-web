@@ -17,9 +17,14 @@ export function createWebPlatform(): PlatformAdapter {
         if (!hasNotifications()) return 'unsupported'
         return Notification.requestPermission()
       },
-      show({ title, body }) {
+      show({ title, body, tag, onClick }) {
         if (notificationPermission() !== 'granted') return
-        new Notification(title, { body })
+        const notification = new Notification(title, { body, tag })
+        notification.addEventListener('click', () => {
+          window.focus()
+          notification.close()
+          onClick?.()
+        })
       },
     },
 

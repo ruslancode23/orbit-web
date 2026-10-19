@@ -1,14 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import {
-  listMessagesInfiniteQueryKey,
-  listMessagesQueryKey,
-  listUnreadQueryKey,
-} from '@/shared/api'
-
-import { LiveConnection, type LiveEvent, type LiveStatus } from './connection'
-import { LiveContext, type LiveValue } from './context'
+import { applyEvent } from './apply-event'
+import { LiveConnection, type LiveStatus } from './connection'
+import { LiveContext, type LiveListener, type LiveValue } from './context'
 
 /**
  * Holds the app's single live connection. It lives above the routes, so moving
@@ -28,6 +23,7 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
   const [status, setStatus] = useState<LiveStatus>('connecting')
   const connectionRef = useRef<LiveConnection | null>(null)
   const watchedRef = useRef<string | undefined>(undefined)
+  const listenersRef = useRef(new Set<LiveListener>())
 
   useEffect(() => {
     if (!enabled) return undefined
@@ -36,6 +32,7 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
       onStatus: setStatus,
       onEvent: (event) => {
         applyEvent(queryClient, event)
+        for (const listener of listenersRef.current) listener(event)
       },
     })
     connectionRef.current = connection
@@ -57,32 +54,16 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
         watchedRef.current = workspaceId
         connectionRef.current?.subscribe(workspaceId)
       },
+      listen: (listener: LiveListener) => {
+        const listeners = listenersRef.current
+        listeners.add(listener)
+        return () => {
+          listeners.delete(listener)
+        }
+      },
     }),
     [status],
   )
 
   return <LiveContext value={value}>{children}</LiveContext>
-}
-
-/**
- * Turns an event into "this is out of date": the data itself comes from the
- * API, so there is one source of truth and no second copy to keep in step.
- */
-const applyEvent = (queryClient: ReturnType<typeof useQueryClient>, event: LiveEvent) => {
-  if (event.type.startsWith('message.') && event.channelId) {
-    const path = { channelId: event.channelId }
-    // Both shapes of the same history: the chat reads it page by page.
-    void queryClient.invalidateQueries({ queryKey: listMessagesQueryKey({ path }) })
-    void queryClient.invalidateQueries({ queryKey: listMessagesInfiniteQueryKey({ path }) })
-  }
-  if (event.workspaceId && (event.type.startsWith('message.') || event.type === 'read.changed')) {
-    void queryClient.invalidateQueries({
-      queryKey: listUnreadQueryKey({ path: { workspaceId: event.workspaceId } }),
-    })
-  }
-  // Someone joined, left, was banned or changed role: the member list and the
-  // servers we are on may both have changed.
-  if (event.type === 'member.changed') {
-    void queryClient.invalidateQueries()
-  }
 }

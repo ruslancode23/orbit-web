@@ -1,5 +1,7 @@
 import { env } from '@/shared/config'
 
+import { serializeJsonBody } from './json-body'
+
 import type { CreateClientConfig } from './generated/client.gen'
 
 /** Called by the generated client once, before the first request. */
@@ -10,4 +12,6 @@ export const createClientConfig: CreateClientConfig = (config) => ({
   // The session lives in an HttpOnly cookie, and the API is on another origin
   // in development: without this the browser would not send it.
   credentials: 'include',
+  // Every JSON body; file uploads bring their own form-data serializer.
+  bodySerializer: serializeJsonBody,
 })

@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 
 const unique = () => `shell${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
 const password = 'a-long-enough-password'
+const ONE_PIXEL_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
 
 async function signUp(page: Page): Promise<string> {
   const nickname = unique()
@@ -13,10 +15,13 @@ async function signUp(page: Page): Promise<string> {
   return nickname
 }
 
-async function createWorkspace(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Создать сервер' }).click()
+async function createWorkspace(page: Page, name: string, template = /Пустой/) {
+  await page.getByRole('link', { name: 'Создать сервер' }).click()
   await page.getByLabel('Название сервера').fill(name)
-  await page.getByRole('button', { name: 'Создать', exact: true }).click()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('radio', { name: template }).check()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('button', { name: 'Создать сервер' }).click()
   await expect(page.getByRole('heading', { name, level: 2 })).toBeVisible()
 }
 
@@ -76,4 +81,37 @@ test('the owner sees managing, and the member list names them', async ({ page })
   await expect(page.getByText(`${nickname} (владелец)`)).toBeVisible()
   // Nobody moderates themselves.
   await expect(page.getByRole('button', { name: 'Забанить' })).toHaveCount(0)
+})
+
+test('a new server from a template opens its first channel', async ({ page }) => {
+  await signUp(page)
+  await page.getByRole('link', { name: 'Создать сервер' }).click()
+  await page.getByLabel('Название сервера').fill('Команда')
+  await page.getByLabel(/Описание/).fill('Про космос')
+  // A real picture through the real canvas: cropped, encoded, uploaded.
+  await page.getByLabel('Файл изображения').setInputFiles({
+    name: 'icon.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(ONE_PIXEL_PNG, 'base64'),
+  })
+  const cropper = page.getByRole('dialog', { name: 'Обрезка аватара' })
+  await cropper.getByRole('button', { name: 'Применить' }).click()
+  await expect(cropper).toBeHidden()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  // «Для команды» is the default; going back keeps what was typed.
+  await page.getByRole('button', { name: 'Назад' }).click()
+  await expect(page.getByLabel('Название сервера')).toHaveValue('Команда')
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('switch', { name: 'Создавать каналы' }).click()
+  await page.getByRole('button', { name: 'Создать сервер' }).click()
+
+  await expect(page.getByRole('heading', { name: '# общий', level: 1 })).toBeVisible()
+  await expect(page.getByRole('link', { name: '# оффтоп' })).toBeVisible()
+  // The icon came back as a signed link that loads.
+  const icon = page.getByRole('navigation', { name: 'Серверы' }).locator('img')
+  await expect(icon).toHaveCount(1)
+  await expect
+    .poll(() => icon.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBeGreaterThan(0)
 })

@@ -6,7 +6,9 @@ import {
   createVoiceToken,
   createVoiceTokenMutation,
   getReadinessOptions,
+  markChannelReadMutation,
 } from './index'
+import { serializeJsonBody } from './json-body'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -117,6 +119,25 @@ describe('generated client', () => {
     fetchMock.mockRejectedValue(abortError)
 
     expect(await rejection(createVoiceToken({ body, signal: controller.signal }))).toBe(abortError)
+  })
+})
+
+describe('request bodies', () => {
+  // The server reads int64 fields as JSON numbers and answers 400 to a string.
+  it('sends an int64 field as a number', async () => {
+    fetchMock.mockResolvedValue(
+      json(200, { channelId: 'c-1', lastReadSeq: 73, unread: 0, mentions: 0 }),
+    )
+
+    const { mutationFn } = markChannelReadMutation()
+    await mutationFn?.({ path: { channelId: 'c-1' }, body: { seq: 73n } }, {} as never)
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request
+    expect(await request.text()).toBe('{"seq":73}')
+  })
+
+  it('refuses a number JSON cannot carry exactly', () => {
+    expect(() => serializeJsonBody({ seq: 2n ** 60n })).toThrow(RangeError)
   })
 })
 

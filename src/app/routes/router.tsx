@@ -1,10 +1,12 @@
 import { createBrowserRouter } from 'react-router'
 
 import LoginPage from '@/pages/login'
+import NewWorkspacePage from '@/pages/new-workspace'
 import RegisterPage from '@/pages/register'
 import ChannelPage from '@/pages/workspace'
+import WorkspaceSettingsPage from '@/pages/workspace-settings'
 import { PageLoader } from '@/shared/ui/page-loader'
-import { AppShell } from '@/widgets/app-shell'
+import { AppShell, ShellPlaceholder } from '@/widgets/app-shell'
 
 import { RequireSession } from './RequireSession'
 
@@ -19,8 +21,11 @@ export const router = createBrowserRouter([
         // channels inside it never opens a second socket.
         element: <AppShell />,
         children: [
-          { path: '/', element: null },
-          { path: '/s/:workspaceId', element: null },
+          { path: '/', element: <ShellPlaceholder /> },
+          { path: '/new', element: <NewWorkspacePage /> },
+          { path: '/s/:workspaceId', element: <ShellPlaceholder /> },
+          // A fixed segment outranks `:channelId`, so this is never read as a channel.
+          { path: '/s/:workspaceId/settings', element: <WorkspaceSettingsPage /> },
           { path: '/s/:workspaceId/:channelId', element: <ChannelPage /> },
         ],
       },
