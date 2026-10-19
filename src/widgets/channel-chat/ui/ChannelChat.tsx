@@ -3,8 +3,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { type Message } from '@/entities/message'
 import { useSession } from '@/entities/session'
+import { useReadOnView } from '@/entities/unread'
 import { SendMessage } from '@/features/send-message'
 import { isApiError } from '@/shared/api'
+import { usePageVisible } from '@/shared/lib/page-visibility'
 import { Button } from '@/shared/ui/button'
 
 import { MessageRow } from './MessageRow'
@@ -38,6 +40,29 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
   const [replyTo, setReplyTo] = useState<Message | undefined>(undefined)
   const [editingId, setEditingId] = useState<string | undefined>(undefined)
   const [highlightedId, setHighlightedId] = useState<string | undefined>(undefined)
+  const pageVisible = usePageVisible()
+
+  // Read means seen: the newest message on screen, in a tab that is not hidden.
+  const { lastReadSeq } = useReadOnView({
+    workspaceId,
+    channelId,
+    newestSeq: messages.at(-1)?.seq,
+    viewing: atBottom && pageVisible && !isPending,
+  })
+
+  // Where the cursor stood when the channel was opened. Reading moves the
+  // cursor at once, but the divider stays put until the reader leaves.
+  const [dividerAt, setDividerAt] = useState<{ channelId: string; seq: bigint } | undefined>(
+    undefined,
+  )
+  if (lastReadSeq !== undefined && dividerAt?.channelId !== channelId) {
+    setDividerAt({ channelId, seq: lastReadSeq })
+  }
+  const firstUnreadId =
+    dividerAt?.channelId === channelId
+      ? messages.find((message) => message.seq > dividerAt.seq && message.author?.id !== user?.id)
+          ?.id
+      : undefined
 
   const virtualizer = useVirtualizer({
     count: messages.length,
@@ -144,6 +169,7 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
                 className="absolute top-0 left-0 w-full"
                 style={{ transform: `translateY(${String(row.start)}px)` }}
               >
+                {message.id === firstUnreadId && <NewMessagesDivider />}
                 <MessageRow
                   message={message}
                   previous={messages[row.index - 1]}
@@ -200,5 +226,22 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
         </p>
       )}
     </section>
+  )
+}
+
+/** Marks where the unread part of the channel begins. */
+const NewMessagesDivider = () => {
+  return (
+    <div
+      role="separator"
+      aria-label="Новые сообщения"
+      className="flex items-center gap-2 px-4 py-1"
+    >
+      <span aria-hidden="true" className="h-px flex-1 bg-danger" />
+      <span aria-hidden="true" className="text-xs font-semibold text-danger">
+        Новые сообщения
+      </span>
+      <span aria-hidden="true" className="h-px flex-1 bg-danger" />
+    </div>
   )
 }

@@ -11,6 +11,7 @@ export * from './generated/@tanstack/react-query.gen'
 export { createVoiceToken, getLiveness, getReadiness } from './generated/sdk.gen'
 export type {
   Channel,
+  ChannelUnread,
   ErrorDetail,
   Liveness,
   LoginRequest,

@@ -108,10 +108,15 @@ describe('web platform: media devices', () => {
 
 describe('web platform: notifications', () => {
   function stubNotification(permission: NotificationPermission) {
-    const NotificationMock = Object.assign(vi.fn(), {
-      permission,
-      requestPermission: vi.fn(() => Promise.resolve('granted')),
-    })
+    const shown = new EventTarget()
+    const close = vi.fn()
+    // Called with `new`: the object it returns becomes the notification.
+    const NotificationMock = Object.assign(
+      vi.fn(function () {
+        return Object.assign(shown, { close })
+      }),
+      { shown, close, permission, requestPermission: vi.fn(() => Promise.resolve('granted')) },
+    )
     vi.stubGlobal('Notification', NotificationMock)
     return NotificationMock
   }
@@ -122,6 +127,20 @@ describe('web platform: notifications', () => {
     createWebPlatform().notifications.show({ title: 'Anna', body: 'зашла в комнату' })
 
     expect(NotificationMock).toHaveBeenCalledWith('Anna', { body: 'зашла в комнату' })
+  })
+
+  it('focuses the app and runs the click handler when clicked', () => {
+    const NotificationMock = stubNotification('granted')
+    const focus = vi.spyOn(window, 'focus').mockImplementation(() => undefined)
+    const onClick = vi.fn()
+
+    createWebPlatform().notifications.show({ title: 'Anna', tag: 'channel-1', onClick })
+    NotificationMock.shown.dispatchEvent(new Event('click'))
+
+    expect(NotificationMock).toHaveBeenCalledWith('Anna', { tag: 'channel-1' })
+    expect(focus).toHaveBeenCalled()
+    expect(NotificationMock.close).toHaveBeenCalled()
+    expect(onClick).toHaveBeenCalled()
   })
 
   it('shows nothing without permission', () => {
