@@ -1,5 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 
 import { authorName, mentionedIds, messagePreview, type Message } from '@/entities/message'
@@ -21,6 +29,18 @@ interface SendMessageProps {
   onCancelReply?: () => void
   /** Called after the server stored the message, so the reply can be cleared. */
   onSent?: () => void
+  /** Files already uploaded for this message; it may then go without text. */
+  attachmentIds?: readonly string[]
+  /** True while a file is still uploading: the message waits for it. */
+  attachmentsBusy?: boolean
+  /** The files on their way, shown above the field. */
+  attachments?: ReactNode
+  /** A control beside the field, such as the file picker. */
+  attachControl?: ReactNode
+  /** Files pasted into the field, such as a screenshot. */
+  onPasteFiles?: (files: File[]) => void
+  /** The message was handed to the send with the files above; they can be cleared. */
+  onSending?: () => void
 }
 
 interface ComposerValues {
@@ -31,6 +51,7 @@ interface Attempt {
   clientMessageId: string
   content: string
   replyToId?: string
+  attachmentIds: readonly string[]
 }
 
 /** The `@word` being typed right before the caret, if any. */
@@ -59,6 +80,12 @@ export const SendMessage = ({
   replyTo,
   onCancelReply,
   onSent,
+  attachmentIds = [],
+  attachmentsBusy = false,
+  attachments,
+  attachControl,
+  onPasteFiles,
+  onSending,
 }: SendMessageProps) => {
   const fieldId = useId()
   const listId = useId()
@@ -140,6 +167,9 @@ export const SendMessage = ({
           content: attempt.content,
           ...(attempt.replyToId === undefined ? {} : { replyToId: attempt.replyToId }),
           ...(mentions.length === 0 ? {} : { mentions }),
+          ...(attempt.attachmentIds.length === 0
+            ? {}
+            : { attachmentIds: [...attempt.attachmentIds] }),
         },
       },
       {
@@ -151,9 +181,14 @@ export const SendMessage = ({
     )
   }
 
+  const content = text.trim()
+  // Text or files, and nothing still uploading: a message must not lose a file
+  // that has not finished yet.
+  const canSend =
+    (content !== '' || attachmentIds.length > 0) && !attachmentsBusy && !send.isPending
+
   const handleSubmit = () => {
-    const content = text.trim()
-    if (!content || send.isPending) return
+    if (!canSend) return
     reset()
     setCaret(0)
     setDismissed(true)
@@ -161,7 +196,17 @@ export const SendMessage = ({
       clientMessageId: crypto.randomUUID(),
       content,
       ...(replyTo === undefined ? {} : { replyToId: replyTo.id }),
+      attachmentIds,
     })
+    onSending?.()
+  }
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = [...event.clipboardData.files]
+    if (files.length === 0 || !onPasteFiles) return
+    // A pasted screenshot goes in as a file, not as its name in the text.
+    event.preventDefault()
+    onPasteFiles(files)
   }
 
   const choose = (person: User) => {
@@ -234,7 +279,14 @@ export const SendMessage = ({
           </Button>
         </p>
       )}
+      {attachments}
+      {attachmentsBusy && (
+        <p className="sr-only" role="status">
+          Ждём, пока загрузятся файлы.
+        </p>
+      )}
       <div className="flex items-end gap-2">
+        {attachControl}
         <div className="relative flex-1">
           {open && (
             <ul
@@ -285,12 +337,13 @@ export const SendMessage = ({
               setCaret(event.currentTarget.selectionStart)
             }}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onBlur={() => {
               setDismissed(true)
             }}
           />
         </div>
-        <Button disabled={send.isPending || !text.trim()} onClick={handleSubmit}>
+        <Button disabled={!canSend} onClick={handleSubmit}>
           Отправить
         </Button>
       </div>

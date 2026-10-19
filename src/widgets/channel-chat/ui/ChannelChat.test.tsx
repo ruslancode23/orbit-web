@@ -1,8 +1,8 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { Message } from '@/entities/message'
-import { renderWithProviders } from '@/shared/lib/test'
+import { FakeXhr, renderWithProviders } from '@/shared/lib/test'
 
 import { ChannelChat } from './ChannelChat'
 
@@ -45,6 +45,7 @@ const second = makeMessage({ id: 'm-2', seq: 2n, content: 'второе' })
 interface Posted {
   content: string
   replyToId?: string
+  attachmentIds?: string[]
 }
 
 /**
@@ -353,4 +354,138 @@ it("marks the reader's mention in the text", async () => {
 
   const mention = await screen.findByText('@Anna')
   expect(mention.tagName).toBe('MARK')
+})
+
+describe('attachments', () => {
+  const stored = {
+    id: 'a-1',
+    fileName: 'cat.png',
+    mimeType: 'image/png',
+    sizeBytes: 3,
+    width: 64,
+    height: 64,
+    createdAt: '2026-10-20T10:00:00Z',
+  }
+  const cat = () => new File(['png'], 'cat.png', { type: 'image/png' })
+
+  beforeEach(() => {
+    FakeXhr.instances = []
+  })
+
+  /** The upload starts a moment after the file is picked. */
+  const upload = async (): Promise<FakeXhr> => {
+    await waitFor(() => {
+      expect(FakeXhr.instances).toHaveLength(1)
+    })
+    return FakeXhr.last()
+  }
+
+  const renderWithUploads = () => {
+    vi.stubGlobal('XMLHttpRequest', FakeXhr)
+    const result = renderChat()
+    const input = result.container.querySelector('input[type="file"]')
+    if (!(input instanceof HTMLInputElement)) throw new Error('no file input')
+    return { ...result, input }
+  }
+
+  it('refuses a file over the limit before sending a byte of it', async () => {
+    stubApi()
+    const { input } = renderWithUploads()
+    await screen.findByText('первое')
+    const big = new File(['x'], 'big.iso')
+    Object.defineProperty(big, 'size', { value: 25 * 1024 * 1024 + 1 })
+
+    fireEvent.change(input, { target: { files: [big] } })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Файл больше 25 МБ — такой не загрузить.')
+    expect(FakeXhr.instances).toHaveLength(0)
+  })
+
+  it('shows the progress and sends the message with the file once it is up', async () => {
+    const calls = stubApi()
+    const { input } = renderWithUploads()
+    await screen.findByText('первое')
+
+    fireEvent.change(input, { target: { files: [cat()] } })
+    const request = await upload()
+    const progress = screen.getByRole('progressbar', { name: 'Загрузка cat.png' })
+    // The message waits for its file.
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeDisabled()
+
+    act(() => {
+      request.progress(50, 100)
+    })
+    expect(progress).toHaveAttribute('value', '50')
+
+    act(() => {
+      request.respond(201, stored)
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    })
+
+    // A message of the file alone, without text.
+    await userEvent.click(screen.getByRole('button', { name: 'Отправить' }))
+    await waitFor(() => {
+      expect(calls.posted).toEqual([
+        expect.objectContaining({ content: '', attachmentIds: ['a-1'] }),
+      ])
+    })
+    expect(screen.queryByRole('list', { name: 'Файлы к сообщению' })).not.toBeInTheDocument()
+  })
+
+  it('stops the transfer when the upload is cancelled', async () => {
+    stubApi()
+    const { input } = renderWithUploads()
+    await screen.findByText('первое')
+
+    fireEvent.change(input, { target: { files: [cat()] } })
+    const request = await upload()
+    await userEvent.click(screen.getByRole('button', { name: 'Отменить загрузку cat.png' }))
+
+    expect(request.aborted).toBe(true)
+    expect(screen.queryByText('cat.png')).not.toBeInTheDocument()
+  })
+
+  it('says why the server refused a file', async () => {
+    stubApi()
+    const { input } = renderWithUploads()
+    await screen.findByText('первое')
+
+    fireEvent.change(input, { target: { files: [cat()] } })
+    const request = await upload()
+    act(() => {
+      request.respond(415, { error: { code: 'unsupported', message: 'no' } })
+    })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Такой тип файла не принимается.')
+  })
+
+  it('takes a pasted screenshot as a file', async () => {
+    stubApi()
+    renderWithUploads()
+    await screen.findByText('первое')
+
+    fireEvent.paste(screen.getByRole('textbox', { name: 'Сообщение' }), {
+      clipboardData: { files: [cat()] },
+    })
+
+    expect((await upload()).file?.name).toBe('cat.png')
+    expect(screen.getByRole('progressbar', { name: 'Загрузка cat.png' })).toBeInTheDocument()
+  })
+
+  it('takes files dropped onto the chat', async () => {
+    stubApi()
+    renderWithUploads()
+    await screen.findByText('первое')
+    const chat = screen.getByRole('region', { name: 'Чат' })
+    const dataTransfer = { types: ['Files'], files: [cat()], dropEffect: 'none' }
+
+    fireEvent.dragOver(chat, { dataTransfer })
+    expect(screen.getByText('Отпустите, чтобы прикрепить файлы')).toBeInTheDocument()
+    fireEvent.drop(chat, { dataTransfer })
+
+    expect((await upload()).file?.name).toBe('cat.png')
+    expect(screen.queryByText('Отпустите, чтобы прикрепить файлы')).not.toBeInTheDocument()
+  })
 })

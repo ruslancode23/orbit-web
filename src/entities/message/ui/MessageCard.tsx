@@ -21,6 +21,8 @@ interface MessageCardProps {
   highlighted?: boolean
   /** Replaces the text while the author edits it. */
   editing?: ReactNode
+  /** The files of the message, under its text. Not shown once it is deleted. */
+  attachments?: ReactNode
   /** Reactions and actions, laid out under the text. */
   children?: ReactNode
 }
@@ -34,9 +36,12 @@ export const MessageCard = ({
   onJumpTo,
   highlighted = false,
   editing,
+  attachments,
   children,
 }: MessageCardProps) => {
   const deleted = message.deletedAt !== undefined
+  // A message of files alone has no text to print.
+  const hasText = deleted || message.content !== '' || message.editedAt !== undefined
 
   return (
     <article
@@ -78,18 +83,24 @@ export const MessageCard = ({
           </p>
         ))}
 
-      {editing ?? (
-        <p className={cn('text-sm whitespace-pre-wrap', deleted && 'text-fg-muted italic')}>
-          {deleted ? (
-            'Сообщение удалено'
-          ) : (
-            <MessageText content={message.content} mention={mentionsMe ? myNickname : undefined} />
-          )}
-          {!deleted && message.editedAt && (
-            <span className="ml-1 text-xs text-fg-muted">(изменено)</span>
-          )}
-        </p>
-      )}
+      {editing ??
+        (hasText && (
+          <p className={cn('text-sm whitespace-pre-wrap', deleted && 'text-fg-muted italic')}>
+            {deleted ? (
+              'Сообщение удалено'
+            ) : (
+              <MessageText
+                content={message.content}
+                mention={mentionsMe ? myNickname : undefined}
+              />
+            )}
+            {!deleted && message.editedAt && (
+              <span className="ml-1 text-xs text-fg-muted">(изменено)</span>
+            )}
+          </p>
+        ))}
+
+      {!deleted && attachments}
 
       {children}
     </article>

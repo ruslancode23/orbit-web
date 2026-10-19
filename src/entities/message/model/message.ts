@@ -28,7 +28,10 @@ export function authorName(message: Message): string {
 /** A one-line version of a message for a reply preview. */
 export function messagePreview(message: Message, limit = 120): string {
   if (message.deletedAt !== undefined) return 'Сообщение удалено'
-  const text = message.content.replace(/\s+/g, ' ').trim()
+  const content = message.content.replace(/\s+/g, ' ').trim()
+  // A message of files alone is previewed by their names.
+  const files = message.attachments?.map((file) => file.fileName).join(', ') ?? ''
+  const text = content === '' && files !== '' ? `Вложение: ${files}` : content
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text
 }
 
