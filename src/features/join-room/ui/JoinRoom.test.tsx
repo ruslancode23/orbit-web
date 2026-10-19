@@ -38,7 +38,7 @@ afterEach(() => {
 
 const lastRoom = () => fakeLiveKit.lastRoom()
 
-function renderJoinRoom() {
+const renderJoinRoom = () => {
   return renderWithProviders(
     <VoiceRoomProvider>
       <JoinRoom room="dev-room" />
@@ -46,7 +46,7 @@ function renderJoinRoom() {
   )
 }
 
-async function joinAs(name: string) {
+const joinAs = async (name: string) => {
   await userEvent.type(screen.getByLabelText('Ваше имя'), name)
   await userEvent.click(screen.getByRole('button', { name: 'Войти в комнату' }))
 }

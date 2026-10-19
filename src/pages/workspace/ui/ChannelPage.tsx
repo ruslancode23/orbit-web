@@ -4,7 +4,7 @@ import { useChannels } from '@/entities/channel'
 import { ChannelChat } from '@/widgets/channel-chat'
 
 /** One channel: its name and topic above, the chat below. */
-export function ChannelPage() {
+const ChannelPage = () => {
   const { workspaceId, channelId } = useParams()
   const { data: channels } = useChannels(workspaceId)
   const channel = channels?.find((item) => item.id === channelId)
@@ -25,3 +25,5 @@ export function ChannelPage() {
     </section>
   )
 }
+
+export default ChannelPage

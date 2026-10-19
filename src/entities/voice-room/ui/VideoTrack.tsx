@@ -9,7 +9,7 @@ interface VideoTrackProps extends Omit<ComponentProps<'video'>, 'ref'> {
 }
 
 /** Plays a LiveKit video track; detaches when the track or the component goes away. */
-export function VideoTrack({ track, className, ...props }: VideoTrackProps) {
+export const VideoTrack = ({ track, className, ...props }: VideoTrackProps) => {
   const [element, setElement] = useState<HTMLVideoElement | null>(null)
 
   useEffect(() => {

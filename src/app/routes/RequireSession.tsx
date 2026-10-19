@@ -8,7 +8,7 @@ import { PageLoader } from '@/shared/ui/page-loader'
  * session is on its way we show the loader: redirecting first would throw out
  * someone who is in fact signed in.
  */
-export function RequireSession() {
+export const RequireSession = () => {
   const { isSignedIn, isLoading } = useSession()
   const location = useLocation()
 

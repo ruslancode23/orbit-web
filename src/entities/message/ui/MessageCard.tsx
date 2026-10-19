@@ -25,7 +25,7 @@ interface MessageCardProps {
   children?: ReactNode
 }
 
-export function MessageCard({
+export const MessageCard = ({
   message,
   startsGroup,
   mentionsMe = false,
@@ -35,7 +35,7 @@ export function MessageCard({
   highlighted = false,
   editing,
   children,
-}: MessageCardProps) {
+}: MessageCardProps) => {
   const deleted = message.deletedAt !== undefined
 
   return (

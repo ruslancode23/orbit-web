@@ -23,7 +23,7 @@ interface LiveProviderProps {
   enabled: boolean
 }
 
-export function LiveProvider({ children, enabled }: LiveProviderProps) {
+export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<LiveStatus>('connecting')
   const connectionRef = useRef<LiveConnection | null>(null)
@@ -68,7 +68,7 @@ export function LiveProvider({ children, enabled }: LiveProviderProps) {
  * Turns an event into "this is out of date": the data itself comes from the
  * API, so there is one source of truth and no second copy to keep in step.
  */
-function applyEvent(queryClient: ReturnType<typeof useQueryClient>, event: LiveEvent) {
+const applyEvent = (queryClient: ReturnType<typeof useQueryClient>, event: LiveEvent) => {
   if (event.type.startsWith('message.') && event.channelId) {
     const path = { channelId: event.channelId }
     // Both shapes of the same history: the chat reads it page by page.

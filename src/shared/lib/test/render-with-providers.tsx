@@ -14,17 +14,17 @@ interface Options extends RenderOptions {
 }
 
 /** Renders with the providers the app has: a QueryClient without retries and a router. */
-export function renderWithProviders(
+export const renderWithProviders = (
   ui: ReactElement,
   { route, queryClient, ...options }: Options = {},
-) {
+) => {
   const client =
     queryClient ??
     new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     })
 
-  function Providers({ children }: { children: ReactNode }) {
+  const Providers = ({ children }: { children: ReactNode }) => {
     const content =
       route === undefined ? (
         children

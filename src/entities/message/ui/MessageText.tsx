@@ -10,7 +10,7 @@ interface MessageTextProps {
  * The text of a message with the reader's own mention marked. The server stores
  * mentioned accounts as ids, so the nickname is what the text itself shows.
  */
-export function MessageText({ content, mention }: MessageTextProps) {
+export const MessageText = ({ content, mention }: MessageTextProps) => {
   if (!mention) return content
 
   const token = `@${mention}`
@@ -36,7 +36,7 @@ export function MessageText({ content, mention }: MessageTextProps) {
 }
 
 /** A token must not continue into a longer word: `@Anna` is not inside `@AnnaSmith`. */
-function findMention(content: string, token: string, from = 0): number {
+const findMention = (content: string, token: string, from = 0): number => {
   let found = content.indexOf(token, from)
   while (found !== -1) {
     const next = content.charAt(found + token.length)

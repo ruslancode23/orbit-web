@@ -2,7 +2,7 @@ import { cn } from '@/shared/lib/cn'
 
 import type { ComponentProps } from 'react'
 
-export function Input({ className, type = 'text', ...props }: ComponentProps<'input'>) {
+export const Input = ({ className, type = 'text', ...props }: ComponentProps<'input'>) => {
   return (
     <input
       type={type}

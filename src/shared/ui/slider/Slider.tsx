@@ -12,14 +12,14 @@ interface SliderProps extends Omit<ComponentProps<typeof SliderPrimitive.Root>, 
 }
 
 /** A single-thumb slider; arrows, Page Up/Down, Home and End move it. */
-export function Slider({
+export const Slider = ({
   className,
   'aria-label': label,
   getValueText,
   value,
   defaultValue,
   ...props
-}: SliderProps) {
+}: SliderProps) => {
   const current = value?.[0] ?? defaultValue?.[0]
   return (
     <SliderPrimitive.Root

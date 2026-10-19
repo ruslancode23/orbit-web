@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 
 import { useCreateChannel } from '@/entities/channel'
@@ -11,25 +12,29 @@ interface CreateChannelProps {
   workspaceId: string
 }
 
+interface ChannelValues {
+  name: string
+}
+
 /** Creates a channel in this server and opens it. Admins and the owner only. */
-export function CreateChannel({ workspaceId }: CreateChannelProps) {
+export const CreateChannel = ({ workspaceId }: CreateChannelProps) => {
   const nameId = useId()
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
   const navigate = useNavigate()
   const create = useCreateChannel(workspaceId)
+  const { register, handleSubmit, reset, formState } = useForm<ChannelValues>({
+    defaultValues: { name: '' },
+  })
 
-  async function submit() {
-    const trimmed = name.trim()
-    if (!trimmed || create.isPending) return
+  const submit = handleSubmit(async (values) => {
     const channel = await create
-      .mutateAsync({ path: { workspaceId }, body: { name: trimmed } })
+      .mutateAsync({ path: { workspaceId }, body: { name: values.name.trim() } })
       .catch(() => null)
     if (!channel) return
-    setName('')
+    reset()
     setOpen(false)
     await navigate(`/s/${workspaceId}/${channel.id}`)
-  }
+  })
 
   if (!open) {
     return (
@@ -48,18 +53,15 @@ export function CreateChannel({ workspaceId }: CreateChannelProps) {
     <form
       className="flex flex-col gap-2"
       onSubmit={(event) => {
-        event.preventDefault()
-        void submit()
+        void submit(event)
       }}
     >
       <Label htmlFor={nameId}>Название канала</Label>
       <Input
         id={nameId}
-        value={name}
         maxLength={64}
-        onChange={(event) => {
-          setName(event.target.value)
-        }}
+        aria-invalid={formState.errors.name ? true : undefined}
+        {...register('name', { required: true, validate: (value) => value.trim().length > 0 })}
       />
       {create.error && (
         <p role="alert" className="text-sm text-danger">
@@ -84,7 +86,7 @@ export function CreateChannel({ workspaceId }: CreateChannelProps) {
   )
 }
 
-function describeError(error: unknown): string {
+const describeError = (error: unknown): string => {
   if (!isApiError(error)) return 'Не получилось создать канал.'
   if (error.isNetworkError) return 'Нет соединения с сервером.'
   if (error.status === 409) return 'Канал с таким названием уже есть.'

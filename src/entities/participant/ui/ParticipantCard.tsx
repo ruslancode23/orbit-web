@@ -13,7 +13,7 @@ interface ParticipantCardProps {
 }
 
 /** Avatar with a speaking ring, the name and the voice state of one participant. */
-export function ParticipantCard({ participant, children, className }: ParticipantCardProps) {
+export const ParticipantCard = ({ participant, children, className }: ParticipantCardProps) => {
   const { name, isLocal, isSpeaking, isMicrophoneMuted, isDeafened } = participant
   const state = describeVoiceState(participant)
 

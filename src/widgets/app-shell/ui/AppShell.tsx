@@ -20,7 +20,7 @@ import { ConnectionStatus } from './ConnectionStatus'
  * is not drawn — but that is a convenience, not protection: every action is
  * checked again on the server.
  */
-export function AppShell() {
+export const AppShell = () => {
   const { workspaceId, channelId } = useParams()
   const { user } = useSession()
   const { data: memberships, isPending } = useWorkspaces()

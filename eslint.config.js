@@ -5,6 +5,7 @@ import boundaries from 'eslint-plugin-boundaries'
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
 import importX from 'eslint-plugin-import-x'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
+import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
@@ -161,6 +162,31 @@ export default defineConfig([
     rules: {
       'boundaries/dependencies': ['error', { default: 'disallow', policies: fsdPolicies }],
       'boundaries/no-unknown-files': 'error',
+    },
+  },
+  {
+    // Components are arrow functions, and so is every function written inside
+    // one: one shape for everything that returns JSX or handles an event.
+    files: ['src/**/*.tsx'],
+    plugins: { react },
+    // 'detect' calls an API ESLint 10 removed; keep in step with package.json.
+    settings: { react: { version: '19.2' } },
+    rules: {
+      'react/function-component-definition': [
+        'error',
+        { namedComponents: 'arrow-function', unnamedComponents: 'arrow-function' },
+      ],
+      'func-style': ['error', 'expression'],
+    },
+  },
+  {
+    // A page is loaded by the router through `lazy()`, which expects a default
+    // export; everything else in the app is imported by name.
+    files: ['src/pages/*/index.ts', 'src/pages/*/ui/*.tsx'],
+    ignores: ['src/pages/*/ui/*.test.tsx'],
+    rules: {
+      'import-x/no-default-export': 'off',
+      'import-x/no-named-export': 'error',
     },
   },
   {

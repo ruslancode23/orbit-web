@@ -31,7 +31,7 @@ import {
  * republishes the microphone and screen share; meanwhile the status is `reconnecting`. If it gives up,
  * the status becomes `disconnected` with a `connectionLoss` explaining why, so the UI can offer to join again.
  */
-export function VoiceRoomProvider({ children }: { children: ReactNode }) {
+export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
   const roomRef = useRef<Room | null>(null)
   const audioRef = useRef<HTMLDivElement | null>(null)
   const [room, setRoom] = useState<Room | null>(null)
@@ -211,14 +211,14 @@ export function VoiceRoomProvider({ children }: { children: ReactNode }) {
   )
 }
 
-function isScreenShare(
+const isScreenShare = (
   track: RemoteTrack,
   publication: RemoteTrackPublication,
-): track is RemoteVideoTrack {
+): track is RemoteVideoTrack => {
   return track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare
 }
 
-function listParticipants(room: Room): VoiceParticipant[] {
+const listParticipants = (room: Room): VoiceParticipant[] => {
   return [
     toVoiceParticipant(room.localParticipant, true),
     ...[...room.remoteParticipants.values()].map((p: RemoteParticipant) =>
@@ -227,7 +227,7 @@ function listParticipants(room: Room): VoiceParticipant[] {
   ]
 }
 
-function toVoiceParticipant(participant: Participant, isLocal: boolean): VoiceParticipant {
+const toVoiceParticipant = (participant: Participant, isLocal: boolean): VoiceParticipant => {
   return {
     identity: participant.identity,
     name: displayName(participant),
@@ -240,11 +240,11 @@ function toVoiceParticipant(participant: Participant, isLocal: boolean): VoicePa
 }
 
 // LiveKit reports a participant without a name as an empty string.
-function displayName({ name, identity }: { name?: string; identity: string }): string {
+const displayName = ({ name, identity }: { name?: string; identity: string }): string => {
   return name !== undefined && name !== '' ? name : identity
 }
 
-function describeJoinError(cause: unknown): string {
+const describeJoinError = (cause: unknown): string => {
   if (cause instanceof DOMException && cause.name === 'NotAllowedError') {
     return 'Нет доступа к микрофону. Разрешите его в настройках браузера и попробуйте снова.'
   }
@@ -254,7 +254,10 @@ function describeJoinError(cause: unknown): string {
   return 'Не удалось подключиться к комнате. Попробуйте ещё раз.'
 }
 
-function describeLoss(reason: DisconnectReason | undefined, displayName: string): ConnectionLoss {
+const describeLoss = (
+  reason: DisconnectReason | undefined,
+  displayName: string,
+): ConnectionLoss => {
   switch (reason) {
     case DisconnectReason.PARTICIPANT_REMOVED:
       return { message: 'Вас удалили из комнаты.', canRetry: false, displayName }

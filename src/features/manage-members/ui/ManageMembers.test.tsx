@@ -16,7 +16,7 @@ const members = [
   { user: vika, role: 'member' as const, joinedAt: '2026-10-18T10:00:00Z' },
 ]
 
-function stubApi() {
+const stubApi = () => {
   const calls: { url: string; method: string; body: string }[] = []
   vi.stubGlobal(
     'fetch',
@@ -42,7 +42,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function open(role: 'owner' | 'admin') {
+const open = async (role: 'owner' | 'admin') => {
   renderWithProviders(<ManageMembers workspaceId={workspaceId} role={role} />, { route: '/' })
   await userEvent.click(screen.getByRole('button', { name: 'Участники' }))
   await screen.findByText(/Bob/)

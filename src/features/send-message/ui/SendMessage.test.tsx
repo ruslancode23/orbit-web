@@ -45,7 +45,7 @@ interface Sent {
 }
 
 /** Collects the bodies of the sends; `fail` makes every attempt fail. */
-function stubApi(options: { fail?: boolean } = {}) {
+const stubApi = (options: { fail?: boolean } = {}) => {
   const sent: Sent[] = []
   vi.stubGlobal(
     'fetch',
@@ -64,7 +64,7 @@ function stubApi(options: { fail?: boolean } = {}) {
   return sent
 }
 
-function json(body: unknown) {
+const json = (body: unknown) => {
   return new Response(
     JSON.stringify(body, (_key, value: unknown) =>
       typeof value === 'bigint' ? Number(value) : value,

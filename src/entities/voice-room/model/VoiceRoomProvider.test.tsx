@@ -14,7 +14,7 @@ vi.mock('livekit-client', async (importOriginal) => ({
   Room: (await import('@/shared/lib/test')).FakeRoom,
 }))
 
-function Probe() {
+const Probe = () => {
   const { status, participants, connectionLoss, join } = useVoiceRoom()
   return (
     <>
@@ -31,7 +31,7 @@ function Probe() {
   )
 }
 
-async function renderConnected() {
+const renderConnected = async () => {
   render(
     <VoiceRoomProvider>
       <Probe />

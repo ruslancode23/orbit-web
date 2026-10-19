@@ -1,8 +1,8 @@
 import { createBrowserRouter } from 'react-router'
 
-import { LoginPage } from '@/pages/login'
-import { RegisterPage } from '@/pages/register'
-import { ChannelPage } from '@/pages/workspace'
+import LoginPage from '@/pages/login'
+import RegisterPage from '@/pages/register'
+import ChannelPage from '@/pages/workspace'
 import { PageLoader } from '@/shared/ui/page-loader'
 import { AppShell } from '@/widgets/app-shell'
 
@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
     path: '/room/:roomId',
     HydrateFallback: PageLoader,
     lazy: async () => {
-      const { RoomPage } = await import('@/pages/room')
+      const { default: RoomPage } = await import('@/pages/room')
       return { Component: RoomPage }
     },
   },

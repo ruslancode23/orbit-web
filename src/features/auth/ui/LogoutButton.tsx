@@ -5,7 +5,7 @@ import { useForgetSession } from '@/entities/session'
 import { logoutMutation } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
 
-export function LogoutButton() {
+export const LogoutButton = () => {
   const navigate = useNavigate()
   const forgetSession = useForgetSession()
 

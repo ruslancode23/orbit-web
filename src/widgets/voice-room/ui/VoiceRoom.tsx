@@ -13,7 +13,7 @@ import { Slider } from '@/shared/ui/slider'
 import { Toggle } from '@/shared/ui/toggle'
 
 /** Who is in the room and who is speaking, with mute, deafen and per-participant volume. */
-export function VoiceRoom() {
+export const VoiceRoom = () => {
   const { room, participants, setMicrophoneMuted, setDeafened, setParticipantVolume } =
     useVoiceRoom()
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +24,7 @@ export function VoiceRoom() {
   const isMuted = me?.isMicrophoneMuted ?? false
   const isDeafened = me?.isDeafened ?? false
 
-  async function run(action: () => Promise<void>) {
+  const run = async (action: () => Promise<void>) => {
     setError(null)
     try {
       await action()
@@ -80,13 +80,13 @@ export function VoiceRoom() {
   )
 }
 
-function ParticipantVolume({
+const ParticipantVolume = ({
   participant,
   onChange,
 }: {
   participant: VoiceParticipant
   onChange: (volume: number) => void
-}) {
+}) => {
   return (
     <div className="flex items-center gap-2 text-fg-muted">
       <VolumeIcon className="shrink-0" />

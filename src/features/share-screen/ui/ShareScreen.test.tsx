@@ -21,7 +21,7 @@ vi.mock('livekit-client', async (importOriginal) => ({
   Room: (await import('@/shared/lib/test')).FakeRoom,
 }))
 
-function Connect() {
+const Connect = () => {
   const { join } = useVoiceRoom()
   return (
     <button type="button" onClick={() => void join({ url: 'ws://lk.test', token: 'jwt' })}>
@@ -30,7 +30,7 @@ function Connect() {
   )
 }
 
-async function renderConnected() {
+const renderConnected = async () => {
   renderWithProviders(
     <VoiceRoomProvider>
       <Connect />
@@ -42,7 +42,7 @@ async function renderConnected() {
   return fakeLiveKit.lastRoom()
 }
 
-function remoteScreenTrack(sid: string) {
+const remoteScreenTrack = (sid: string) => {
   return { sid, kind: 'video', attach: vi.fn(), detach: vi.fn(() => []) }
 }
 

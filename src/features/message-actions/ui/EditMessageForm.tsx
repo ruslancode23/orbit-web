@@ -1,11 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 
 import { editMessageMutation, type Message } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
 
 import { describeActionError } from '../model/describe-error'
 import { replaceMessageInHistory } from '../model/message-cache'
+
+interface EditValues {
+  content: string
+}
 
 interface EditMessageFormProps {
   message: Message
@@ -17,11 +22,14 @@ interface EditMessageFormProps {
  * Rewrites the author's own message in place. The server answers with the
  * stored message, and only that message is replaced in the history.
  */
-export function EditMessageForm({ message, onDone }: EditMessageFormProps) {
-  const [text, setText] = useState(message.content)
+export const EditMessageForm = ({ message, onDone }: EditMessageFormProps) => {
   const fieldId = useId()
   const fieldRef = useRef<HTMLTextAreaElement | null>(null)
   const queryClient = useQueryClient()
+  const { register, handleSubmit, control } = useForm<EditValues>({
+    defaultValues: { content: message.content },
+  })
+  const { ref: registerField, ...field } = register('content')
 
   const edit = useMutation({
     ...editMessageMutation(),
@@ -38,19 +46,20 @@ export function EditMessageForm({ message, onDone }: EditMessageFormProps) {
     field.setSelectionRange(field.value.length, field.value.length)
   }, [])
 
-  const trimmed = text.trim()
-  const unchanged = trimmed === message.content.trim()
+  const trimmed = useWatch({ control, name: 'content' }).trim()
 
-  function submit() {
-    if (!trimmed || edit.isPending) return
-    if (unchanged) {
+  const submit = handleSubmit((values) => {
+    const content = values.content.trim()
+    if (!content || edit.isPending) return
+    // Nothing to save: the author only looked at their own text.
+    if (content === message.content.trim()) {
       onDone()
       return
     }
-    edit.mutate({ path: { messageId: message.id }, body: { content: trimmed } })
-  }
+    edit.mutate({ path: { messageId: message.id }, body: { content } })
+  })
 
-  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault()
       onDone()
@@ -58,7 +67,7 @@ export function EditMessageForm({ message, onDone }: EditMessageFormProps) {
     }
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      submit()
+      void submit()
     }
   }
 
@@ -66,8 +75,7 @@ export function EditMessageForm({ message, onDone }: EditMessageFormProps) {
     <form
       className="flex flex-col gap-1"
       onSubmit={(event) => {
-        event.preventDefault()
-        submit()
+        void submit(event)
       }}
     >
       <label htmlFor={fieldId} className="sr-only">
@@ -75,12 +83,12 @@ export function EditMessageForm({ message, onDone }: EditMessageFormProps) {
       </label>
       <textarea
         id={fieldId}
-        ref={fieldRef}
-        value={text}
         rows={2}
         maxLength={4000}
-        onChange={(event) => {
-          setText(event.target.value)
+        {...field}
+        ref={(element) => {
+          registerField(element)
+          fieldRef.current = element
         }}
         onKeyDown={handleKeyDown}
         className="w-full resize-none rounded-md border border-border bg-surface px-2 py-1 text-sm text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"

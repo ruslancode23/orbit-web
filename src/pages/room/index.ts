@@ -1,1 +1,1 @@
-export { RoomPage } from './ui/RoomPage'
+export { default } from './ui/RoomPage'

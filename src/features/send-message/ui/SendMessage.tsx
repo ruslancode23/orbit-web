@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 
 import { authorName, mentionedIds, messagePreview, type Message } from '@/entities/message'
 import { useSession } from '@/entities/session'
@@ -20,6 +21,10 @@ interface SendMessageProps {
   onCancelReply?: () => void
   /** Called after the server stored the message, so the reply can be cleared. */
   onSent?: () => void
+}
+
+interface ComposerValues {
+  content: string
 }
 
 interface Attempt {
@@ -48,19 +53,23 @@ const MAX_SUGGESTIONS = 8
  * text and the send names the accounts explicitly, because the server does not
  * parse mentions out of the text itself.
  */
-export function SendMessage({
+export const SendMessage = ({
   workspaceId,
   channelId,
   replyTo,
   onCancelReply,
   onSent,
-}: SendMessageProps) {
+}: SendMessageProps) => {
   const fieldId = useId()
   const listId = useId()
   const hintId = useId()
   const fieldRef = useRef<HTMLTextAreaElement | null>(null)
   const caretRef = useRef<number | null>(null)
-  const [text, setText] = useState('')
+  const { register, control, setValue, reset } = useForm<ComposerValues>({
+    defaultValues: { content: '' },
+  })
+  const text = useWatch({ control, name: 'content' })
+  // Where the caret and the hint list are is not form data: it stays local.
   const [caret, setCaret] = useState(0)
   const [dismissed, setDismissed] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -79,6 +88,14 @@ export function SendMessage({
       await queryClient.invalidateQueries({
         queryKey: listMessagesInfiniteQueryKey({ path: { channelId } }),
       })
+    },
+  })
+
+  const { ref: registerContent, ...contentField } = register('content', {
+    onChange: (event: { target: HTMLTextAreaElement }) => {
+      setCaret(event.target.selectionStart)
+      setDismissed(false)
+      setActiveIndex(0)
     },
   })
 
@@ -112,7 +129,7 @@ export function SendMessage({
     field.setSelectionRange(position, position)
   })
 
-  function submit(attempt: Attempt) {
+  const submit = (attempt: Attempt) => {
     setFailed(null)
     const mentions = mentionedIds(attempt.content, people)
     send.mutate(
@@ -134,10 +151,10 @@ export function SendMessage({
     )
   }
 
-  function handleSubmit() {
+  const handleSubmit = () => {
     const content = text.trim()
     if (!content || send.isPending) return
-    setText('')
+    reset()
     setCaret(0)
     setDismissed(true)
     submit({
@@ -147,20 +164,20 @@ export function SendMessage({
     })
   }
 
-  function choose(person: User) {
+  const choose = (person: User) => {
     if (!mention) return
     const before = text.slice(0, mention.start)
     const after = text.slice(caret)
     const inserted = `@${person.nickname} `
     const position = before.length + inserted.length
     caretRef.current = position
-    setText(`${before}${inserted}${after}`)
+    setValue('content', `${before}${inserted}${after}`)
     setCaret(position)
     setDismissed(true)
     setActiveIndex(0)
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (open) {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()
@@ -251,9 +268,12 @@ export function SendMessage({
           </label>
           <textarea
             id={fieldId}
-            ref={fieldRef}
             rows={1}
-            value={text}
+            {...contentField}
+            ref={(element) => {
+              registerContent(element)
+              fieldRef.current = element
+            }}
             placeholder="Напишите сообщение"
             maxLength={4000}
             aria-autocomplete="list"
@@ -261,12 +281,6 @@ export function SendMessage({
             aria-activedescendant={open ? activeOptionId : undefined}
             aria-describedby={open ? hintId : undefined}
             className="max-h-40 min-h-10 w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
-            onChange={(event) => {
-              setText(event.currentTarget.value)
-              setCaret(event.currentTarget.selectionStart)
-              setDismissed(false)
-              setActiveIndex(0)
-            }}
             onSelect={(event) => {
               setCaret(event.currentTarget.selectionStart)
             }}
@@ -289,11 +303,11 @@ export function SendMessage({
   )
 }
 
-function optionId(listId: string, person: User): string {
+const optionId = (listId: string, person: User): string => {
   return `${listId}-${person.id}`
 }
 
-function mentionQueryAt(value: string, caret: number): MentionQuery | null {
+const mentionQueryAt = (value: string, caret: number): MentionQuery | null => {
   const before = value.slice(0, caret)
   const match = /(?:^|\s)@([^\s@]*)$/u.exec(before)
   if (!match) return null
@@ -301,7 +315,7 @@ function mentionQueryAt(value: string, caret: number): MentionQuery | null {
   return { start: before.length - query.length - 1, query }
 }
 
-function describeError(error: unknown): string {
+const describeError = (error: unknown): string => {
   if (!isApiError(error)) return 'Сообщение не отправилось.'
   if (error.isNetworkError) return 'Нет соединения с сервером.'
   if (error.status === 403) return 'В этом канале вы не можете писать.'
