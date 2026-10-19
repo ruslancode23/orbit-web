@@ -3,14 +3,17 @@ import { NavLink, Outlet, useParams } from 'react-router'
 import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
 import { useSession } from '@/entities/session'
+import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
 import { atLeast, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { LogoutButton } from '@/features/auth'
 import { CreateChannel } from '@/features/create-channel'
 import { CreateWorkspace } from '@/features/create-workspace'
 import { ManageMembers } from '@/features/manage-members'
+import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
 
 import { ConnectionStatus } from './ConnectionStatus'
+import { ServerLink } from './ServerLink'
 
 /**
  * The frame every signed-in page sits in: the servers on the left, the channels
@@ -26,10 +29,12 @@ export const AppShell = () => {
   const { data: memberships, isPending } = useWorkspaces()
   const { membership } = useWorkspace(workspaceId)
   const { data: channels } = useChannels(workspaceId)
+  const { data: unread } = useWorkspaceUnread(workspaceId, { watched: true })
   const { watch } = useLive()
 
   // One socket for the app; changing servers only changes what it watches.
   if (workspaceId) watch(workspaceId)
+  useMessageNotifications({ workspaceId, channelId })
 
   const canManage = atLeast(membership?.role, 'admin')
   const emptyText = !membership
@@ -42,19 +47,11 @@ export const AppShell = () => {
     <div className="flex h-full">
       <nav aria-label="Серверы" className="flex w-16 flex-col items-center gap-2 bg-surface p-2">
         {memberships?.map(({ workspace }) => (
-          <NavLink
+          <ServerLink
             key={workspace.id}
-            to={`/s/${workspace.id}`}
-            title={workspace.name}
-            className={({ isActive }) =>
-              cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-md text-sm font-semibold',
-                isActive ? 'bg-surface-hover ring-2 ring-accent' : 'bg-surface-hover',
-              )
-            }
-          >
-            {workspace.name.slice(0, 2).toLocaleUpperCase('ru')}
-          </NavLink>
+            workspace={workspace}
+            watched={workspace.id === workspaceId}
+          />
         ))}
         <CreateWorkspace />
       </nav>
@@ -68,21 +65,36 @@ export const AppShell = () => {
           <>
             <h2 className="truncate text-sm font-semibold">{membership.workspace.name}</h2>
             <ul className="flex flex-col gap-1">
-              {channels?.map((channel) => (
-                <li key={channel.id}>
-                  <NavLink
-                    to={`/s/${membership.workspace.id}/${channel.id}`}
-                    className={({ isActive }) =>
-                      cn(
-                        'block truncate rounded-md px-2 py-1 text-sm',
-                        isActive ? 'bg-surface-hover' : 'hover:bg-surface',
-                      )
-                    }
-                  >
-                    # {channel.name}
-                  </NavLink>
-                </li>
-              ))}
+              {channels?.map((channel) => {
+                const counts = unread?.find((item) => item.channelId === channel.id)
+                // The open channel is being read: its count would only flicker.
+                const shown =
+                  counts && channel.id !== channelId
+                    ? { unread: counts.unread, mentions: counts.mentions }
+                    : { unread: 0, mentions: 0 }
+                const description = describeUnread(shown)
+                return (
+                  <li key={channel.id}>
+                    <NavLink
+                      to={`/s/${membership.workspace.id}/${channel.id}`}
+                      aria-label={
+                        description ? `# ${channel.name}, ${description}` : `# ${channel.name}`
+                      }
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-2 rounded-md px-2 py-1 text-sm',
+                          isActive ? 'bg-surface-hover' : 'hover:bg-surface',
+                          shown.unread > 0 ? 'font-semibold text-fg' : 'text-fg-muted',
+                          isActive && 'text-fg',
+                        )
+                      }
+                    >
+                      <span className="min-w-0 flex-1 truncate"># {channel.name}</span>
+                      <UnreadBadge unread={shown.unread} mentions={shown.mentions} />
+                    </NavLink>
+                  </li>
+                )
+              })}
             </ul>
             {canManage && <CreateChannel workspaceId={membership.workspace.id} />}
             {canManage && (
@@ -96,6 +108,7 @@ export const AppShell = () => {
         )}
 
         <div className="mt-auto flex flex-col gap-2">
+          <NotificationSettings />
           <ConnectionStatus />
           {user && <p className="truncate text-sm text-fg-muted">{user.nickname}</p>}
           <LogoutButton />
