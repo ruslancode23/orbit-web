@@ -3,4 +3,4 @@ coverage
 pnpm-lock.yaml
 src/shared/api/generated
 # Spec snapshot must stay byte-identical to orbit-server (pnpm api:pull)
-api/
+/api/

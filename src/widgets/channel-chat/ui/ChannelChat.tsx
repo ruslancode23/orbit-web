@@ -4,6 +4,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { type Message } from '@/entities/message'
 import { useSession } from '@/entities/session'
 import { useReadOnView } from '@/entities/unread'
+import {
+  AttachButton,
+  PendingAttachments,
+  useAttachmentUploads,
+  useFileDrop,
+} from '@/features/attach-file'
 import { SendMessage } from '@/features/send-message'
 import { isApiError } from '@/shared/api'
 import { usePageVisible } from '@/shared/lib/page-visibility'
@@ -41,6 +47,8 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
   const [editingId, setEditingId] = useState<string | undefined>(undefined)
   const [highlightedId, setHighlightedId] = useState<string | undefined>(undefined)
   const pageVisible = usePageVisible()
+  const uploads = useAttachmentUploads(channelId)
+  const { dragging, dropProps } = useFileDrop(uploads.add)
 
   // Read means seen: the newest message on screen, in a tab that is not hidden.
   const { lastReadSeq } = useReadOnView({
@@ -74,12 +82,16 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
 
   // Someone reading older messages must not be yanked back down by a new one.
   useEffect(() => {
-    if (atBottom) virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+    if (atBottom) {
+      virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+    }
   }, [messages.length, atBottom, virtualizer])
 
   // The mark on a jumped-to message is temporary.
   useEffect(() => {
-    if (highlightedId === undefined) return undefined
+    if (highlightedId === undefined) {
+      return undefined
+    }
     const timer = setTimeout(() => {
       setHighlightedId(undefined)
     }, HIGHLIGHT_MS)
@@ -98,7 +110,9 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
 
   const jumpTo = (messageId: string) => {
     const index = messages.findIndex((message) => message.id === messageId)
-    if (index === -1) return
+    if (index === -1) {
+      return
+    }
     virtualizer.scrollToIndex(index, { align: 'center' })
     setHighlightedId(messageId)
   }
@@ -120,7 +134,19 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
     replyTo === undefined ? undefined : messages.find((message) => message.id === replyTo.id)
 
   return (
-    <section aria-label="Чат" className="flex min-h-0 flex-1 flex-col">
+    <section
+      aria-label="Чат"
+      className="relative flex min-h-0 flex-1 flex-col"
+      {...(canWrite ? dropProps : {})}
+    >
+      {dragging && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-md border-2 border-dashed border-accent bg-bg/80 text-sm font-semibold"
+        >
+          Отпустите, чтобы прикрепить файлы
+        </div>
+      )}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -156,7 +182,9 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
         >
           {virtualizer.getVirtualItems().map((row) => {
             const message = messages[row.index]
-            if (!message) return null
+            if (!message) {
+              return null
+            }
             const replyTarget =
               message.replyToId === undefined
                 ? undefined
@@ -219,6 +247,12 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
           onSent={() => {
             setReplyTo(undefined)
           }}
+          attachmentIds={uploads.attachmentIds}
+          attachmentsBusy={uploads.uploading}
+          attachments={<PendingAttachments items={uploads.items} onRemove={uploads.remove} />}
+          attachControl={<AttachButton onFiles={uploads.add} />}
+          onPasteFiles={uploads.add}
+          onSending={uploads.clear}
         />
       ) : (
         <p className="border-t border-border p-4 text-sm text-fg-muted">

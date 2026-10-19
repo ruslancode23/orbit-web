@@ -14,11 +14,15 @@ export function createWebPlatform(): PlatformAdapter {
     notifications: {
       permission: notificationPermission,
       async requestPermission() {
-        if (!hasNotifications()) return 'unsupported'
+        if (!hasNotifications()) {
+          return 'unsupported'
+        }
         return Notification.requestPermission()
       },
       show({ title, body, tag, onClick }) {
-        if (notificationPermission() !== 'granted') return
+        if (notificationPermission() !== 'granted') {
+          return
+        }
         const notification = new Notification(title, { body, tag })
         notification.addEventListener('click', () => {
           window.focus()
@@ -53,7 +57,9 @@ export function createWebPlatform(): PlatformAdapter {
         const stream = await devices.getDisplayMedia({ video: SCREEN_VIDEO, audio })
         const [video] = stream.getVideoTracks()
         if (!video) {
-          for (const track of stream.getTracks()) track.stop()
+          for (const track of stream.getTracks()) {
+            track.stop()
+          }
           throw new DOMException('The capture has no video track', 'NotFoundError')
         }
         return { video, audio: stream.getAudioTracks()[0] ?? null }
@@ -86,6 +92,8 @@ function mediaDevicesOrNull(): MediaDevices | null {
 
 function requireMediaDevices(): MediaDevices {
   const devices = mediaDevicesOrNull()
-  if (!devices) throw new DOMException('Media devices are not available', 'NotSupportedError')
+  if (!devices) {
+    throw new DOMException('Media devices are not available', 'NotSupportedError')
+  }
   return devices
 }

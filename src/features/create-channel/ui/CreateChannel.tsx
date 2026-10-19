@@ -30,7 +30,9 @@ export const CreateChannel = ({ workspaceId }: CreateChannelProps) => {
     const channel = await create
       .mutateAsync({ path: { workspaceId }, body: { name: values.name.trim() } })
       .catch(() => null)
-    if (!channel) return
+    if (!channel) {
+      return
+    }
     reset()
     setOpen(false)
     await navigate(`/s/${workspaceId}/${channel.id}`)
@@ -87,9 +89,17 @@ export const CreateChannel = ({ workspaceId }: CreateChannelProps) => {
 }
 
 const describeError = (error: unknown): string => {
-  if (!isApiError(error)) return 'Не получилось создать канал.'
-  if (error.isNetworkError) return 'Нет соединения с сервером.'
-  if (error.status === 409) return 'Канал с таким названием уже есть.'
-  if (error.status === 403) return 'Для этого нужны права администратора.'
+  if (!isApiError(error)) {
+    return 'Не получилось создать канал.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (error.status === 409) {
+    return 'Канал с таким названием уже есть.'
+  }
+  if (error.status === 403) {
+    return 'Для этого нужны права администратора.'
+  }
   return 'Не получилось создать канал.'
 }

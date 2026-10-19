@@ -35,7 +35,9 @@ export const AppShell = () => {
   const { watch } = useLive()
 
   // One socket for the app; changing servers only changes what it watches.
-  if (workspaceId) watch(workspaceId)
+  if (workspaceId) {
+    watch(workspaceId)
+  }
   useMessageNotifications({ workspaceId, channelId })
 
   const canManage = atLeast(membership?.role, 'admin')

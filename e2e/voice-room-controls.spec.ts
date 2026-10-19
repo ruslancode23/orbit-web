@@ -80,7 +80,9 @@ test('the speaking indicator lights up within 300 ms of speech', async ({ browse
     const state = window as unknown as { __litAt: number | null }
     state.__litAt = null
     new MutationObserver(() => {
-      if (element.getAttribute('data-speaking') === 'true') state.__litAt ??= Date.now()
+      if (element.getAttribute('data-speaking') === 'true') {
+        state.__litAt ??= Date.now()
+      }
     }).observe(element, { attributes: true, attributeFilter: ['data-speaking'] })
   })
 

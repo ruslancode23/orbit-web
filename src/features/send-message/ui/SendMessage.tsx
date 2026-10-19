@@ -1,5 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 
 import { authorName, mentionedIds, messagePreview, type Message } from '@/entities/message'
@@ -21,6 +29,18 @@ interface SendMessageProps {
   onCancelReply?: () => void
   /** Called after the server stored the message, so the reply can be cleared. */
   onSent?: () => void
+  /** Files already uploaded for this message; it may then go without text. */
+  attachmentIds?: readonly string[]
+  /** True while a file is still uploading: the message waits for it. */
+  attachmentsBusy?: boolean
+  /** The files on their way, shown above the field. */
+  attachments?: ReactNode
+  /** A control beside the field, such as the file picker. */
+  attachControl?: ReactNode
+  /** Files pasted into the field, such as a screenshot. */
+  onPasteFiles?: (files: File[]) => void
+  /** The message was handed to the send with the files above; they can be cleared. */
+  onSending?: () => void
 }
 
 interface ComposerValues {
@@ -31,6 +51,7 @@ interface Attempt {
   clientMessageId: string
   content: string
   replyToId?: string
+  attachmentIds: readonly string[]
 }
 
 /** The `@word` being typed right before the caret, if any. */
@@ -59,6 +80,12 @@ export const SendMessage = ({
   replyTo,
   onCancelReply,
   onSent,
+  attachmentIds = [],
+  attachmentsBusy = false,
+  attachments,
+  attachControl,
+  onPasteFiles,
+  onSending,
 }: SendMessageProps) => {
   const fieldId = useId()
   const listId = useId()
@@ -121,10 +148,14 @@ export const SendMessage = ({
   // at the end of the whole text.
   useLayoutEffect(() => {
     const position = caretRef.current
-    if (position === null) return
+    if (position === null) {
+      return
+    }
     caretRef.current = null
     const field = fieldRef.current
-    if (!field) return
+    if (!field) {
+      return
+    }
     field.focus()
     field.setSelectionRange(position, position)
   })
@@ -140,6 +171,9 @@ export const SendMessage = ({
           content: attempt.content,
           ...(attempt.replyToId === undefined ? {} : { replyToId: attempt.replyToId }),
           ...(mentions.length === 0 ? {} : { mentions }),
+          ...(attempt.attachmentIds.length === 0
+            ? {}
+            : { attachmentIds: [...attempt.attachmentIds] }),
         },
       },
       {
@@ -151,9 +185,16 @@ export const SendMessage = ({
     )
   }
 
+  const content = text.trim()
+  // Text or files, and nothing still uploading: a message must not lose a file
+  // that has not finished yet.
+  const canSend =
+    (content !== '' || attachmentIds.length > 0) && !attachmentsBusy && !send.isPending
+
   const handleSubmit = () => {
-    const content = text.trim()
-    if (!content || send.isPending) return
+    if (!canSend) {
+      return
+    }
     reset()
     setCaret(0)
     setDismissed(true)
@@ -161,11 +202,25 @@ export const SendMessage = ({
       clientMessageId: crypto.randomUUID(),
       content,
       ...(replyTo === undefined ? {} : { replyToId: replyTo.id }),
+      attachmentIds,
     })
+    onSending?.()
+  }
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = [...event.clipboardData.files]
+    if (files.length === 0 || !onPasteFiles) {
+      return
+    }
+    // A pasted screenshot goes in as a file, not as its name in the text.
+    event.preventDefault()
+    onPasteFiles(files)
   }
 
   const choose = (person: User) => {
-    if (!mention) return
+    if (!mention) {
+      return
+    }
     const before = text.slice(0, mention.start)
     const after = text.slice(caret)
     const inserted = `@${person.nickname} `
@@ -188,7 +243,9 @@ export const SendMessage = ({
       }
       if (event.key === 'Enter' || event.key === 'Tab') {
         event.preventDefault()
-        if (activePerson) choose(activePerson)
+        if (activePerson) {
+          choose(activePerson)
+        }
         return
       }
       if (event.key === 'Escape') {
@@ -234,7 +291,14 @@ export const SendMessage = ({
           </Button>
         </p>
       )}
+      {attachments}
+      {attachmentsBusy && (
+        <p className="sr-only" role="status">
+          Ждём, пока загрузятся файлы.
+        </p>
+      )}
       <div className="flex items-end gap-2">
+        {attachControl}
         <div className="relative flex-1">
           {open && (
             <ul
@@ -285,12 +349,13 @@ export const SendMessage = ({
               setCaret(event.currentTarget.selectionStart)
             }}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onBlur={() => {
               setDismissed(true)
             }}
           />
         </div>
-        <Button disabled={send.isPending || !text.trim()} onClick={handleSubmit}>
+        <Button disabled={!canSend} onClick={handleSubmit}>
           Отправить
         </Button>
       </div>
@@ -310,14 +375,22 @@ const optionId = (listId: string, person: User): string => {
 const mentionQueryAt = (value: string, caret: number): MentionQuery | null => {
   const before = value.slice(0, caret)
   const match = /(?:^|\s)@([^\s@]*)$/u.exec(before)
-  if (!match) return null
+  if (!match) {
+    return null
+  }
   const query = match[1] ?? ''
   return { start: before.length - query.length - 1, query }
 }
 
 const describeError = (error: unknown): string => {
-  if (!isApiError(error)) return 'Сообщение не отправилось.'
-  if (error.isNetworkError) return 'Нет соединения с сервером.'
-  if (error.status === 403) return 'В этом канале вы не можете писать.'
+  if (!isApiError(error)) {
+    return 'Сообщение не отправилось.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (error.status === 403) {
+    return 'В этом канале вы не можете писать.'
+  }
   return 'Сообщение не отправилось.'
 }

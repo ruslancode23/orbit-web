@@ -66,7 +66,9 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const markReconnecting = () => {
-        if (joined) setStatus('reconnecting')
+        if (joined) {
+          setStatus('reconnecting')
+        }
       }
 
       next
@@ -74,7 +76,9 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         .on(RoomEvent.SignalReconnecting, markReconnecting)
         .on(RoomEvent.Reconnecting, markReconnecting)
         .on(RoomEvent.Reconnected, () => {
-          if (!joined) return
+          if (!joined) {
+            return
+          }
           // A full reconnect re-adds remote participants; their tracks come back through TrackSubscribed.
           sync()
           setStatus('connected')
@@ -101,7 +105,9 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
           }
         })
         .on(RoomEvent.TrackUnsubscribed, (track) => {
-          for (const element of track.detach()) element.remove()
+          for (const element of track.detach()) {
+            element.remove()
+          }
           setScreenShares((shares) => shares.filter((s) => s.track !== track))
         })
         // Speaking comes as events from the server's audio level observer, not by polling levels.
@@ -116,7 +122,9 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         .on(RoomEvent.LocalTrackUnpublished, syncLocalScreen)
         // leave() and failed joins clear roomRef first; any other drop after joining is a lost room.
         .on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
-          if (roomRef.current !== next) return
+          if (roomRef.current !== next) {
+            return
+          }
           roomRef.current = null
           reset()
           if (!joined || reason === DisconnectReason.CLIENT_INITIATED) {

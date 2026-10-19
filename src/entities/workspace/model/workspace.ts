@@ -119,7 +119,9 @@ function isAbout(queryKey: readonly unknown[], workspaceId: string): boolean {
 const RANK: Record<WorkspaceRole, number> = { member: 1, admin: 2, owner: 3 }
 
 export function atLeast(role: WorkspaceRole | undefined, least: WorkspaceRole): boolean {
-  if (!role) return false
+  if (!role) {
+    return false
+  }
   return RANK[role] >= RANK[least]
 }
 

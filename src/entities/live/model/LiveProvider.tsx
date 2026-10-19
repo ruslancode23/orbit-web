@@ -26,19 +26,25 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
   const listenersRef = useRef(new Set<LiveListener>())
 
   useEffect(() => {
-    if (!enabled) return undefined
+    if (!enabled) {
+      return undefined
+    }
 
     const connection = new LiveConnection({
       onStatus: setStatus,
       onEvent: (event) => {
         applyEvent(queryClient, event)
-        for (const listener of listenersRef.current) listener(event)
+        for (const listener of listenersRef.current) {
+          listener(event)
+        }
       },
     })
     connectionRef.current = connection
     connection.open()
     // Re-watch what this session was watching before a remount.
-    if (watchedRef.current) connection.subscribe(watchedRef.current)
+    if (watchedRef.current) {
+      connection.subscribe(watchedRef.current)
+    }
 
     return () => {
       connection.close()
@@ -50,7 +56,9 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
     () => ({
       status,
       watch: (workspaceId: string) => {
-        if (watchedRef.current === workspaceId) return
+        if (watchedRef.current === workspaceId) {
+          return
+        }
         watchedRef.current = workspaceId
         connectionRef.current?.subscribe(workspaceId)
       },

@@ -25,16 +25,22 @@ export const ReconnectRoom = ({ room }: ReconnectRoomProps) => {
     )
   }
 
-  if (status !== 'disconnected' || !connectionLoss) return null
+  if (status !== 'disconnected' || !connectionLoss) {
+    return null
+  }
 
   const busy = tokenMutation.isPending
 
   const rejoin = async () => {
-    if (busy) return
+    if (busy) {
+      return
+    }
     const token = await tokenMutation
       .mutateAsync({ body: { room, displayName: connectionLoss.displayName } })
       .catch(() => null)
-    if (token) await join({ url: token.url, token: token.token })
+    if (token) {
+      await join({ url: token.url, token: token.token })
+    }
   }
 
   return (
@@ -60,6 +66,8 @@ export const ReconnectRoom = ({ room }: ReconnectRoomProps) => {
 }
 
 const describeTokenError = (error: unknown): string => {
-  if (isApiError(error) && error.isNetworkError) return 'Нет соединения с сервером.'
+  if (isApiError(error) && error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
   return 'Сервер не смог выдать доступ в комнату.'
 }

@@ -40,7 +40,9 @@ test('a message can be answered, reacted to, edited and deleted', async ({ page 
     .filter({ hasText: 'клюква' })
     .first()
     .getAttribute('data-message-id')
-  if (originalId === null) throw new Error('the sent message has no id')
+  if (originalId === null) {
+    throw new Error('the sent message has no id')
+  }
   const original = page.locator(`article[data-message-id="${originalId}"]`)
 
   // Reply: the composer names the message, and the sent one links back to it.

@@ -53,7 +53,9 @@ export const fakeLiveKit = {
   },
   lastRoom(): FakeRoom {
     const room = this.rooms.at(-1)
-    if (!room) throw new Error('no Room was created')
+    if (!room) {
+      throw new Error('no Room was created')
+    }
     return room
   },
 }
@@ -69,7 +71,9 @@ export class FakeRoom {
     isSpeaking: false,
     attributes: {} as Record<string, string>,
     setMicrophoneEnabled: vi.fn((enabled: boolean) => {
-      if (fakeLiveKit.micError) return Promise.reject(fakeLiveKit.micError)
+      if (fakeLiveKit.micError) {
+        return Promise.reject(fakeLiveKit.micError)
+      }
       this.localParticipant.isMicrophoneEnabled = enabled
       this.emit(enabled ? 'trackUnmuted' : 'trackMuted', { source: 'microphone' })
       return Promise.resolve()
@@ -87,8 +91,12 @@ export class FakeRoom {
       return Promise.resolve()
     }),
     publishTrack: vi.fn((_track: unknown, { source }: { source: string }) => {
-      if (fakeLiveKit.publishError) return Promise.reject(fakeLiveKit.publishError)
-      if (source === 'screen_share') this.localParticipant.isScreenShareEnabled = true
+      if (fakeLiveKit.publishError) {
+        return Promise.reject(fakeLiveKit.publishError)
+      }
+      if (source === 'screen_share') {
+        this.localParticipant.isScreenShareEnabled = true
+      }
       const publication: FakeLocalTrackPublication = { source }
       this.emit('localTrackPublished', publication)
       return Promise.resolve(publication)
@@ -127,6 +135,8 @@ export class FakeRoom {
   }
 
   emit(event: string, ...args: unknown[]) {
-    for (const handler of this.handlers.get(event) ?? []) handler(...args)
+    for (const handler of this.handlers.get(event) ?? []) {
+      handler(...args)
+    }
   }
 }

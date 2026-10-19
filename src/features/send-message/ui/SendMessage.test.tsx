@@ -53,11 +53,17 @@ const stubApi = (options: { fail?: boolean } = {}) => {
       const request = input as Request
       if (request.method === 'POST' && request.url.includes('/messages')) {
         sent.push((await request.clone().json()) as Sent)
-        if (options.fail) throw new TypeError('Failed to fetch')
+        if (options.fail) {
+          throw new TypeError('Failed to fetch')
+        }
         return json({ ...replyTarget, id: 'm-created', seq: 3n, content: 'сохранённое' })
       }
-      if (request.url.includes('/members')) return json(members)
-      if (request.url.includes('/auth/me')) return json(anna)
+      if (request.url.includes('/members')) {
+        return json(members)
+      }
+      if (request.url.includes('/auth/me')) {
+        return json(anna)
+      }
       return json({})
     }),
   )

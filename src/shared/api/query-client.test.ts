@@ -28,8 +28,7 @@ describe('a session that ended', () => {
     await queryClient
       .query({
         queryKey: ['workspaces'],
-        queryFn: () =>
-          Promise.reject(new ApiError({ status, code: 'x', message: 'x' })),
+        queryFn: () => Promise.reject(new ApiError({ status, code: 'x', message: 'x' })),
         retry: false,
       })
       .catch(() => undefined)

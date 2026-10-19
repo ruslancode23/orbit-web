@@ -4,7 +4,9 @@ import { useVoiceRoom, VideoTrack } from '@/entities/voice-room'
 export const ScreenShares = () => {
   const { screenShares, isSharingScreen } = useVoiceRoom()
 
-  if (screenShares.length === 0 && !isSharingScreen) return null
+  if (screenShares.length === 0 && !isSharingScreen) {
+    return null
+  }
 
   return (
     <section aria-label="Демонстрации экрана" className="flex w-full flex-col gap-3">

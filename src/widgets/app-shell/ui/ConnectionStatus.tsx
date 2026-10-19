@@ -11,7 +11,9 @@ const TEXT = {
 export const ConnectionStatus = () => {
   const { status } = useLive()
   const text = TEXT[status]
-  if (!text) return null
+  if (!text) {
+    return null
+  }
 
   return (
     <p role="status" className="text-sm text-fg-muted">

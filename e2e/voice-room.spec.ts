@@ -20,12 +20,16 @@ async function remoteAudioPeak(page: Page): Promise<number> {
     const streams = elements
       .map((el) => el.srcObject)
       .filter((s): s is MediaStream => s instanceof MediaStream)
-    if (streams.length === 0) return -1
+    if (streams.length === 0) {
+      return -1
+    }
 
     const ctx = new AudioContext()
     await ctx.resume()
     const analyser = ctx.createAnalyser()
-    for (const stream of streams) ctx.createMediaStreamSource(stream).connect(analyser)
+    for (const stream of streams) {
+      ctx.createMediaStreamSource(stream).connect(analyser)
+    }
 
     const data = new Uint8Array(analyser.frequencyBinCount)
     let peak = 0

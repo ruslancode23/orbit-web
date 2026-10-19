@@ -32,9 +32,13 @@ export const NotificationSettings = () => {
 
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value
-    if (!isMode(next)) return
+    if (!isMode(next)) {
+      return
+    }
     setNotificationMode(next)
-    if (next !== 'off' && permission === 'default') void askPermission()
+    if (next !== 'off' && permission === 'default') {
+      void askPermission()
+    }
   }
 
   return (
