@@ -8,6 +8,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
 import { AuthForm } from './AuthForm'
+import { useReturnPath } from '../model/return-path'
 
 interface LoginValues {
   login: string
@@ -18,6 +19,7 @@ export const LoginForm = () => {
   const loginId = useId()
   const passwordId = useId()
   const navigate = useNavigate()
+  const afterAuth = useReturnPath()
   const queryClient = useQueryClient()
   const { register, handleSubmit, formState } = useForm<LoginValues>({
     defaultValues: { login: '', password: '' },
@@ -28,7 +30,7 @@ export const LoginForm = () => {
     onSuccess: async (user) => {
       // The answer is the account: no need to ask who we are right after.
       queryClient.setQueryData(getCurrentUserQueryKey(), user)
-      await navigate('/', { replace: true })
+      await navigate(afterAuth, { replace: true })
     },
   })
 
