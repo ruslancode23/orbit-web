@@ -18,11 +18,15 @@ export function replaceMessageInHistory(
   queryClient.setQueriesData<History>(
     { queryKey: listMessagesInfiniteQueryKey({ path: { channelId } }) },
     (history) => {
-      if (!history) return history
+      if (!history) {
+        return history
+      }
       const index = history.pages.findIndex((page) =>
         page.messages.some((item) => item.id === message.id),
       )
-      if (index === -1) return history
+      if (index === -1) {
+        return history
+      }
       const pages = history.pages.map((page, pageIndex) =>
         pageIndex === index
           ? {

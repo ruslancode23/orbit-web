@@ -7,7 +7,9 @@ const MAX_RETRIES = 2
 
 /** Retry network failures and 5xx; a 4xx will fail the same way again. */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (failureCount >= MAX_RETRIES) return false
+  if (failureCount >= MAX_RETRIES) {
+    return false
+  }
   return !(isApiError(error) && error.isClientError)
 }
 
@@ -25,8 +27,12 @@ export function createQueryClient(): QueryClient {
   // session as gone; the route guard sees it and sends the person to sign in.
   const forgetSession = (error: unknown) => {
     const queryClient = holder.client
-    if (!isSessionExpired(error) || !queryClient) return
-    if (queryClient.getQueryData(getCurrentUserQueryKey()) === undefined) return
+    if (!isSessionExpired(error) || !queryClient) {
+      return
+    }
+    if (queryClient.getQueryData(getCurrentUserQueryKey()) === undefined) {
+      return
+    }
     queryClient.setQueryData(getCurrentUserQueryKey(), undefined)
     queryClient.removeQueries({
       predicate: (query) => query.queryKey !== getCurrentUserQueryKey(),

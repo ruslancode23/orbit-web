@@ -94,7 +94,9 @@ function isAbortError(error: unknown): boolean {
 }
 
 function isErrorBody(body: unknown): body is { error: ErrorDetail } {
-  if (typeof body !== 'object' || body === null || !('error' in body)) return false
+  if (typeof body !== 'object' || body === null || !('error' in body)) {
+    return false
+  }
   const { error } = body
   return (
     typeof error === 'object' &&

@@ -18,7 +18,9 @@ export const VoiceRoom = () => {
     useVoiceRoom()
   const [error, setError] = useState<string | null>(null)
 
-  if (!room) return null
+  if (!room) {
+    return null
+  }
 
   const me = participants.find((p) => p.isLocal)
   const isMuted = me?.isMicrophoneMuted ?? false
@@ -97,7 +99,9 @@ const ParticipantVolume = ({
         step={5}
         getValueText={(percent) => `${String(percent)} %`}
         onValueChange={([percent]) => {
-          if (percent !== undefined) onChange(percent / 100)
+          if (percent !== undefined) {
+            onChange(percent / 100)
+          }
         }}
       />
     </div>

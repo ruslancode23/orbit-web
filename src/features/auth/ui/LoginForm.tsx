@@ -78,9 +78,15 @@ export const LoginForm = () => {
 }
 
 const describeLoginError = (error: unknown): string => {
-  if (!isApiError(error)) return 'Не получилось войти. Попробуйте ещё раз.'
-  if (error.isNetworkError) return 'Нет соединения с сервером.'
+  if (!isApiError(error)) {
+    return 'Не получилось войти. Попробуйте ещё раз.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
   // The server does not say which half was wrong, and neither do we.
-  if (error.status === 401) return 'Неверный логин или пароль.'
+  if (error.status === 401) {
+    return 'Неверный логин или пароль.'
+  }
   return 'Не получилось войти. Попробуйте ещё раз.'
 }

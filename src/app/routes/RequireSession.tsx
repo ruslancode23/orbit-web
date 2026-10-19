@@ -12,7 +12,9 @@ export const RequireSession = () => {
   const { isSignedIn, isLoading } = useSession()
   const location = useLocation()
 
-  if (isLoading) return <PageLoader />
+  if (isLoading) {
+    return <PageLoader />
+  }
   if (!isSignedIn) {
     // Remember where they were going, so the sign-in can send them back.
     return <Navigate to="/login" replace state={{ from: location.pathname }} />

@@ -68,6 +68,8 @@ export const VoiceRoomContext = createContext<VoiceRoomValue | null>(null)
 
 export function useVoiceRoom(): VoiceRoomValue {
   const value = use(VoiceRoomContext)
-  if (!value) throw new Error('useVoiceRoom must be used inside <VoiceRoomProvider>')
+  if (!value) {
+    throw new Error('useVoiceRoom must be used inside <VoiceRoomProvider>')
+  }
   return value
 }

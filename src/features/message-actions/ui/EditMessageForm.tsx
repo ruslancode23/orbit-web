@@ -41,7 +41,9 @@ export const EditMessageForm = ({ message, onDone }: EditMessageFormProps) => {
 
   useEffect(() => {
     const field = fieldRef.current
-    if (!field) return
+    if (!field) {
+      return
+    }
     field.focus()
     field.setSelectionRange(field.value.length, field.value.length)
   }, [])
@@ -50,7 +52,9 @@ export const EditMessageForm = ({ message, onDone }: EditMessageFormProps) => {
 
   const submit = handleSubmit((values) => {
     const content = values.content.trim()
-    if (!content || edit.isPending) return
+    if (!content || edit.isPending) {
+      return
+    }
     // Nothing to save: the author only looked at their own text.
     if (content === message.content.trim()) {
       onDone()

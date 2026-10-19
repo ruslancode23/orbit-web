@@ -11,7 +11,9 @@ export const ShareScreenButton = () => {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!room) return null
+  if (!room) {
+    return null
+  }
 
   const toggle = async () => {
     setPending(true)
@@ -70,7 +72,9 @@ const publishScreen = async (room: Room, { video, audio }: ScreenCapture) => {
 
 const describeShareError = (cause: unknown): string | null => {
   // Closing the browser's picker is a choice, not an error.
-  if (cause instanceof DOMException && cause.name === 'NotAllowedError') return null
+  if (cause instanceof DOMException && cause.name === 'NotAllowedError') {
+    return null
+  }
   if (cause instanceof DOMException && cause.name === 'NotSupportedError') {
     return 'Этот браузер не умеет показывать экран.'
   }

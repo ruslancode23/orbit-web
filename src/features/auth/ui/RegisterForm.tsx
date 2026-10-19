@@ -99,9 +99,17 @@ export const RegisterForm = () => {
 }
 
 const describeRegisterError = (error: unknown): string => {
-  if (!isApiError(error)) return 'Не получилось создать аккаунт. Попробуйте ещё раз.'
-  if (error.isNetworkError) return 'Нет соединения с сервером.'
-  if (error.status === 409) return 'Этот ник или email уже заняты.'
-  if (error.status === 400) return 'Проверьте ник и пароль: сервер их не принял.'
+  if (!isApiError(error)) {
+    return 'Не получилось создать аккаунт. Попробуйте ещё раз.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (error.status === 409) {
+    return 'Этот ник или email уже заняты.'
+  }
+  if (error.status === 400) {
+    return 'Проверьте ник и пароль: сервер их не принял.'
+  }
   return 'Не получилось создать аккаунт. Попробуйте ещё раз.'
 }

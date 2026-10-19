@@ -47,13 +47,17 @@ afterEach(() => {
 /** What the client actually sent: the generated SDK calls fetch with a Request. */
 const sentBody = async (fetchMock: ReturnType<typeof answerWith>): Promise<unknown> => {
   const request = fetchMock.mock.calls[0]?.[0] as Request | undefined
-  if (!request) throw new Error('fetch was not called')
+  if (!request) {
+    throw new Error('fetch was not called')
+  }
   return request.clone().json()
 }
 
 const fill = async (nickname: string, password: string, email = '') => {
   await userEvent.type(screen.getByLabelText('Ник'), nickname)
-  if (email) await userEvent.type(screen.getByLabelText('Email (необязательно)'), email)
+  if (email) {
+    await userEvent.type(screen.getByLabelText('Email (необязательно)'), email)
+  }
   await userEvent.type(screen.getByLabelText('Пароль'), password)
   await userEvent.click(screen.getByRole('button', { name: 'Создать аккаунт' }))
 }

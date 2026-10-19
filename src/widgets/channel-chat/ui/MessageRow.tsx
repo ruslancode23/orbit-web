@@ -1,3 +1,4 @@
+import { AttachmentList } from '@/entities/attachment'
 import { MessageCard, startsNewGroup, type Message } from '@/entities/message'
 import { EditMessageForm, MessageActions, ReactionBar } from '@/features/message-actions'
 
@@ -43,6 +44,11 @@ export const MessageRow = ({
       onJumpTo={onJumpTo}
       highlighted={highlighted}
       editing={editing ? <EditMessageForm message={message} onDone={onStopEdit} /> : undefined}
+      attachments={
+        message.attachments?.length ? (
+          <AttachmentList attachments={message.attachments} />
+        ) : undefined
+      }
     >
       <ReactionBar message={message} canWrite={canWrite} />
       <MessageActions

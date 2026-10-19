@@ -26,7 +26,9 @@ export const CreateWorkspace = () => {
     const membership = await create
       .mutateAsync({ body: { name: values.name.trim() } })
       .catch(() => null)
-    if (!membership) return
+    if (!membership) {
+      return
+    }
     reset()
     setOpen(false)
     await navigate(`/s/${membership.workspace.id}`)
@@ -86,6 +88,8 @@ export const CreateWorkspace = () => {
 }
 
 const describeError = (error: unknown): string => {
-  if (isApiError(error) && error.isNetworkError) return 'Нет соединения с сервером.'
+  if (isApiError(error) && error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
   return 'Не получилось создать сервер.'
 }

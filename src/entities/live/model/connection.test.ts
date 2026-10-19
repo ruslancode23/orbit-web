@@ -36,7 +36,9 @@ class FakeSocket {
   }
 
   private emit(type: string, event: unknown = {}) {
-    for (const listener of this.listeners[type] ?? []) listener(event)
+    for (const listener of this.listeners[type] ?? []) {
+      listener(event)
+    }
   }
 }
 

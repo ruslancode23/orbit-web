@@ -28,8 +28,13 @@ export function describeVoiceState({
   isDeafened,
 }: Participant): string[] {
   const state: string[] = []
-  if (isSpeaking) state.push('говорит')
-  if (isDeafened) state.push('звук выключен')
-  else if (isMicrophoneMuted) state.push('микрофон выключен')
+  if (isSpeaking) {
+    state.push('говорит')
+  }
+  if (isDeafened) {
+    state.push('звук выключен')
+  } else if (isMicrophoneMuted) {
+    state.push('микрофон выключен')
+  }
   return state
 }

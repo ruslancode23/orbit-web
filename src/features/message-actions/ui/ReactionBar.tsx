@@ -43,8 +43,12 @@ export const ReactionBar = ({ message, canWrite }: ReactionBarProps) => {
   const pending = add.isPending || remove.isPending
   const error = add.error ?? remove.error
 
-  if (message.deletedAt !== undefined) return null
-  if (message.reactions.length === 0 && !canWrite) return null
+  if (message.deletedAt !== undefined) {
+    return null
+  }
+  if (message.reactions.length === 0 && !canWrite) {
+    return null
+  }
 
   const react = (emoji: string) => {
     add.mutate({ path: { messageId: message.id, emoji } })
@@ -73,8 +77,11 @@ export const ReactionBar = ({ message, canWrite }: ReactionBarProps) => {
             disabled={pending || (!reaction.reacted && !canWrite)}
             className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-0.5 text-xs text-fg hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:opacity-50 aria-pressed:border-accent aria-pressed:bg-accent/20"
             onClick={() => {
-              if (reaction.reacted) unreact(reaction.emoji)
-              else react(reaction.emoji)
+              if (reaction.reacted) {
+                unreact(reaction.emoji)
+              } else {
+                react(reaction.emoji)
+              }
             }}
           >
             <span aria-hidden="true">{reaction.emoji}</span>
@@ -118,7 +125,9 @@ export const ReactionBar = ({ message, canWrite }: ReactionBarProps) => {
                 react(emoji)
               }}
               onKeyDown={(event) => {
-                if (event.key !== 'Escape') return
+                if (event.key !== 'Escape') {
+                  return
+                }
                 setPicking(false)
                 addButtonRef.current?.focus()
               }}

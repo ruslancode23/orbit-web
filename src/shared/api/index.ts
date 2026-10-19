@@ -3,6 +3,11 @@ import './setup'
 
 export { ApiError, CLIENT_ERROR_CODES, isApiError } from './api-error'
 export { createQueryClient } from './query-client'
+export {
+  uploadAttachmentWithProgress,
+  type UploadAttachmentVariables,
+  type UploadProgress,
+} from './upload'
 
 // Generated from api/orbit-server.openapi.yaml (`pnpm api:generate`).
 // Query and mutation option factories: useQuery(getReadinessOptions()), useMutation(createVoiceTokenMutation()).
@@ -10,6 +15,8 @@ export * from './generated/@tanstack/react-query.gen'
 // Plain SDK functions for code outside React Query.
 export { createVoiceToken, getLiveness, getReadiness } from './generated/sdk.gen'
 export type {
+  Attachment,
+  AttachmentLink,
   Channel,
   ChannelUnread,
   ErrorDetail,

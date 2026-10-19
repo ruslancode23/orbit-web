@@ -34,12 +34,18 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
   const workspaceName = membership?.workspace.name
 
   useEffect(() => {
-    if (mode === 'off' || workspaceId === undefined) return undefined
+    if (mode === 'off' || workspaceId === undefined) {
+      return undefined
+    }
     return listen((event) => {
       const message = incomingMessage(event)
-      if (!message) return
+      if (!message) {
+        return
+      }
       const context = { mode, myId, openChannelId: channelId, pageVisible: isPageVisible() }
-      if (!shouldNotify(message, context)) return
+      if (!shouldNotify(message, context)) {
+        return
+      }
 
       const channel = channels?.find((item) => item.id === message.channelId)
       const place = [channel && `#${channel.name}`, workspaceName].filter(Boolean).join(' · ')

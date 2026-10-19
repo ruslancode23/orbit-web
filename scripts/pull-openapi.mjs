@@ -13,7 +13,9 @@ const spec = existsSync(source)
   ? await readFile(source, 'utf8')
   : await fetch(`https://raw.githubusercontent.com/${REPO}/${source}/api/openapi.yaml`).then(
       (res) => {
-        if (!res.ok) throw new Error(`Cannot download the spec at ${source}: HTTP ${res.status}`)
+        if (!res.ok) {
+          throw new Error(`Cannot download the spec at ${source}: HTTP ${res.status}`)
+        }
         return res.text()
       },
     )

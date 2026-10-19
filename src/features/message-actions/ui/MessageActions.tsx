@@ -35,14 +35,20 @@ export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageAc
   })
 
   useEffect(() => {
-    if (confirming) confirmRef.current?.focus()
+    if (confirming) {
+      confirmRef.current?.focus()
+    }
   }, [confirming])
 
-  if (message.deletedAt !== undefined) return null
+  if (message.deletedAt !== undefined) {
+    return null
+  }
 
   const own = message.author !== undefined && message.author.id === user?.id
   const nothingToShow = !canWrite && !own
-  if (nothingToShow) return null
+  if (nothingToShow) {
+    return null
+  }
 
   return (
     <div className="mt-1 flex min-h-7 flex-wrap items-center gap-1 opacity-100 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:opacity-0">

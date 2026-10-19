@@ -21,6 +21,8 @@ export const LiveContext = createContext<LiveValue | null>(null)
 /** The app's live connection. Available inside LiveProvider. */
 export function useLive(): LiveValue {
   const value = use(LiveContext)
-  if (!value) throw new Error('useLive must be used inside LiveProvider')
+  if (!value) {
+    throw new Error('useLive must be used inside LiveProvider')
+  }
   return value
 }

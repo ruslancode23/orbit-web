@@ -99,7 +99,9 @@ describe('reconnect room', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Переподключиться' }))
 
     const request = fetchMock.mock.calls.at(-1)?.[0]
-    if (!(request instanceof Request)) throw new Error('no token request')
+    if (!(request instanceof Request)) {
+      throw new Error('no token request')
+    }
     expect(await request.json()).toEqual({ room: 'dev-room', displayName: 'Anna' })
 
     const rejoined = fakeLiveKit.lastRoom()
