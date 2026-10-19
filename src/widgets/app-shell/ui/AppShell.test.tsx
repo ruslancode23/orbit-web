@@ -13,11 +13,18 @@ const otherChannelId = '33333333-3333-4333-8333-333333333333'
 
 const anna = { id: 'u1', nickname: 'Anna', isGuest: false, createdAt: '2026-10-18T10:00:00Z' }
 
-const membership = (role: 'owner' | 'admin' | 'member') => {
+type Role = 'owner' | 'admin' | 'member'
+
+const defaultPermissions = { canInvite: false, canCreateChannels: false, canAttachFiles: true }
+
+const membership = (role: Role, memberPermissions = defaultPermissions) => {
   return {
     workspace: {
       id: workspaceId,
       name: 'Команда Orbit',
+      description: null,
+      iconUrl: null,
+      memberPermissions,
       ownerId: 'u1',
       createdAt: '2026-10-18T10:00:00Z',
     },
@@ -90,8 +97,9 @@ class FakeSocket {
  * read on every request, so a test can change what the server would say.
  */
 const stubApi = (
-  role: 'owner' | 'admin' | 'member',
+  role: Role,
   unread: { current: Counts } = { current: noUnread },
+  memberPermissions = defaultPermissions,
 ) => {
   vi.stubGlobal(
     'fetch',
@@ -104,7 +112,7 @@ const stubApi = (
           : url.includes('/channels')
             ? channels
             : url.includes('/workspaces')
-              ? [membership(role)]
+              ? [membership(role, memberPermissions)]
               : {}
       return Promise.resolve(
         new Response(JSON.stringify(body), {
@@ -165,6 +173,16 @@ it('offers managing to an admin and not to a member', async () => {
 
   expect(await screen.findByRole('button', { name: '+ Канал' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Участники' })).toBeInTheDocument()
+})
+
+// The server lets its members create channels: the button follows the flag,
+// while managing members stays with admins.
+it('offers a member to create a channel when the server allows it', async () => {
+  stubApi('member', undefined, { ...defaultPermissions, canCreateChannels: true })
+  renderShell()
+
+  expect(await screen.findByRole('button', { name: '+ Канал' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Участники' })).not.toBeInTheDocument()
 })
 
 it('names the signed-in account and offers to sign out', async () => {

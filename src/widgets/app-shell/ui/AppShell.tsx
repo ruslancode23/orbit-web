@@ -4,7 +4,7 @@ import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
 import { useSession } from '@/entities/session'
 import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
-import { atLeast, useWorkspace, useWorkspaces } from '@/entities/workspace'
+import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { LogoutButton } from '@/features/auth'
 import { CreateChannel } from '@/features/create-channel'
 import { CreateWorkspace } from '@/features/create-workspace'
@@ -37,6 +37,8 @@ export const AppShell = () => {
   useMessageNotifications({ workspaceId, channelId })
 
   const canManage = atLeast(membership?.role, 'admin')
+  // A member may be allowed to by the server's own settings.
+  const canCreateChannels = can(membership, 'canCreateChannels')
   const emptyText = !membership
     ? 'Выберите сервер слева или создайте новый'
     : channels?.length
@@ -96,7 +98,7 @@ export const AppShell = () => {
                 )
               })}
             </ul>
-            {canManage && <CreateChannel workspaceId={membership.workspace.id} />}
+            {canCreateChannels && <CreateChannel workspaceId={membership.workspace.id} />}
             {canManage && (
               <ManageMembers workspaceId={membership.workspace.id} role={membership.role} />
             )}
