@@ -1,6 +1,7 @@
 import { useParams } from 'react-router'
 
 import { useChannels } from '@/entities/channel'
+import { can, useWorkspace } from '@/entities/workspace'
 import { ChannelChat } from '@/widgets/channel-chat'
 
 /** One channel: its name and topic above, the chat below. */
@@ -8,6 +9,7 @@ const ChannelPage = () => {
   const { workspaceId, channelId } = useParams()
   const { data: channels } = useChannels(workspaceId)
   const channel = channels?.find((item) => item.id === channelId)
+  const { membership } = useWorkspace(workspaceId)
 
   if (!workspaceId || !channelId) {
     return null
@@ -23,6 +25,7 @@ const ChannelPage = () => {
         workspaceId={workspaceId}
         channelId={channelId}
         canWrite={channel?.canWrite ?? false}
+        canAttach={can(membership, 'canAttachFiles')}
       />
     </section>
   )

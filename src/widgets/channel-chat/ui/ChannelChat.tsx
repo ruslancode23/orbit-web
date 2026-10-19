@@ -23,6 +23,8 @@ interface ChannelChatProps {
   channelId: string
   /** False in a read-only channel: the composer is then not offered. */
   canWrite: boolean
+  /** False when the server does not let this member attach files. */
+  canAttach: boolean
 }
 
 /** How close to the bottom still counts as "reading the newest", in pixels. */
@@ -37,7 +39,7 @@ const HIGHLIGHT_MS = 2000
  * scrolls at the same speed as a short one; older pages load as the reader
  * goes up, and new messages stick to the bottom only while the reader is there.
  */
-export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatProps) => {
+export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: ChannelChatProps) => {
   const { user } = useSession()
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useChannelHistory(channelId)
@@ -137,7 +139,7 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
     <section
       aria-label="Чат"
       className="relative flex min-h-0 flex-1 flex-col"
-      {...(canWrite ? dropProps : {})}
+      {...(canWrite && canAttach ? dropProps : {})}
     >
       {dragging && (
         <div
@@ -250,8 +252,8 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
           attachmentIds={uploads.attachmentIds}
           attachmentsBusy={uploads.uploading}
           attachments={<PendingAttachments items={uploads.items} onRemove={uploads.remove} />}
-          attachControl={<AttachButton onFiles={uploads.add} />}
-          onPasteFiles={uploads.add}
+          attachControl={canAttach ? <AttachButton onFiles={uploads.add} /> : undefined}
+          onPasteFiles={canAttach ? uploads.add : undefined}
           onSending={uploads.clear}
         />
       ) : (
