@@ -1,35 +1,80 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 
-import { isApiError, listMessagesInfiniteQueryKey, sendMessageMutation } from '@/shared/api'
+import { authorName, mentionedIds, messagePreview, type Message } from '@/entities/message'
+import { useSession } from '@/entities/session'
+import { useWorkspaceMembers } from '@/entities/workspace'
+import {
+  isApiError,
+  listMessagesInfiniteQueryKey,
+  sendMessageMutation,
+  type User,
+} from '@/shared/api'
 import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
 
 interface SendMessageProps {
+  workspaceId: string
   channelId: string
+  /** The message the new one answers, if the reader chose one. */
+  replyTo?: Message
+  onCancelReply?: () => void
+  /** Called after the server stored the message, so the reply can be cleared. */
+  onSent?: () => void
 }
 
 interface Attempt {
   clientMessageId: string
   content: string
+  replyToId?: string
 }
+
+/** The `@word` being typed right before the caret, if any. */
+interface MentionQuery {
+  /** Where the `@` is. */
+  start: number
+  query: string
+}
+
+/** At most this many hints at once: a list longer than that is not a hint. */
+const MAX_SUGGESTIONS = 8
 
 /**
  * Writes a message. The send carries the client's own id, so repeating it after
  * a failure gives the same message instead of a second copy — the retry button
  * reuses that id on purpose. Offline TanStack Query holds the send until the
  * network is back and then sends it once, with that same id.
+ *
+ * Typing `@` opens the members of the server; the chosen nickname goes into the
+ * text and the send names the accounts explicitly, because the server does not
+ * parse mentions out of the text itself.
  */
-export function SendMessage({ channelId }: SendMessageProps) {
-  const inputId = useId()
+export function SendMessage({
+  workspaceId,
+  channelId,
+  replyTo,
+  onCancelReply,
+  onSent,
+}: SendMessageProps) {
+  const fieldId = useId()
+  const listId = useId()
+  const hintId = useId()
+  const fieldRef = useRef<HTMLTextAreaElement | null>(null)
+  const caretRef = useRef<number | null>(null)
   const [text, setText] = useState('')
+  const [caret, setCaret] = useState(0)
+  const [dismissed, setDismissed] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
   const [failed, setFailed] = useState<Attempt | null>(null)
   const queryClient = useQueryClient()
+  const { user } = useSession()
+  const { data: members } = useWorkspaceMembers(workspaceId)
+  const people = members?.map((member) => member.user) ?? []
 
   const send = useMutation({
     ...sendMessageMutation(),
     onSuccess: async () => {
       setFailed(null)
+      onSent?.()
       // The history is the source of truth; ask it again for what we just added.
       await queryClient.invalidateQueries({
         queryKey: listMessagesInfiniteQueryKey({ path: { channelId } }),
@@ -37,10 +82,49 @@ export function SendMessage({ channelId }: SendMessageProps) {
     },
   })
 
+  const mention = mentionQueryAt(text, caret)
+  const suggestions =
+    mention && !dismissed
+      ? people
+          .filter(
+            (person) =>
+              person.id !== user?.id &&
+              person.nickname
+                .toLocaleLowerCase('ru')
+                .startsWith(mention.query.toLocaleLowerCase('ru')),
+          )
+          .slice(0, MAX_SUGGESTIONS)
+      : []
+  const open = suggestions.length > 0
+  const active = suggestions.length === 0 ? 0 : Math.min(activeIndex, suggestions.length - 1)
+  const activePerson = suggestions[active]
+  const activeOptionId = activePerson ? optionId(listId, activePerson) : undefined
+
+  // After a chosen nickname is inserted, the caret belongs right after it, not
+  // at the end of the whole text.
+  useLayoutEffect(() => {
+    const position = caretRef.current
+    if (position === null) return
+    caretRef.current = null
+    const field = fieldRef.current
+    if (!field) return
+    field.focus()
+    field.setSelectionRange(position, position)
+  })
+
   function submit(attempt: Attempt) {
     setFailed(null)
+    const mentions = mentionedIds(attempt.content, people)
     send.mutate(
-      { path: { channelId }, body: attempt },
+      {
+        path: { channelId },
+        body: {
+          clientMessageId: attempt.clientMessageId,
+          content: attempt.content,
+          ...(attempt.replyToId === undefined ? {} : { replyToId: attempt.replyToId }),
+          ...(mentions.length === 0 ? {} : { mentions }),
+        },
+      },
       {
         onError: () => {
           // Keep the id: the retry must not create a second message.
@@ -54,10 +138,48 @@ export function SendMessage({ channelId }: SendMessageProps) {
     const content = text.trim()
     if (!content || send.isPending) return
     setText('')
-    submit({ clientMessageId: crypto.randomUUID(), content })
+    setCaret(0)
+    setDismissed(true)
+    submit({
+      clientMessageId: crypto.randomUUID(),
+      content,
+      ...(replyTo === undefined ? {} : { replyToId: replyTo.id }),
+    })
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+  function choose(person: User) {
+    if (!mention) return
+    const before = text.slice(0, mention.start)
+    const after = text.slice(caret)
+    const inserted = `@${person.nickname} `
+    const position = before.length + inserted.length
+    caretRef.current = position
+    setText(`${before}${inserted}${after}`)
+    setCaret(position)
+    setDismissed(true)
+    setActiveIndex(0)
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (open) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const step = event.key === 'ArrowDown' ? 1 : -1
+        const next = (active + step + suggestions.length) % suggestions.length
+        setActiveIndex(next)
+        return
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault()
+        if (activePerson) choose(activePerson)
+        return
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setDismissed(true)
+        return
+      }
+    }
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
       handleSubmit()
@@ -66,6 +188,16 @@ export function SendMessage({ channelId }: SendMessageProps) {
 
   return (
     <div className="flex flex-col gap-2 border-t border-border p-4">
+      {replyTo && (
+        <div className="flex items-center gap-2 text-xs text-fg-muted">
+          <span className="truncate">
+            Ответ на сообщение {authorName(replyTo)}: {messagePreview(replyTo)}
+          </span>
+          <Button size="sm" variant="ghost" aria-label="Отменить ответ" onClick={onCancelReply}>
+            Отмена
+          </Button>
+        </div>
+      )}
       {send.isPaused && (
         <p role="status" className="text-sm text-fg-muted">
           Нет сети — отправим, как только соединение вернётся.
@@ -85,26 +217,88 @@ export function SendMessage({ channelId }: SendMessageProps) {
           </Button>
         </p>
       )}
-      <div className="flex gap-2">
-        <label htmlFor={inputId} className="sr-only">
-          Сообщение
-        </label>
-        <Input
-          id={inputId}
-          value={text}
-          placeholder="Напишите сообщение"
-          maxLength={4000}
-          onChange={(event) => {
-            setText(event.target.value)
-          }}
-          onKeyDown={handleKeyDown}
-        />
+      <div className="flex items-end gap-2">
+        <div className="relative flex-1">
+          {open && (
+            <ul
+              id={listId}
+              role="listbox"
+              aria-label="Подсказки упоминаний"
+              className="absolute bottom-full left-0 z-10 mb-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg"
+            >
+              {suggestions.map((person, index) => (
+                <li key={person.id} role="presentation">
+                  <button
+                    id={optionId(listId, person)}
+                    type="button"
+                    role="option"
+                    aria-selected={index === active}
+                    className="w-full truncate rounded px-2 py-1 text-left text-sm text-fg hover:bg-surface-hover aria-selected:bg-surface-hover"
+                    onMouseDown={(event) => {
+                      // Keep the caret in the field: a blur would close the list first.
+                      event.preventDefault()
+                      choose(person)
+                    }}
+                  >
+                    {person.nickname}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <label htmlFor={fieldId} className="sr-only">
+            Сообщение
+          </label>
+          <textarea
+            id={fieldId}
+            ref={fieldRef}
+            rows={1}
+            value={text}
+            placeholder="Напишите сообщение"
+            maxLength={4000}
+            aria-autocomplete="list"
+            aria-controls={open ? listId : undefined}
+            aria-activedescendant={open ? activeOptionId : undefined}
+            aria-describedby={open ? hintId : undefined}
+            className="max-h-40 min-h-10 w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+            onChange={(event) => {
+              setText(event.currentTarget.value)
+              setCaret(event.currentTarget.selectionStart)
+              setDismissed(false)
+              setActiveIndex(0)
+            }}
+            onSelect={(event) => {
+              setCaret(event.currentTarget.selectionStart)
+            }}
+            onKeyDown={handleKeyDown}
+            onBlur={() => {
+              setDismissed(true)
+            }}
+          />
+        </div>
         <Button disabled={send.isPending || !text.trim()} onClick={handleSubmit}>
           Отправить
         </Button>
       </div>
+      {open && (
+        <p id={hintId} className="sr-only">
+          Стрелки вверх и вниз выбирают участника, Enter вставляет, Escape закрывает подсказки.
+        </p>
+      )}
     </div>
   )
+}
+
+function optionId(listId: string, person: User): string {
+  return `${listId}-${person.id}`
+}
+
+function mentionQueryAt(value: string, caret: number): MentionQuery | null {
+  const before = value.slice(0, caret)
+  const match = /(?:^|\s)@([^\s@]*)$/u.exec(before)
+  if (!match) return null
+  const query = match[1] ?? ''
+  return { start: before.length - query.length - 1, query }
 }
 
 function describeError(error: unknown): string {

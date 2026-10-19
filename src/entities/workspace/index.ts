@@ -1,3 +1,4 @@
+export { useWorkspaceMembers, type WorkspaceMember } from './model/members'
 export {
   atLeast,
   useCreateWorkspace,
