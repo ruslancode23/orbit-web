@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useParams } from 'react-router'
+import { Link, NavLink, Outlet, useParams } from 'react-router'
 
 import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
@@ -11,6 +11,7 @@ import { CreationNotice } from '@/features/create-workspace'
 import { ManageMembers } from '@/features/manage-members'
 import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
+import { SettingsIcon } from '@/shared/ui/icon'
 import { Tooltip } from '@/shared/ui/tooltip'
 
 import { ConnectionStatus } from './ConnectionStatus'
@@ -85,6 +86,17 @@ export const AppShell = () => {
               <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
                 {membership.workspace.name}
               </h2>
+              {canManage && (
+                <Tooltip content="Настройки сервера">
+                  <Link
+                    to={`/s/${membership.workspace.id}/settings`}
+                    aria-label="Настройки сервера"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+                  >
+                    <SettingsIcon />
+                  </Link>
+                </Tooltip>
+              )}
             </header>
             <ul className="flex flex-col gap-1">
               {channels?.map((channel) => {

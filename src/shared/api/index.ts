@@ -26,5 +26,6 @@ export type {
   WorkspaceMembership,
   WorkspacePermissions,
   WorkspaceRole,
+  WorkspaceUpdateRequest,
   VoiceTokenRequest,
 } from './generated/types.gen'

@@ -180,6 +180,7 @@ it('offers managing to an admin and not to a member', async () => {
   expect(await screen.findByRole('link', { name: '# общий' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: '+ Канал' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Участники' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Настройки сервера' })).not.toBeInTheDocument()
   unmount()
 
   vi.unstubAllGlobals()
@@ -188,6 +189,10 @@ it('offers managing to an admin and not to a member', async () => {
 
   expect(await screen.findByRole('button', { name: '+ Канал' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Участники' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Настройки сервера' })).toHaveAttribute(
+    'href',
+    `/s/${workspaceId}/settings`,
+  )
 })
 
 // The server lets its members create channels: the button follows the flag,
@@ -260,6 +265,23 @@ it('puts the badge out when another device reads the channel', async () => {
   })
 
   expect(await screen.findByRole('link', { name: '# флуд' })).toBeInTheDocument()
+})
+
+// An admin let members create channels: the server says workspace.updated to
+// everyone watching, and the button appears without a reload.
+it('redraws the buttons when the server permissions change', async () => {
+  const permissions = { ...defaultPermissions }
+  stubApi('member', undefined, permissions)
+  renderShell()
+  await screen.findByRole('link', { name: '# общий' })
+  expect(screen.queryByRole('button', { name: '+ Канал' })).not.toBeInTheDocument()
+
+  permissions.canCreateChannels = true
+  act(() => {
+    sockets.at(-1)?.receive({ type: 'workspace.updated', workspaceId, payload: {} })
+  })
+
+  expect(await screen.findByRole('button', { name: '+ Канал' })).toBeInTheDocument()
 })
 
 describe('notifications', () => {
