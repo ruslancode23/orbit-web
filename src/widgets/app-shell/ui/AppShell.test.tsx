@@ -156,6 +156,21 @@ it('shows the servers, the channels and the open channel', async () => {
   expect(screen.getByRole('navigation', { name: 'Серверы' })).toBeInTheDocument()
 })
 
+it('marks the open server in the rail and names it in a hint', async () => {
+  stubApi('member')
+  renderShell()
+
+  const rail = screen.getByRole('navigation', { name: 'Серверы' })
+  const link = await within(rail).findByRole('link', { name: 'Команда Orbit' })
+  expect(link).toHaveAttribute('aria-current', 'page')
+  expect(link).toHaveTextContent('КO')
+
+  act(() => {
+    link.focus()
+  })
+  expect(await screen.findByRole('tooltip')).toHaveTextContent('Команда Orbit')
+})
+
 // A member sees no buttons they may not press. The server checks anyway; this
 // is about not offering what will be refused.
 it('offers managing to an admin and not to a member', async () => {

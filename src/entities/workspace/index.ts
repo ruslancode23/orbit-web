@@ -15,3 +15,4 @@ export {
   type WorkspacePermissions,
   type WorkspaceRole,
 } from './model/workspace'
+export { WorkspaceAvatar, type WorkspaceAvatarProps } from './ui/WorkspaceAvatar'

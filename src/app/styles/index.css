@@ -15,6 +15,14 @@
   --color-accent-fg: oklch(0.99 0 0);
   --color-danger: oklch(0.62 0.21 25);
   --color-success: oklch(0.7 0.17 150);
+
+  /* Backgrounds for initials when a server has no icon; light text sits on all of them. */
+  --color-avatar-1: oklch(0.52 0.17 265);
+  --color-avatar-2: oklch(0.52 0.12 220);
+  --color-avatar-3: oklch(0.52 0.12 160);
+  --color-avatar-4: oklch(0.55 0.13 70);
+  --color-avatar-5: oklch(0.52 0.17 25);
+  --color-avatar-6: oklch(0.52 0.17 330);
 }
 
 @layer base {

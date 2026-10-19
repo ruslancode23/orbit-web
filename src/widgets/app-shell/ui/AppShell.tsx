@@ -4,7 +4,7 @@ import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
 import { useSession } from '@/entities/session'
 import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
-import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
+import { atLeast, can, useWorkspace, useWorkspaces, WorkspaceAvatar } from '@/entities/workspace'
 import { LogoutButton } from '@/features/auth'
 import { CreateChannel } from '@/features/create-channel'
 import { CreateWorkspace } from '@/features/create-workspace'
@@ -65,7 +65,18 @@ export const AppShell = () => {
           </p>
         ) : membership ? (
           <>
-            <h2 className="truncate text-sm font-semibold">{membership.workspace.name}</h2>
+            <header className="flex items-center gap-2">
+              <WorkspaceAvatar
+                name={membership.workspace.name}
+                iconUrl={membership.workspace.iconUrl}
+                colorKey={membership.workspace.id}
+                size="sm"
+                decorative
+              />
+              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
+                {membership.workspace.name}
+              </h2>
+            </header>
             <ul className="flex flex-col gap-1">
               {channels?.map((channel) => {
                 const counts = unread?.find((item) => item.channelId === channel.id)
