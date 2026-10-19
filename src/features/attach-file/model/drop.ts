@@ -1,4 +1,4 @@
-import { useState, type ClipboardEvent, type DragEvent } from 'react'
+import { useState, type DragEvent } from 'react'
 
 const carriesFiles = (event: DragEvent): boolean => event.dataTransfer.types.includes('Files')
 
@@ -38,9 +38,4 @@ export function useFileDrop(onFiles: (files: File[]) => void) {
       },
     },
   }
-}
-
-/** Files pasted from the clipboard, such as a screenshot; empty for plain text. */
-export function pastedFiles(event: ClipboardEvent): File[] {
-  return [...event.clipboardData.files]
 }

@@ -1,4 +1,4 @@
-export { pastedFiles, useFileDrop } from './model/drop'
+export { useFileDrop } from './model/drop'
 export {
   MAX_ATTACHMENTS,
   rejectReason,
