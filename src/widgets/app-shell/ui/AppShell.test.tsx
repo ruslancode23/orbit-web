@@ -200,6 +200,17 @@ it('offers a member to create a channel when the server allows it', async () => 
   expect(screen.queryByRole('button', { name: 'Участники' })).not.toBeInTheDocument()
 })
 
+it('leads to the server creation page from the rail', async () => {
+  stubApi('member')
+  renderShell()
+
+  const rail = screen.getByRole('navigation', { name: 'Серверы' })
+  expect(await within(rail).findByRole('link', { name: 'Создать сервер' })).toHaveAttribute(
+    'href',
+    '/new',
+  )
+})
+
 it('names the signed-in account and offers to sign out', async () => {
   stubApi('member')
   renderShell()

@@ -7,10 +7,11 @@ import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unre
 import { atLeast, can, useWorkspace, useWorkspaces, WorkspaceAvatar } from '@/entities/workspace'
 import { LogoutButton } from '@/features/auth'
 import { CreateChannel } from '@/features/create-channel'
-import { CreateWorkspace } from '@/features/create-workspace'
+import { CreationNotice } from '@/features/create-workspace'
 import { ManageMembers } from '@/features/manage-members'
 import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
+import { Tooltip } from '@/shared/ui/tooltip'
 
 import { ConnectionStatus } from './ConnectionStatus'
 import { ServerLink } from './ServerLink'
@@ -39,11 +40,6 @@ export const AppShell = () => {
   const canManage = atLeast(membership?.role, 'admin')
   // A member may be allowed to by the server's own settings.
   const canCreateChannels = can(membership, 'canCreateChannels')
-  const emptyText = !membership
-    ? 'Выберите сервер слева или создайте новый'
-    : channels?.length
-      ? 'Выберите канал'
-      : 'В этом сервере пока нет каналов'
 
   return (
     <div className="flex h-full">
@@ -55,7 +51,20 @@ export const AppShell = () => {
             watched={workspace.id === workspaceId}
           />
         ))}
-        <CreateWorkspace />
+        <Tooltip content="Создать сервер" side="right">
+          <NavLink
+            to="/new"
+            aria-label="Создать сервер"
+            className={({ isActive }) =>
+              cn(
+                'flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-xl text-fg-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none',
+                isActive && 'rounded-xl text-fg ring-2 ring-accent',
+              )
+            }
+          >
+            <span aria-hidden="true">+</span>
+          </NavLink>
+        </Tooltip>
       </nav>
 
       <aside aria-label="Каналы" className="flex w-56 flex-col gap-2 border-r border-border p-3">
@@ -129,7 +138,8 @@ export const AppShell = () => {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        {channelId ? <Outlet /> : <p className="m-auto text-sm text-fg-muted">{emptyText}</p>}
+        <CreationNotice />
+        <Outlet />
       </main>
     </div>
   )
