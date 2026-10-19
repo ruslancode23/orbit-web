@@ -42,8 +42,11 @@ export const WorkspaceOverviewForm = ({ workspace }: WorkspaceOverviewFormProps)
 
   const fail = (error: unknown) => {
     const { field, message } = describeWorkspaceError(error, 'Не получилось сохранить.')
-    if (field) setError(field, { type: 'server', message })
-    else setFormError(message)
+    if (field) {
+      setError(field, { type: 'server', message })
+    } else {
+      setFormError(message)
+    }
   }
 
   const submit = handleSubmit(async (values) => {
@@ -52,9 +55,13 @@ export const WorkspaceOverviewForm = ({ workspace }: WorkspaceOverviewFormProps)
     const name = values.name.trim()
     const description = values.description.trim()
     const body: WorkspaceUpdateRequest = {}
-    if (name !== workspace.name) body.name = name
+    if (name !== workspace.name) {
+      body.name = name
+    }
     // An empty string clears the description on the server.
-    if (description !== (workspace.description ?? '')) body.description = description
+    if (description !== (workspace.description ?? '')) {
+      body.description = description
+    }
 
     if (body.name !== undefined || body.description !== undefined) {
       try {

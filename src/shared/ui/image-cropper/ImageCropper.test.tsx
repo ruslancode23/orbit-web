@@ -25,7 +25,9 @@ const renderCropper = () => {
 /** A 512×256 picture «arrives»: jsdom never loads one by itself. */
 const loadImage = (container: HTMLElement) => {
   const image = container.querySelector('button img')
-  if (!(image instanceof HTMLImageElement)) throw new Error('no image')
+  if (!(image instanceof HTMLImageElement)) {
+    throw new Error('no image')
+  }
   Object.defineProperty(image, 'naturalWidth', { value: 512 })
   Object.defineProperty(image, 'naturalHeight', { value: 256 })
   fireEvent.load(image)

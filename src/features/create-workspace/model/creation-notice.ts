@@ -13,7 +13,9 @@ export interface CreationState {
 }
 
 export function isCreationState(state: unknown): state is CreationState {
-  if (typeof state !== 'object' || state === null || !('creationProblems' in state)) return false
+  if (typeof state !== 'object' || state === null || !('creationProblems' in state)) {
+    return false
+  }
   const { creationProblems } = state
   return (
     typeof creationProblems === 'object' &&

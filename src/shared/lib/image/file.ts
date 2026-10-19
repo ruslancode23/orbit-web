@@ -5,8 +5,12 @@ export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const
 export type ImageFileProblem = 'type' | 'size'
 
 export function checkImageFile(file: Blob, maxBytes: number): ImageFileProblem | null {
-  if (!IMAGE_TYPES.some((type) => type === file.type)) return 'type'
-  if (file.size > maxBytes) return 'size'
+  if (!IMAGE_TYPES.some((type) => type === file.type)) {
+    return 'type'
+  }
+  if (file.size > maxBytes) {
+    return 'size'
+  }
   return null
 }
 

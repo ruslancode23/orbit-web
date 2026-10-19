@@ -15,9 +15,15 @@ export interface WorkspaceErrorText {
  * name and the description; the name is the safe guess.
  */
 export function describeWorkspaceError(error: unknown, fallback: string): WorkspaceErrorText {
-  if (!isApiError(error)) return { message: fallback }
-  if (error.isNetworkError) return { message: 'Нет соединения с сервером.' }
-  if (error.status === 403) return { message: 'Для этого нужны права администратора.' }
+  if (!isApiError(error)) {
+    return { message: fallback }
+  }
+  if (error.isNetworkError) {
+    return { message: 'Нет соединения с сервером.' }
+  }
+  if (error.status === 403) {
+    return { message: 'Для этого нужны права администратора.' }
+  }
   if (error.status === 415) {
     return { field: 'icon', message: 'Подойдёт только изображение PNG, JPEG или WebP.' }
   }

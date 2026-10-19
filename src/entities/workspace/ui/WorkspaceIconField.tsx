@@ -43,7 +43,9 @@ export const WorkspaceIconField = ({
   const sourceRef = useRef<string | null>(null)
   useEffect(
     () => () => {
-      if (sourceRef.current) URL.revokeObjectURL(sourceRef.current)
+      if (sourceRef.current) {
+        URL.revokeObjectURL(sourceRef.current)
+      }
     },
     [],
   )
@@ -53,7 +55,9 @@ export const WorkspaceIconField = ({
   const message = pickError ?? error
 
   const closeCropper = () => {
-    if (sourceRef.current) URL.revokeObjectURL(sourceRef.current)
+    if (sourceRef.current) {
+      URL.revokeObjectURL(sourceRef.current)
+    }
     sourceRef.current = null
     setCropSource(null)
   }
@@ -62,7 +66,9 @@ export const WorkspaceIconField = ({
     const file = event.target.files?.[0]
     // The same file may be picked again after a cancel.
     event.target.value = ''
-    if (!file) return
+    if (!file) {
+      return
+    }
     const problem = checkImageFile(file, ICON_SOURCE_MAX_BYTES)
     if (problem === 'type') {
       setPickError('Подойдёт только изображение PNG, JPEG или WebP.')
@@ -136,7 +142,9 @@ export const WorkspaceIconField = ({
       <Dialog
         open={cropSource !== null}
         onOpenChange={(open) => {
-          if (!open) closeCropper()
+          if (!open) {
+            closeCropper()
+          }
         }}
       >
         <DialogContent className="max-w-md">

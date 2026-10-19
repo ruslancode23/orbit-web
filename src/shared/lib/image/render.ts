@@ -18,13 +18,17 @@ export async function renderSquare(
   canvas.width = size
   canvas.height = size
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('Canvas 2D is not available')
+  if (!context) {
+    throw new Error('Canvas 2D is not available')
+  }
   context.imageSmoothingQuality = 'high'
   context.drawImage(image, square.x, square.y, square.size, square.size, 0, 0, size, size)
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, 'image/webp', 0.9)
   })
-  if (!blob) throw new Error('The image could not be encoded')
+  if (!blob) {
+    throw new Error('The image could not be encoded')
+  }
   return { blob, dataUrl: canvas.toDataURL(blob.type) }
 }

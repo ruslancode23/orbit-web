@@ -52,7 +52,9 @@ export const DeleteWorkspace = ({ workspace }: DeleteWorkspaceProps) => {
       .mutateAsync({ path: { workspaceId: workspace.id } })
       .then(() => true)
       .catch(() => false)
-    if (!done) return
+    if (!done) {
+      return
+    }
     setOpen(false)
     await navigate('/', { replace: true })
   })
@@ -103,7 +105,11 @@ export const DeleteWorkspace = ({ workspace }: DeleteWorkspaceProps) => {
 }
 
 const describeError = (error: unknown): string => {
-  if (isApiError(error) && error.isNetworkError) return 'Нет соединения с сервером.'
-  if (isApiError(error) && error.status === 403) return 'Удалить сервер может только владелец.'
+  if (isApiError(error) && error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (isApiError(error) && error.status === 403) {
+    return 'Удалить сервер может только владелец.'
+  }
   return 'Не получилось удалить сервер.'
 }

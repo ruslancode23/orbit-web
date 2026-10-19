@@ -22,7 +22,9 @@ const WorkspaceSettingsPage = () => {
       </p>
     )
   }
-  if (!membership) return <Navigate to="/" replace />
+  if (!membership) {
+    return <Navigate to="/" replace />
+  }
   if (!atLeast(membership.role, 'admin')) {
     return <Navigate to={`/s/${membership.workspace.id}`} replace />
   }

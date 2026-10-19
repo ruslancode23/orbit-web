@@ -188,7 +188,9 @@ it('creates the server, its icon and channels in order, then opens the first cha
   )
   const dialog = screen.getByRole('dialog', { name: 'Обрезка аватара' })
   const image = dialog.querySelector('button img')
-  if (!(image instanceof HTMLImageElement)) throw new Error('no image')
+  if (!(image instanceof HTMLImageElement)) {
+    throw new Error('no image')
+  }
   Object.defineProperty(image, 'naturalWidth', { value: 300 })
   Object.defineProperty(image, 'naturalHeight', { value: 300 })
   fireEvent.load(image)

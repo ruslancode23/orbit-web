@@ -58,7 +58,9 @@ export const ImageCropper = ({ src, outputSize = 256, onCrop, onCancel }: ImageC
 
   const drag = (event: PointerEvent<HTMLButtonElement>) => {
     const start = dragRef.current
-    if (!start) return
+    if (!start) {
+      return
+    }
     moveTo({
       x: start.offset.x + event.clientX - start.pointer.x,
       y: start.offset.y + event.clientY - start.pointer.y,
@@ -78,7 +80,9 @@ export const ImageCropper = ({ src, outputSize = 256, onCrop, onCancel }: ImageC
       ArrowDown: { x: 0, y: step },
     }
     const move = delta[event.key]
-    if (!move) return
+    if (!move) {
+      return
+    }
     event.preventDefault()
     // The arrow moves the view, so the image goes the other way.
     moveTo({ x: offset.x - move.x, y: offset.y - move.y })
@@ -86,7 +90,9 @@ export const ImageCropper = ({ src, outputSize = 256, onCrop, onCancel }: ImageC
 
   const apply = async () => {
     const image = imageRef.current
-    if (!image || !layout) return
+    if (!image || !layout) {
+      return
+    }
     setBusy(true)
     setFailed(false)
     try {
@@ -156,9 +162,13 @@ export const ImageCropper = ({ src, outputSize = 256, onCrop, onCancel }: ImageC
         value={[zoom]}
         getValueText={(value) => `${String(Math.round(value * 100))} %`}
         onValueChange={([value]) => {
-          if (value === undefined) return
+          if (value === undefined) {
+            return
+          }
           setZoom(value)
-          if (natural) setOffset(coverLayout(natural, FRAME, value, offset).offset)
+          if (natural) {
+            setOffset(coverLayout(natural, FRAME, value, offset).offset)
+          }
         }}
       />
       {failed && (

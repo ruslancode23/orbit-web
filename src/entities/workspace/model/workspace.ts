@@ -105,7 +105,9 @@ export function useDeleteWorkspace() {
 /** Whether a generated query key reads something under this server. */
 function isAbout(queryKey: readonly unknown[], workspaceId: string): boolean {
   const head = queryKey[0]
-  if (typeof head !== 'object' || head === null || !('path' in head)) return false
+  if (typeof head !== 'object' || head === null || !('path' in head)) {
+    return false
+  }
   const { path } = head
   return (
     typeof path === 'object' &&
@@ -134,7 +136,11 @@ export type MemberPermission = keyof WorkspacePermissions
  * server checks the same flags on every request.
  */
 export function can(membership: WorkspaceMembership | undefined, permission: MemberPermission) {
-  if (!membership) return false
-  if (atLeast(membership.role, 'admin')) return true
+  if (!membership) {
+    return false
+  }
+  if (atLeast(membership.role, 'admin')) {
+    return true
+  }
   return membership.workspace.memberPermissions[permission]
 }

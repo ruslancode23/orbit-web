@@ -24,7 +24,9 @@ it('falls back to the initials when the link breaks, and tries a new link', () =
 
   const image = container.querySelector('img')
   expect(image).not.toBeNull()
-  if (image) fireEvent.error(image)
+  if (image) {
+    fireEvent.error(image)
+  }
 
   expect(container.querySelector('img')).toBeNull()
   expect(screen.getByRole('img', { name: 'Команда' })).toHaveTextContent('КО')

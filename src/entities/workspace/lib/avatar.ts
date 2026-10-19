@@ -10,7 +10,9 @@ const letters = (word: string): string[] =>
  */
 export function initials(name: string): string {
   const [first, second] = name.trim().split(/\s+/).filter(Boolean)
-  if (!first) return '?'
+  if (!first) {
+    return '?'
+  }
   const picked = second
     ? [...letters(first).slice(0, 1), ...letters(second).slice(0, 1)]
     : letters(first).slice(0, 2)
@@ -26,6 +28,8 @@ export const AVATAR_COLOR_COUNT = 6
  */
 export function avatarColorIndex(key: string): number {
   let hash = 0
-  for (const char of key) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 1_000_003
+  for (const char of key) {
+    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 1_000_003
+  }
   return hash % AVATAR_COLOR_COUNT
 }

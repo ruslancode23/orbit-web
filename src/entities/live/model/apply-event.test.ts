@@ -13,7 +13,9 @@ const seed = () => {
     workspace: getWorkspaceQueryKey({ path: { workspaceId } }),
     channels: listChannelsQueryKey({ path: { workspaceId } }),
   }
-  for (const key of Object.values(keys)) queryClient.setQueryData(key, [])
+  for (const key of Object.values(keys)) {
+    queryClient.setQueryData(key, [])
+  }
   const isStale = (key: readonly unknown[]) =>
     queryClient.getQueryState(key)?.isInvalidated ?? false
   return { queryClient, keys, isStale }

@@ -12,7 +12,9 @@ export const CreationNotice = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const state: unknown = location.state
-  if (!isCreationState(state)) return null
+  if (!isCreationState(state)) {
+    return null
+  }
 
   return (
     <div
@@ -35,7 +37,9 @@ export const CreationNotice = () => {
 
 const describe = ({ iconFailed, failedChannels }: CreationProblems): string => {
   const parts: string[] = []
-  if (iconFailed) parts.push('не загрузился аватар — его можно добавить в настройках сервера')
+  if (iconFailed) {
+    parts.push('не загрузился аватар — его можно добавить в настройках сервера')
+  }
   if (failedChannels.length) {
     const names = failedChannels.map((name) => `#${name}`).join(', ')
     parts.push(

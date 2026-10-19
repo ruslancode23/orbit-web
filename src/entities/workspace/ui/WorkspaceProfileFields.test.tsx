@@ -18,7 +18,9 @@ const Harness = ({ serverError }: { serverError?: string }) => {
         onSubmit={(event) => {
           void form.handleSubmit((values) => {
             sent.push(values)
-            if (serverError) form.setError('name', { type: 'server', message: serverError })
+            if (serverError) {
+              form.setError('name', { type: 'server', message: serverError })
+            }
           })(event)
         }}
       >
