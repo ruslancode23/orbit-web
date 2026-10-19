@@ -13,11 +13,18 @@ const otherChannelId = '33333333-3333-4333-8333-333333333333'
 
 const anna = { id: 'u1', nickname: 'Anna', isGuest: false, createdAt: '2026-10-18T10:00:00Z' }
 
-const membership = (role: 'owner' | 'admin' | 'member') => {
+type Role = 'owner' | 'admin' | 'member'
+
+const defaultPermissions = { canInvite: false, canCreateChannels: false, canAttachFiles: true }
+
+const membership = (role: Role, memberPermissions = defaultPermissions) => {
   return {
     workspace: {
       id: workspaceId,
       name: 'Команда Orbit',
+      description: null,
+      iconUrl: null,
+      memberPermissions,
       ownerId: 'u1',
       createdAt: '2026-10-18T10:00:00Z',
     },
@@ -90,8 +97,9 @@ class FakeSocket {
  * read on every request, so a test can change what the server would say.
  */
 const stubApi = (
-  role: 'owner' | 'admin' | 'member',
+  role: Role,
   unread: { current: Counts } = { current: noUnread },
+  memberPermissions = defaultPermissions,
 ) => {
   vi.stubGlobal(
     'fetch',
@@ -104,7 +112,7 @@ const stubApi = (
           : url.includes('/channels')
             ? channels
             : url.includes('/workspaces')
-              ? [membership(role)]
+              ? [membership(role, memberPermissions)]
               : {}
       return Promise.resolve(
         new Response(JSON.stringify(body), {
@@ -148,6 +156,21 @@ it('shows the servers, the channels and the open channel', async () => {
   expect(screen.getByRole('navigation', { name: 'Серверы' })).toBeInTheDocument()
 })
 
+it('marks the open server in the rail and names it in a hint', async () => {
+  stubApi('member')
+  renderShell()
+
+  const rail = screen.getByRole('navigation', { name: 'Серверы' })
+  const link = await within(rail).findByRole('link', { name: 'Команда Orbit' })
+  expect(link).toHaveAttribute('aria-current', 'page')
+  expect(link).toHaveTextContent('КO')
+
+  act(() => {
+    link.focus()
+  })
+  expect(await screen.findByRole('tooltip')).toHaveTextContent('Команда Orbit')
+})
+
 // A member sees no buttons they may not press. The server checks anyway; this
 // is about not offering what will be refused.
 it('offers managing to an admin and not to a member', async () => {
@@ -157,6 +180,7 @@ it('offers managing to an admin and not to a member', async () => {
   expect(await screen.findByRole('link', { name: '# общий' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: '+ Канал' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Участники' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Настройки сервера' })).not.toBeInTheDocument()
   unmount()
 
   vi.unstubAllGlobals()
@@ -165,6 +189,31 @@ it('offers managing to an admin and not to a member', async () => {
 
   expect(await screen.findByRole('button', { name: '+ Канал' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Участники' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Настройки сервера' })).toHaveAttribute(
+    'href',
+    `/s/${workspaceId}/settings`,
+  )
+})
+
+// The server lets its members create channels: the button follows the flag,
+// while managing members stays with admins.
+it('offers a member to create a channel when the server allows it', async () => {
+  stubApi('member', undefined, { ...defaultPermissions, canCreateChannels: true })
+  renderShell()
+
+  expect(await screen.findByRole('button', { name: '+ Канал' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Участники' })).not.toBeInTheDocument()
+})
+
+it('leads to the server creation page from the rail', async () => {
+  stubApi('member')
+  renderShell()
+
+  const rail = screen.getByRole('navigation', { name: 'Серверы' })
+  expect(await within(rail).findByRole('link', { name: 'Создать сервер' })).toHaveAttribute(
+    'href',
+    '/new',
+  )
 })
 
 it('names the signed-in account and offers to sign out', async () => {
@@ -216,6 +265,23 @@ it('puts the badge out when another device reads the channel', async () => {
   })
 
   expect(await screen.findByRole('link', { name: '# флуд' })).toBeInTheDocument()
+})
+
+// An admin let members create channels: the server says workspace.updated to
+// everyone watching, and the button appears without a reload.
+it('redraws the buttons when the server permissions change', async () => {
+  const permissions = { ...defaultPermissions }
+  stubApi('member', undefined, permissions)
+  renderShell()
+  await screen.findByRole('link', { name: '# общий' })
+  expect(screen.queryByRole('button', { name: '+ Канал' })).not.toBeInTheDocument()
+
+  permissions.canCreateChannels = true
+  act(() => {
+    sockets.at(-1)?.receive({ type: 'workspace.updated', workspaceId, payload: {} })
+  })
+
+  expect(await screen.findByRole('button', { name: '+ Канал' })).toBeInTheDocument()
 })
 
 describe('notifications', () => {

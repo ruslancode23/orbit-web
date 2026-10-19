@@ -1,16 +1,18 @@
-import { NavLink, Outlet, useParams } from 'react-router'
+import { Link, NavLink, Outlet, useParams } from 'react-router'
 
 import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
 import { useSession } from '@/entities/session'
 import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
-import { atLeast, useWorkspace, useWorkspaces } from '@/entities/workspace'
+import { atLeast, can, useWorkspace, useWorkspaces, WorkspaceAvatar } from '@/entities/workspace'
 import { LogoutButton } from '@/features/auth'
 import { CreateChannel } from '@/features/create-channel'
-import { CreateWorkspace } from '@/features/create-workspace'
+import { CreationNotice } from '@/features/create-workspace'
 import { ManageMembers } from '@/features/manage-members'
 import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
+import { SettingsIcon } from '@/shared/ui/icon'
+import { Tooltip } from '@/shared/ui/tooltip'
 
 import { ConnectionStatus } from './ConnectionStatus'
 import { ServerLink } from './ServerLink'
@@ -39,11 +41,8 @@ export const AppShell = () => {
   useMessageNotifications({ workspaceId, channelId })
 
   const canManage = atLeast(membership?.role, 'admin')
-  const emptyText = !membership
-    ? 'Выберите сервер слева или создайте новый'
-    : channels?.length
-      ? 'Выберите канал'
-      : 'В этом сервере пока нет каналов'
+  // A member may be allowed to by the server's own settings.
+  const canCreateChannels = can(membership, 'canCreateChannels')
 
   return (
     <div className="flex h-full">
@@ -55,7 +54,17 @@ export const AppShell = () => {
             watched={workspace.id === workspaceId}
           />
         ))}
-        <CreateWorkspace />
+        <Tooltip content="Создать сервер" side="right">
+          {/* A plain class string: the tooltip trigger merges classes as text,
+              so NavLink's class function would not survive it. */}
+          <NavLink
+            to="/new"
+            aria-label="Создать сервер"
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-xl text-fg-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
+          >
+            <span aria-hidden="true">+</span>
+          </NavLink>
+        </Tooltip>
       </nav>
 
       <aside aria-label="Каналы" className="flex w-56 flex-col gap-2 border-r border-border p-3">
@@ -65,7 +74,29 @@ export const AppShell = () => {
           </p>
         ) : membership ? (
           <>
-            <h2 className="truncate text-sm font-semibold">{membership.workspace.name}</h2>
+            <header className="flex items-center gap-2">
+              <WorkspaceAvatar
+                name={membership.workspace.name}
+                iconUrl={membership.workspace.iconUrl}
+                colorKey={membership.workspace.id}
+                size="sm"
+                decorative
+              />
+              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
+                {membership.workspace.name}
+              </h2>
+              {canManage && (
+                <Tooltip content="Настройки сервера">
+                  <Link
+                    to={`/s/${membership.workspace.id}/settings`}
+                    aria-label="Настройки сервера"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+                  >
+                    <SettingsIcon />
+                  </Link>
+                </Tooltip>
+              )}
+            </header>
             <ul className="flex flex-col gap-1">
               {channels?.map((channel) => {
                 const counts = unread?.find((item) => item.channelId === channel.id)
@@ -98,7 +129,7 @@ export const AppShell = () => {
                 )
               })}
             </ul>
-            {canManage && <CreateChannel workspaceId={membership.workspace.id} />}
+            {canCreateChannels && <CreateChannel workspaceId={membership.workspace.id} />}
             {canManage && (
               <ManageMembers workspaceId={membership.workspace.id} role={membership.role} />
             )}
@@ -118,7 +149,8 @@ export const AppShell = () => {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        {channelId ? <Outlet /> : <p className="m-auto text-sm text-fg-muted">{emptyText}</p>}
+        <CreationNotice />
+        <Outlet />
       </main>
     </div>
   )

@@ -2,13 +2,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   createWorkspaceMutation,
+  deleteWorkspaceIconMutation,
+  deleteWorkspaceMutation,
+  getWorkspaceQueryKey,
   listWorkspacesOptions,
   listWorkspacesQueryKey,
+  updateWorkspaceMutation,
+  uploadWorkspaceIconMutation,
+  type Workspace,
   type WorkspaceMembership,
+  type WorkspacePermissions,
   type WorkspaceRole,
 } from '@/shared/api'
 
-export type { WorkspaceMembership, WorkspaceRole }
+export type { Workspace, WorkspaceMembership, WorkspacePermissions, WorkspaceRole }
 
 /** The servers this account is on, with its role in each. */
 export function useWorkspaces() {
@@ -22,14 +29,92 @@ export function useWorkspace(workspaceId: string | undefined) {
   return { membership, isLoading: isPending }
 }
 
-export function useCreateWorkspace() {
+/**
+ * Every change to a server comes back as the server itself; the list is read
+ * again rather than patched, so the short-lived icon link is always fresh.
+ */
+function useRefreshWorkspaces() {
   const queryClient = useQueryClient()
+  return async (workspaceId?: string) => {
+    await queryClient.invalidateQueries({ queryKey: listWorkspacesQueryKey() })
+    if (workspaceId) {
+      await queryClient.invalidateQueries({
+        queryKey: getWorkspaceQueryKey({ path: { workspaceId } }),
+      })
+    }
+  }
+}
+
+export function useCreateWorkspace() {
+  const refresh = useRefreshWorkspaces()
   return useMutation({
     ...createWorkspaceMutation(),
     onSuccess: async () => {
+      await refresh()
+    },
+  })
+}
+
+/** Name, description and member permissions: only what is sent changes. */
+export function useUpdateWorkspace() {
+  const refresh = useRefreshWorkspaces()
+  return useMutation({
+    ...updateWorkspaceMutation(),
+    onSuccess: async (_data, variables) => {
+      await refresh(variables.path.workspaceId)
+    },
+  })
+}
+
+export function useUploadWorkspaceIcon() {
+  const refresh = useRefreshWorkspaces()
+  return useMutation({
+    ...uploadWorkspaceIconMutation(),
+    onSuccess: async (_data, variables) => {
+      await refresh(variables.path.workspaceId)
+    },
+  })
+}
+
+export function useDeleteWorkspaceIcon() {
+  const refresh = useRefreshWorkspaces()
+  return useMutation({
+    ...deleteWorkspaceIconMutation(),
+    onSuccess: async (_data, variables) => {
+      await refresh(variables.path.workspaceId)
+    },
+  })
+}
+
+/** Deletes the server with everything in it. Owner only. */
+export function useDeleteWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    ...deleteWorkspaceMutation(),
+    onSuccess: async (_data, variables) => {
+      const path = { workspaceId: variables.path.workspaceId }
+      // Nothing under it can be read any more: drop it instead of refetching 404s.
+      queryClient.removeQueries({
+        predicate: (query) => isAbout(query.queryKey, path.workspaceId),
+      })
       await queryClient.invalidateQueries({ queryKey: listWorkspacesQueryKey() })
     },
   })
+}
+
+/** Whether a generated query key reads something under this server. */
+function isAbout(queryKey: readonly unknown[], workspaceId: string): boolean {
+  const head = queryKey[0]
+  if (typeof head !== 'object' || head === null || !('path' in head)) {
+    return false
+  }
+  const { path } = head
+  return (
+    typeof path === 'object' &&
+    path !== null &&
+    'workspaceId' in path &&
+    path.workspaceId === workspaceId
+  )
 }
 
 /** Ranks the roles the way the server does, so the UI can ask "at least admin?". */
@@ -40,4 +125,22 @@ export function atLeast(role: WorkspaceRole | undefined, least: WorkspaceRole): 
     return false
   }
   return RANK[role] >= RANK[least]
+}
+
+/** What a member may be allowed to do on a server (`memberPermissions`). */
+export type MemberPermission = keyof WorkspacePermissions
+
+/**
+ * Whether this account may do it here: the owner and admins always may, a
+ * member when the server allows it. A convenience for drawing buttons — the
+ * server checks the same flags on every request.
+ */
+export function can(membership: WorkspaceMembership | undefined, permission: MemberPermission) {
+  if (!membership) {
+    return false
+  }
+  if (atLeast(membership.role, 'admin')) {
+    return true
+  }
+  return membership.workspace.memberPermissions[permission]
 }

@@ -1,1 +1,8 @@
-export { HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, VolumeIcon } from './icons'
+export {
+  HeadphonesIcon,
+  HeadphonesOffIcon,
+  MicIcon,
+  MicOffIcon,
+  SettingsIcon,
+  VolumeIcon,
+} from './icons'

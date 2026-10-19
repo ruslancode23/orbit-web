@@ -174,10 +174,15 @@ const articleOf = (text: string): HTMLElement => {
   return article
 }
 
-const renderChat = (canWrite = true) => {
+const renderChat = (canWrite = true, canAttach = true) => {
   giveViewportSize()
   return renderWithProviders(
-    <ChannelChat workspaceId={workspaceId} channelId={channelId} canWrite={canWrite} />,
+    <ChannelChat
+      workspaceId={workspaceId}
+      channelId={channelId}
+      canWrite={canWrite}
+      canAttach={canAttach}
+    />,
     { route: '/' },
   )
 }
@@ -268,6 +273,14 @@ it('offers no composer in a read-only channel', async () => {
 
   expect(await screen.findByText('В этом канале пишут только администраторы.')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument()
+})
+
+it('offers no attachments when the server does not allow them', async () => {
+  stubApi()
+  renderChat(true, false)
+
+  expect(await screen.findByRole('button', { name: 'Отправить' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Прикрепить файл' })).not.toBeInTheDocument()
 })
 
 it('puts a reaction into the cache without refetching the history', async () => {
