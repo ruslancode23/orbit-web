@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router'
 
+import InvitePage from '@/pages/invite'
 import LoginPage from '@/pages/login'
 import NewWorkspacePage from '@/pages/new-workspace'
 import RegisterPage from '@/pages/register'
@@ -13,6 +14,8 @@ import { RequireSession } from './RequireSession'
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  // Open on purpose: the link shows what it leads to before asking for a name.
+  { path: '/invite/:code', element: <InvitePage /> },
   {
     element: <RequireSession />,
     children: [

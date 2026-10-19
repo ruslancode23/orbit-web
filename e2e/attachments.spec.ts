@@ -15,9 +15,12 @@ async function openChannel(page: Page) {
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
 
-  await page.getByRole('button', { name: 'Создать сервер' }).click()
+  await page.getByRole('link', { name: 'Создать сервер' }).click()
   await page.getByLabel('Название сервера').fill('Команда')
-  await page.getByRole('button', { name: 'Создать', exact: true }).click()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('radio', { name: /Пустой/ }).check()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('button', { name: 'Создать сервер' }).click()
 
   await page.getByRole('button', { name: '+ Канал' }).click()
   await page.getByLabel('Название канала').fill('общий')

@@ -99,3 +99,25 @@ it('does not send an empty form', async () => {
 
   expect(fetchMock).not.toHaveBeenCalled()
 })
+
+it('returns to the invite that sent the reader to sign in', async () => {
+  answerWith(200, anna)
+  renderWithProviders(<LoginForm />, { route: '/login?next=%2Finvite%2Fabc' })
+
+  await signIn()
+
+  await waitFor(() => {
+    expect(navigate).toHaveBeenCalledWith('/invite/abc', { replace: true })
+  })
+})
+
+it('ignores a next that leaves the app', async () => {
+  answerWith(200, anna)
+  renderWithProviders(<LoginForm />, { route: '/login?next=%2F%2Fevil.example' })
+
+  await signIn()
+
+  await waitFor(() => {
+    expect(navigate).toHaveBeenCalledWith('/', { replace: true })
+  })
+})

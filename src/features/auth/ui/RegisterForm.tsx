@@ -8,6 +8,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
 import { AuthForm } from './AuthForm'
+import { useReturnPath } from '../model/return-path'
 
 /** The server asks for at least this; saying so beforehand is kinder than a 400. */
 const MIN_PASSWORD_LENGTH = 10
@@ -23,6 +24,7 @@ export const RegisterForm = () => {
   const emailId = useId()
   const passwordId = useId()
   const navigate = useNavigate()
+  const afterAuth = useReturnPath()
   const queryClient = useQueryClient()
   const { register, handleSubmit, formState } = useForm<RegisterValues>({
     defaultValues: { nickname: '', email: '', password: '' },
@@ -32,7 +34,7 @@ export const RegisterForm = () => {
     ...registerMutation(),
     onSuccess: async (user) => {
       queryClient.setQueryData(getCurrentUserQueryKey(), user)
-      await navigate('/', { replace: true })
+      await navigate(afterAuth, { replace: true })
     },
   })
 

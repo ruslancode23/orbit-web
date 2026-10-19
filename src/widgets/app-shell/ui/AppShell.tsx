@@ -6,8 +6,10 @@ import { useSession } from '@/entities/session'
 import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
 import { atLeast, can, useWorkspace, useWorkspaces, WorkspaceAvatar } from '@/entities/workspace'
 import { LogoutButton } from '@/features/auth'
+import { ClaimGuest } from '@/features/claim-guest'
 import { CreateChannel } from '@/features/create-channel'
 import { CreationNotice } from '@/features/create-workspace'
+import { ManageInvites } from '@/features/manage-invites'
 import { ManageMembers } from '@/features/manage-members'
 import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
@@ -43,6 +45,7 @@ export const AppShell = () => {
   const canManage = atLeast(membership?.role, 'admin')
   // A member may be allowed to by the server's own settings.
   const canCreateChannels = can(membership, 'canCreateChannels')
+  const canInvite = can(membership, 'canInvite')
 
   return (
     <div className="flex h-full">
@@ -130,6 +133,11 @@ export const AppShell = () => {
               })}
             </ul>
             {canCreateChannels && <CreateChannel workspaceId={membership.workspace.id} />}
+            <ManageInvites
+              workspaceId={membership.workspace.id}
+              canInvite={canInvite}
+              canManage={canManage}
+            />
             {canManage && (
               <ManageMembers workspaceId={membership.workspace.id} role={membership.role} />
             )}
@@ -141,9 +149,15 @@ export const AppShell = () => {
         )}
 
         <div className="mt-auto flex flex-col gap-2">
+          <ClaimGuest />
           <NotificationSettings />
           <ConnectionStatus />
-          {user && <p className="truncate text-sm text-fg-muted">{user.nickname}</p>}
+          {user && (
+            <p className="truncate text-sm text-fg-muted">
+              {user.nickname}
+              {user.isGuest && <span className="text-xs"> (гость)</span>}
+            </p>
+          )}
           <LogoutButton />
         </div>
       </aside>
