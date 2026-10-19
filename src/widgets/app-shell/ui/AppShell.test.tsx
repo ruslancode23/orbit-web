@@ -11,7 +11,7 @@ const channelId = '22222222-2222-4222-8222-222222222222'
 
 const anna = { id: 'u1', nickname: 'Anna', isGuest: false, createdAt: '2026-10-18T10:00:00Z' }
 
-function membership(role: 'owner' | 'admin' | 'member') {
+const membership = (role: 'owner' | 'admin' | 'member') => {
   return {
     workspace: {
       id: workspaceId,
@@ -36,7 +36,7 @@ const channels = [
 ]
 
 /** Answers whatever each endpoint of this test needs, by path. */
-function stubApi(role: 'owner' | 'admin' | 'member') {
+const stubApi = (role: 'owner' | 'admin' | 'member') => {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: unknown) => {
@@ -80,7 +80,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function renderShell() {
+const renderShell = () => {
   return renderWithProviders(
     <LiveProvider enabled>
       <MemoryRouter initialEntries={[`/s/${workspaceId}/${channelId}`]}>

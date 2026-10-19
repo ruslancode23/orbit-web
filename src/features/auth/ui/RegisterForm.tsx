@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId } from 'react'
+import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 
 import { getCurrentUserQueryKey, isApiError, registerMutation } from '@/shared/api'
@@ -11,16 +12,21 @@ import { AuthForm } from './AuthForm'
 /** The server asks for at least this; saying so beforehand is kinder than a 400. */
 const MIN_PASSWORD_LENGTH = 10
 
-export function RegisterForm() {
+interface RegisterValues {
+  nickname: string
+  email: string
+  password: string
+}
+
+export const RegisterForm = () => {
   const nicknameId = useId()
   const emailId = useId()
   const passwordId = useId()
-  const [nickname, setNickname] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [localError, setLocalError] = useState<string | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { register, handleSubmit, formState } = useForm<RegisterValues>({
+    defaultValues: { nickname: '', email: '', password: '' },
+  })
 
   const signUp = useMutation({
     ...registerMutation(),
@@ -30,29 +36,27 @@ export function RegisterForm() {
     },
   })
 
-  function submit() {
-    setLocalError(null)
-    if (!nickname.trim()) return
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setLocalError(`Пароль должен быть не короче ${String(MIN_PASSWORD_LENGTH)} символов.`)
-      return
-    }
-    signUp.mutate({
-      body: {
-        nickname: nickname.trim(),
-        password,
-        ...(email.trim() ? { email: email.trim() } : {}),
-      },
-    })
-  }
+  const problem =
+    formState.errors.nickname?.message ??
+    formState.errors.password?.message ??
+    (signUp.error ? describeRegisterError(signUp.error) : null)
 
   return (
     <AuthForm
       title="Регистрация"
       submitLabel="Создать аккаунт"
       busy={signUp.isPending}
-      error={localError ?? (signUp.error ? describeRegisterError(signUp.error) : null)}
-      onSubmit={submit}
+      error={problem ?? null}
+      onSubmit={handleSubmit((values) => {
+        const email = values.email.trim()
+        signUp.mutate({
+          body: {
+            nickname: values.nickname.trim(),
+            password: values.password,
+            ...(email ? { email } : {}),
+          },
+        })
+      })}
       footer={
         <>
           Уже есть аккаунт? <Link to="/login">Войдите</Link>
@@ -63,25 +67,15 @@ export function RegisterForm() {
         <Label htmlFor={nicknameId}>Ник</Label>
         <Input
           id={nicknameId}
-          value={nickname}
           autoComplete="username"
-          onChange={(event) => {
-            setNickname(event.target.value)
-          }}
+          aria-invalid={formState.errors.nickname ? true : undefined}
+          {...register('nickname', { required: 'Придумайте ник.' })}
         />
       </div>
 
       <div className="flex flex-col gap-1">
         <Label htmlFor={emailId}>Email (необязательно)</Label>
-        <Input
-          id={emailId}
-          type="email"
-          value={email}
-          autoComplete="email"
-          onChange={(event) => {
-            setEmail(event.target.value)
-          }}
-        />
+        <Input id={emailId} type="email" autoComplete="email" {...register('email')} />
       </div>
 
       <div className="flex flex-col gap-1">
@@ -89,18 +83,22 @@ export function RegisterForm() {
         <Input
           id={passwordId}
           type="password"
-          value={password}
           autoComplete="new-password"
-          onChange={(event) => {
-            setPassword(event.target.value)
-          }}
+          aria-invalid={formState.errors.password ? true : undefined}
+          {...register('password', {
+            required: 'Придумайте пароль.',
+            minLength: {
+              value: MIN_PASSWORD_LENGTH,
+              message: `Пароль должен быть не короче ${String(MIN_PASSWORD_LENGTH)} символов.`,
+            },
+          })}
         />
       </div>
     </AuthForm>
   )
 }
 
-function describeRegisterError(error: unknown): string {
+const describeRegisterError = (error: unknown): string => {
   if (!isApiError(error)) return 'Не получилось создать аккаунт. Попробуйте ещё раз.'
   if (error.isNetworkError) return 'Нет соединения с сервером.'
   if (error.status === 409) return 'Этот ник или email уже заняты.'

@@ -1,7 +1,7 @@
 import { useVoiceRoom, VideoTrack } from '@/entities/voice-room'
 
 /** Screens other participants are showing. */
-export function ScreenShares() {
+export const ScreenShares = () => {
   const { screenShares, isSharingScreen } = useVoiceRoom()
 
   if (screenShares.length === 0 && !isSharingScreen) return null

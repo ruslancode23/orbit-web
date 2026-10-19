@@ -8,7 +8,7 @@ import { createQueryClient } from '@/shared/api'
 
 import { router } from '../routes/router'
 
-export function App() {
+export const App = () => {
   const [queryClient] = useState(createQueryClient)
 
   return (
@@ -21,7 +21,7 @@ export function App() {
 }
 
 /** Holds the live stream above the routes, and only while someone is signed in. */
-function LiveLayer({ children }: { children: ReactNode }) {
+const LiveLayer = ({ children }: { children: ReactNode }) => {
   const { isSignedIn } = useSession()
   return <LiveProvider enabled={isSignedIn}>{children}</LiveProvider>
 }

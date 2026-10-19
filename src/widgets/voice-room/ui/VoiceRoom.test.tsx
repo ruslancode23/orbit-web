@@ -13,7 +13,7 @@ vi.mock('livekit-client', async (importOriginal) => ({
   Room: (await import('@/shared/lib/test')).FakeRoom,
 }))
 
-function Connect() {
+const Connect = () => {
   const { join } = useVoiceRoom()
   return (
     <button type="button" onClick={() => void join({ url: 'ws://lk.test', token: 'jwt' })}>
@@ -22,7 +22,7 @@ function Connect() {
   )
 }
 
-async function renderConnected() {
+const renderConnected = async () => {
   renderWithProviders(
     <VoiceRoomProvider>
       <Connect />
@@ -34,7 +34,7 @@ async function renderConnected() {
   return fakeLiveKit.lastRoom()
 }
 
-function addRemote(room: ReturnType<typeof fakeLiveKit.lastRoom>, name: string) {
+const addRemote = (room: ReturnType<typeof fakeLiveKit.lastRoom>, name: string) => {
   const participant = fakeRemoteParticipant(`guest-${name.toLowerCase()}`, name)
   act(() => {
     room.remoteParticipants.set(participant.identity, participant)

@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 
 import { useCreateWorkspace } from '@/entities/workspace'
@@ -7,23 +8,29 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
+interface WorkspaceValues {
+  name: string
+}
+
 /** Creates a server and opens it. The creator becomes its owner. */
-export function CreateWorkspace() {
+export const CreateWorkspace = () => {
   const nameId = useId()
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
   const navigate = useNavigate()
   const create = useCreateWorkspace()
+  const { register, handleSubmit, reset, formState } = useForm<WorkspaceValues>({
+    defaultValues: { name: '' },
+  })
 
-  async function submit() {
-    const trimmed = name.trim()
-    if (!trimmed || create.isPending) return
-    const membership = await create.mutateAsync({ body: { name: trimmed } }).catch(() => null)
+  const submit = handleSubmit(async (values) => {
+    const membership = await create
+      .mutateAsync({ body: { name: values.name.trim() } })
+      .catch(() => null)
     if (!membership) return
-    setName('')
+    reset()
     setOpen(false)
     await navigate(`/s/${membership.workspace.id}`)
-  }
+  })
 
   if (!open) {
     return (
@@ -45,18 +52,15 @@ export function CreateWorkspace() {
     <form
       className="flex w-48 flex-col gap-2 rounded-md bg-surface p-2"
       onSubmit={(event) => {
-        event.preventDefault()
-        void submit()
+        void submit(event)
       }}
     >
       <Label htmlFor={nameId}>Название сервера</Label>
       <Input
         id={nameId}
-        value={name}
         maxLength={64}
-        onChange={(event) => {
-          setName(event.target.value)
-        }}
+        aria-invalid={formState.errors.name ? true : undefined}
+        {...register('name', { required: true, validate: (value) => value.trim().length > 0 })}
       />
       {create.error && (
         <p role="alert" className="text-sm text-danger">
@@ -81,7 +85,7 @@ export function CreateWorkspace() {
   )
 }
 
-function describeError(error: unknown): string {
+const describeError = (error: unknown): string => {
   if (isApiError(error) && error.isNetworkError) return 'Нет соединения с сервером.'
   return 'Не получилось создать сервер.'
 }

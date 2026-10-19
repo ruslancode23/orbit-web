@@ -13,7 +13,7 @@ interface JoinRoomProps {
   room: string
 }
 
-export function JoinRoom({ room }: JoinRoomProps) {
+export const JoinRoom = ({ room }: JoinRoomProps) => {
   const nameId = useId()
   const errorId = useId()
   const [displayName, setDisplayName] = useState('')
@@ -24,7 +24,7 @@ export function JoinRoom({ room }: JoinRoomProps) {
   const inRoom = status === 'connected' || status === 'reconnecting'
   const error = tokenMutation.error ? describeTokenError(tokenMutation.error) : voiceError
 
-  async function handleSubmit() {
+  const handleSubmit = async () => {
     const name = displayName.trim()
     if (!name || busy) return
     const token = await tokenMutation
@@ -84,7 +84,7 @@ export function JoinRoom({ room }: JoinRoomProps) {
   )
 }
 
-function describeTokenError(error: unknown): string {
+const describeTokenError = (error: unknown): string => {
   if (isApiError(error)) {
     if (error.isNetworkError) return 'Нет соединения с сервером.'
     if (error.isClientError) return error.message

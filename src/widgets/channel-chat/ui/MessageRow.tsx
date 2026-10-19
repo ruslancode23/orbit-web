@@ -19,7 +19,7 @@ interface MessageRowProps {
 }
 
 /** One message with its reactions and the actions the reader may take. */
-export function MessageRow({
+export const MessageRow = ({
   message,
   previous,
   mentionsMe,
@@ -32,7 +32,7 @@ export function MessageRow({
   onStopEdit,
   onReply,
   onJumpTo,
-}: MessageRowProps) {
+}: MessageRowProps) => {
   return (
     <MessageCard
       message={message}

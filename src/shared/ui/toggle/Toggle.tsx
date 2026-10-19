@@ -24,6 +24,6 @@ export interface ToggleProps
   extends ComponentProps<typeof TogglePrimitive.Root>, VariantProps<typeof toggleVariants> {}
 
 /** A two-state button (`aria-pressed`); pressed means the thing is switched off, e.g. a muted microphone. */
-export function Toggle({ className, size, ...props }: ToggleProps) {
+export const Toggle = ({ className, size, ...props }: ToggleProps) => {
   return <TogglePrimitive.Root className={cn(toggleVariants({ size }), className)} {...props} />
 }

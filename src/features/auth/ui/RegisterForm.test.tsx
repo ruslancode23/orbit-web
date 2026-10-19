@@ -23,7 +23,7 @@ const anna = {
   createdAt: '2026-10-18T10:00:00Z',
 }
 
-function answerWith(status: number, body: unknown) {
+const answerWith = (status: number, body: unknown) => {
   const fetchMock = vi.fn((_input?: unknown) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
@@ -45,13 +45,13 @@ afterEach(() => {
 })
 
 /** What the client actually sent: the generated SDK calls fetch with a Request. */
-async function sentBody(fetchMock: ReturnType<typeof answerWith>): Promise<unknown> {
+const sentBody = async (fetchMock: ReturnType<typeof answerWith>): Promise<unknown> => {
   const request = fetchMock.mock.calls[0]?.[0] as Request | undefined
   if (!request) throw new Error('fetch was not called')
   return request.clone().json()
 }
 
-async function fill(nickname: string, password: string, email = '') {
+const fill = async (nickname: string, password: string, email = '') => {
   await userEvent.type(screen.getByLabelText('Ник'), nickname)
   if (email) await userEvent.type(screen.getByLabelText('Email (необязательно)'), email)
   await userEvent.type(screen.getByLabelText('Пароль'), password)

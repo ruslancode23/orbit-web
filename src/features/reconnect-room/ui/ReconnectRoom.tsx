@@ -12,7 +12,7 @@ interface ReconnectRoomProps {
  * Tells the user the connection dropped while LiveKit retries on its own, and if it gives up,
  * explains why and offers to join again with a fresh token.
  */
-export function ReconnectRoom({ room }: ReconnectRoomProps) {
+export const ReconnectRoom = ({ room }: ReconnectRoomProps) => {
   const { status, connectionLoss, join } = useVoiceRoom()
   const tokenMutation = useMutation(createVoiceTokenMutation())
 
@@ -29,8 +29,8 @@ export function ReconnectRoom({ room }: ReconnectRoomProps) {
 
   const busy = tokenMutation.isPending
 
-  async function rejoin() {
-    if (!connectionLoss || busy) return
+  const rejoin = async () => {
+    if (busy) return
     const token = await tokenMutation
       .mutateAsync({ body: { room, displayName: connectionLoss.displayName } })
       .catch(() => null)
@@ -59,7 +59,7 @@ export function ReconnectRoom({ room }: ReconnectRoomProps) {
   )
 }
 
-function describeTokenError(error: unknown): string {
+const describeTokenError = (error: unknown): string => {
   if (isApiError(error) && error.isNetworkError) return 'Нет соединения с сервером.'
   return 'Сервер не смог выдать доступ в комнату.'
 }

@@ -6,15 +6,14 @@ import { getPlatform, type ScreenCapture } from '@/shared/platform'
 import { Button } from '@/shared/ui/button'
 
 /** Starts or stops showing a window or the whole screen, with system audio where the browser allows it. */
-export function ShareScreenButton() {
+export const ShareScreenButton = () => {
   const { room, isSharingScreen } = useVoiceRoom()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (!room) return null
 
-  async function toggle() {
-    if (!room) return
+  const toggle = async () => {
     setPending(true)
     setError(null)
     try {
@@ -54,7 +53,7 @@ export function ShareScreenButton() {
  * Publishes a capture as the screen share. LiveKit unpublishes a screen track when it ends,
  * so the OS "Stop sharing" button keeps working for tracks the adapter captured.
  */
-async function publishScreen(room: Room, { video, audio }: ScreenCapture) {
+const publishScreen = async (room: Room, { video, audio }: ScreenCapture) => {
   try {
     await room.localParticipant.publishTrack(video, { source: Track.Source.ScreenShare })
     if (audio) {
@@ -69,7 +68,7 @@ async function publishScreen(room: Room, { video, audio }: ScreenCapture) {
   }
 }
 
-function describeShareError(cause: unknown): string | null {
+const describeShareError = (cause: unknown): string | null => {
   // Closing the browser's picker is a choice, not an error.
   if (cause instanceof DOMException && cause.name === 'NotAllowedError') return null
   if (cause instanceof DOMException && cause.name === 'NotSupportedError') {

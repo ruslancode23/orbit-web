@@ -3,9 +3,9 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 
 import { renderWithProviders } from '@/shared/lib/test'
 
-import { RoomPage } from './RoomPage'
+import RoomPage from './RoomPage'
 
-function renderAt(path: string) {
+const renderAt = (path: string) => {
   const router = createMemoryRouter([{ path: '/room/:roomId', element: <RoomPage /> }], {
     initialEntries: [path],
   })

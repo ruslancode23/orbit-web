@@ -21,7 +21,7 @@ interface MessageActionsProps {
  * The buttons follow the rules the server enforces — the server checks them
  * again, so hiding an action is a convenience, never the protection.
  */
-export function MessageActions({ message, canWrite, onReply, onEdit }: MessageActionsProps) {
+export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageActionsProps) => {
   const { user } = useSession()
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)

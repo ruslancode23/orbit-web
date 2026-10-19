@@ -22,8 +22,8 @@ Node 22+, pnpm 11. Не используй npm или yarn — lockfile толь
 ## Стек
 
 React 19, TypeScript (strict, `noUncheckedIndexedAccess`), Vite 8, React Router, Radix UI (`radix-ui`),
-Tailwind CSS 4, `class-variance-authority`, TanStack Query, Vitest + Testing Library. Медиа — `livekit-client`.
-По PRD позже добавятся Zustand и TanStack Virtual — не тащи другие аналоги.
+Tailwind CSS 4, `class-variance-authority`, TanStack Query, TanStack Virtual, React Hook Form,
+Vitest + Testing Library. Медиа — `livekit-client`. По PRD позже добавится Zustand — не тащи другие аналоги.
 
 Не добавляй: Material UI и любой CSS-in-JS (Emotion, styled-components), Redux, axios, moment, lodash целиком.
 Новая зависимость — только если без неё никак; решение уровня стека фиксируй в `docs/adr/`.
@@ -50,9 +50,19 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 
 ## Код
 
-- Только именованные экспорты (`import-x/no-default-export`), кроме конфигов инструментов.
+- Экспорты именованные (`import-x/no-default-export`). Исключение — страницы: `pages/*/ui/*Page.tsx` и
+  `pages/*/index.ts` экспортируют страницу только по умолчанию (`export default LoginPage`,
+  `export { default } from './ui/LoginPage'`), роутер берёт её так же и в `lazy()`. Плюс конфиги инструментов.
+- Компоненты — стрелочные функции (`export const Button = () => …`), и всё, что объявлено внутри
+  компонента, — тоже (`const handleSubmit = () => …`). В `.tsx` `function`-объявлений нет вообще:
+  это проверяют `react/function-component-definition` и `func-style`. Файл компонента в PascalCase
+  (`Button.tsx`), тест рядом (`Button.test.tsx`).
+- Формы — React Hook Form: `useForm` + `register`, проверки в правилах `register` (`required`,
+  `minLength`, `validate`), отправка через `handleSubmit`. Не заводи `useState` на каждое поле. Значение
+  поля для отрисовки — `useWatch`, а не `watch()`: с `watch` React Compiler пропускает компонент. Свой
+  `ref` на поле совмещай с `register(...).ref` в одном callback-ref. Состояние не формы (открыт ли
+  попап, где каретка) остаётся в `useState`.
 - `import type` для типов. Без `any`, без `as` ради обхода типов, без `// @ts-ignore` и `eslint-disable`.
-- Компоненты — функции, файл компонента в PascalCase (`Button.tsx`), тест рядом (`Button.test.tsx`).
 - Обращения к ОС и браузерным API (уведомления, устройства, захват экрана, автозапуск) — только через
   `getPlatform()` из `@/shared/platform` (`PlatformAdapter`). Компоненты не вызывают Tauri и браузерные API
   напрямую (PRD 11.0), это проверяет ESLint. Что остаётся внутри livekit-client — `docs/adr/0004-platform-adapter.md`.

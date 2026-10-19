@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId } from 'react'
+import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 
 import { getCurrentUserQueryKey, isApiError, loginMutation } from '@/shared/api'
@@ -8,13 +9,19 @@ import { Label } from '@/shared/ui/label'
 
 import { AuthForm } from './AuthForm'
 
-export function LoginForm() {
+interface LoginValues {
+  login: string
+  password: string
+}
+
+export const LoginForm = () => {
   const loginId = useId()
   const passwordId = useId()
-  const [login, setLogin] = useState('')
-  const [password, setPassword] = useState('')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { register, handleSubmit, formState } = useForm<LoginValues>({
+    defaultValues: { login: '', password: '' },
+  })
 
   const signIn = useMutation({
     ...loginMutation(),
@@ -25,16 +32,21 @@ export function LoginForm() {
     },
   })
 
+  // What the form itself found comes first: the server has not been asked yet.
+  const problem =
+    formState.errors.login?.message ??
+    formState.errors.password?.message ??
+    (signIn.error ? describeLoginError(signIn.error) : null)
+
   return (
     <AuthForm
       title="Вход"
       submitLabel="Войти"
       busy={signIn.isPending}
-      error={signIn.error ? describeLoginError(signIn.error) : null}
-      onSubmit={() => {
-        if (!login.trim() || !password) return
-        signIn.mutate({ body: { login: login.trim(), password } })
-      }}
+      error={problem ?? null}
+      onSubmit={handleSubmit((values) => {
+        signIn.mutate({ body: { login: values.login.trim(), password: values.password } })
+      })}
       footer={
         <>
           Нет аккаунта? <Link to="/register">Зарегистрируйтесь</Link>
@@ -45,11 +57,9 @@ export function LoginForm() {
         <Label htmlFor={loginId}>Ник или email</Label>
         <Input
           id={loginId}
-          value={login}
           autoComplete="username"
-          onChange={(event) => {
-            setLogin(event.target.value)
-          }}
+          aria-invalid={formState.errors.login ? true : undefined}
+          {...register('login', { required: 'Введите ник или email.' })}
         />
       </div>
 
@@ -58,18 +68,16 @@ export function LoginForm() {
         <Input
           id={passwordId}
           type="password"
-          value={password}
           autoComplete="current-password"
-          onChange={(event) => {
-            setPassword(event.target.value)
-          }}
+          aria-invalid={formState.errors.password ? true : undefined}
+          {...register('password', { required: 'Введите пароль.' })}
         />
       </div>
     </AuthForm>
   )
 }
 
-function describeLoginError(error: unknown): string {
+const describeLoginError = (error: unknown): string => {
   if (!isApiError(error)) return 'Не получилось войти. Попробуйте ещё раз.'
   if (error.isNetworkError) return 'Нет соединения с сервером.'
   // The server does not say which half was wrong, and neither do we.

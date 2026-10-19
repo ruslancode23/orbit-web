@@ -9,7 +9,7 @@ import { VoiceRoom } from '@/widgets/voice-room'
 // Same rule as the server's VoiceTokenRequest.room.
 const ROOM_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 
-export function RoomPage() {
+const RoomPage = () => {
   const { roomId = '' } = useParams()
 
   if (!ROOM_NAME.test(roomId)) {
@@ -41,3 +41,5 @@ export function RoomPage() {
     </VoiceRoomProvider>
   )
 }
+
+export default RoomPage

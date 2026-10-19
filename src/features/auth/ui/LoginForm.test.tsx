@@ -23,7 +23,7 @@ const anna = {
   createdAt: '2026-10-18T10:00:00Z',
 }
 
-function answerWith(status: number, body: unknown) {
+const answerWith = (status: number, body: unknown) => {
   vi.stubGlobal(
     'fetch',
     vi.fn(() =>
@@ -45,7 +45,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function signIn(login = 'Anna', password = 'correct horse battery') {
+const signIn = async (login = 'Anna', password = 'correct horse battery') => {
   await userEvent.type(screen.getByLabelText('Ник или email'), login)
   await userEvent.type(screen.getByLabelText('Пароль'), password)
   await userEvent.click(screen.getByRole('button', { name: 'Войти' }))

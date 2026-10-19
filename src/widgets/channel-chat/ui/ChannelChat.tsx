@@ -29,7 +29,7 @@ const HIGHLIGHT_MS = 2000
  * scrolls at the same speed as a short one; older pages load as the reader
  * goes up, and new messages stick to the bottom only while the reader is there.
  */
-export function ChannelChat({ workspaceId, channelId, canWrite }: ChannelChatProps) {
+export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatProps) => {
   const { user } = useSession()
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useChannelHistory(channelId)
@@ -71,14 +71,14 @@ export function ChannelChat({ workspaceId, channelId, canWrite }: ChannelChatPro
     setHighlightedId(undefined)
   }, [channelId])
 
-  function jumpTo(messageId: string) {
+  const jumpTo = (messageId: string) => {
     const index = messages.findIndex((message) => message.id === messageId)
     if (index === -1) return
     virtualizer.scrollToIndex(index, { align: 'center' })
     setHighlightedId(messageId)
   }
 
-  function handleScroll(event: React.UIEvent<HTMLDivElement>) {
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget
     const distance = element.scrollHeight - element.scrollTop - element.clientHeight
     setAtBottom(distance <= BOTTOM_THRESHOLD)

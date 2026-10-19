@@ -26,9 +26,9 @@ const members = [
   { user: boris, role: 'member', joinedAt: '2026-10-18T10:00:00Z' },
 ]
 
-function makeMessage(
+const makeMessage = (
   overrides: Partial<Message> & Pick<Message, 'id' | 'seq' | 'content'>,
-): Message {
+): Message => {
   return {
     channelId,
     author: anna,
@@ -52,7 +52,7 @@ interface Posted {
  * mutations with the changed message and counts history reads, so a test can
  * tell a cache update from a refetch.
  */
-function stubApi(initial: Message[] = [second, first]) {
+const stubApi = (initial: Message[] = [second, first]) => {
   let messages = initial
   const calls = {
     history: 0,
@@ -110,7 +110,7 @@ function stubApi(initial: Message[] = [second, first]) {
     }),
   )
 
-  function replace(target: Message, changes: Partial<Message>): Message {
+  const replace = (target: Message, changes: Partial<Message>): Message => {
     const updated = { ...target, ...changes }
     messages = messages.map((message) => (message.id === target.id ? updated : message))
     return updated
@@ -119,7 +119,7 @@ function stubApi(initial: Message[] = [second, first]) {
   return calls
 }
 
-function json(body: unknown) {
+const json = (body: unknown) => {
   return new Response(
     JSON.stringify(body, (_key, value: unknown) =>
       typeof value === 'bigint' ? Number(value) : value,
@@ -132,7 +132,7 @@ function json(body: unknown) {
  * jsdom gives every element zero height, and a virtualized list with no
  * viewport renders no rows. Hand it a window to look through.
  */
-function giveViewportSize() {
+const giveViewportSize = () => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
     new DOMRect(0, 0, 400, 600),
   )
@@ -142,13 +142,13 @@ function giveViewportSize() {
   })
 }
 
-function articleOf(text: string): HTMLElement {
+const articleOf = (text: string): HTMLElement => {
   const article = screen.getByText(text).closest('article')
   if (!(article instanceof HTMLElement)) throw new Error(`no article around ${text}`)
   return article
 }
 
-function renderChat(canWrite = true) {
+const renderChat = (canWrite = true) => {
   giveViewportSize()
   return renderWithProviders(
     <ChannelChat workspaceId={workspaceId} channelId={channelId} canWrite={canWrite} />,

@@ -12,7 +12,7 @@ const anna = {
   createdAt: new Date('2026-10-18T10:00:00Z'),
 }
 
-function answerWith(status: number, body: unknown) {
+const answerWith = (status: number, body: unknown) => {
   vi.stubGlobal(
     'fetch',
     vi.fn(() =>
@@ -30,7 +30,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function guarded() {
+const guarded = () => {
   return (
     <MemoryRouter initialEntries={['/secret']}>
       <Routes>

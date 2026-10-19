@@ -7,13 +7,14 @@ interface AuthFormProps {
   submitLabel: string
   busy: boolean
   error: string | null
-  onSubmit: () => void
+  /** The handler `handleSubmit` from react-hook-form builds: it validates, then sends. */
+  onSubmit: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>
   children: ReactNode
   footer: ReactNode
 }
 
 /** The frame both the sign-in and the sign-up forms sit in. */
-export function AuthForm({
+export const AuthForm = ({
   title,
   submitLabel,
   busy,
@@ -21,19 +22,21 @@ export function AuthForm({
   onSubmit,
   children,
   footer,
-}: AuthFormProps) {
+}: AuthFormProps) => {
   const titleId = useId()
-
-  function handleSubmit(event: SyntheticEvent) {
-    event.preventDefault()
-    if (!busy) onSubmit()
-  }
 
   return (
     <form
       className="flex w-full max-w-sm flex-col gap-4"
       aria-labelledby={titleId}
-      onSubmit={handleSubmit}
+      onSubmit={(event) => {
+        // A second Enter while the first request is out must not send it again.
+        if (busy) {
+          event.preventDefault()
+          return
+        }
+        void onSubmit(event)
+      }}
     >
       <h1 id={titleId} className="text-2xl font-semibold">
         {title}

@@ -21,7 +21,7 @@ const EMOJI = ['👍', '❤️', '😂', '🎉', '👀', '🙌'] as const
  * bar puts exactly that message into the cache instead of refetching the
  * history: the rest of the list keeps its place and does not re-render.
  */
-export function ReactionBar({ message, canWrite }: ReactionBarProps) {
+export const ReactionBar = ({ message, canWrite }: ReactionBarProps) => {
   const queryClient = useQueryClient()
   const [picking, setPicking] = useState(false)
   const pickerId = `reactions-${message.id}`
@@ -45,11 +45,11 @@ export function ReactionBar({ message, canWrite }: ReactionBarProps) {
   if (message.deletedAt !== undefined) return null
   if (message.reactions.length === 0 && !canWrite) return null
 
-  function react(emoji: string) {
+  const react = (emoji: string) => {
     add.mutate({ path: { messageId: message.id, emoji } })
   }
 
-  function unreact(emoji: string) {
+  const unreact = (emoji: string) => {
     remove.mutate({ path: { messageId: message.id, emoji } })
   }
 
@@ -138,7 +138,7 @@ export function ReactionBar({ message, canWrite }: ReactionBarProps) {
 }
 
 /** Counts in Russian: 1 реакция, 2 реакции, 5 реакций. */
-function reactionWord(count: number): string {
+const reactionWord = (count: number): string => {
   const lastTwo = count % 100
   const last = count % 10
   if (last === 1 && lastTwo !== 11) return 'реакция'

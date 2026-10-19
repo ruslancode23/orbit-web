@@ -33,7 +33,7 @@ export interface ButtonProps extends ComponentProps<'button'>, VariantProps<type
   asChild?: boolean
 }
 
-export function Button({ className, variant, size, asChild = false, ...props }: ButtonProps) {
+export const Button = ({ className, variant, size, asChild = false, ...props }: ButtonProps) => {
   const Component = asChild ? Slot.Root : 'button'
 
   return <Component className={cn(buttonVariants({ variant, size }), className)} {...props} />

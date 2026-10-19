@@ -15,7 +15,7 @@ const anna = {
   createdAt: new Date('2026-10-18T10:00:00Z'),
 }
 
-function makeMessage(overrides: Partial<Message> = {}): Message {
+const makeMessage = (overrides: Partial<Message> = {}): Message => {
   return {
     id: messageId,
     channelId: '22222222-2222-4222-8222-222222222222',

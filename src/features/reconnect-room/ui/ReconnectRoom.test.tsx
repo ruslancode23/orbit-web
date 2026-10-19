@@ -16,7 +16,7 @@ vi.mock('livekit-client', async (importOriginal) => ({
 
 const fetchMock = vi.fn<typeof fetch>()
 
-function tokenResponse() {
+const tokenResponse = () => {
   return new Response(
     JSON.stringify({
       token: 'fresh-jwt',
@@ -39,7 +39,7 @@ afterEach(() => {
   fetchMock.mockReset()
 })
 
-function Connect() {
+const Connect = () => {
   const { join } = useVoiceRoom()
   return (
     <button type="button" onClick={() => void join({ url: 'ws://lk.test', token: 'jwt' })}>
@@ -48,7 +48,7 @@ function Connect() {
   )
 }
 
-async function renderConnected() {
+const renderConnected = async () => {
   renderWithProviders(
     <VoiceRoomProvider>
       <Connect />
@@ -59,7 +59,7 @@ async function renderConnected() {
   return fakeLiveKit.lastRoom()
 }
 
-function loseRoom(reason: DisconnectReason) {
+const loseRoom = (reason: DisconnectReason) => {
   const room = fakeLiveKit.lastRoom()
   act(() => {
     room.emit('reconnecting')

@@ -8,7 +8,7 @@ const TEXT = {
 } as const
 
 /** Says out loud when the live connection is not there; silent while it is. */
-export function ConnectionStatus() {
+export const ConnectionStatus = () => {
   const { status } = useLive()
   const text = TEXT[status]
   if (!text) return null

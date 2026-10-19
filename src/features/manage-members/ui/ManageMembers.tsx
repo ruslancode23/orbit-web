@@ -29,7 +29,7 @@ const ROLE_NAME: Record<WorkspaceRole, string> = {
  * between roles; an admin may remove and ban those below them. The buttons
  * follow the same rules the server enforces — and the server enforces them again.
  */
-export function ManageMembers({ workspaceId, role }: ManageMembersProps) {
+export const ManageMembers = ({ workspaceId, role }: ManageMembersProps) => {
   const [open, setOpen] = useState(false)
   const { user } = useSession()
   const queryClient = useQueryClient()
@@ -149,7 +149,7 @@ export function ManageMembers({ workspaceId, role }: ManageMembersProps) {
   )
 }
 
-function describeError(error: unknown): string {
+const describeError = (error: unknown): string => {
   if (!isApiError(error)) return 'Не получилось изменить участника.'
   if (error.isNetworkError) return 'Нет соединения с сервером.'
   if (error.status === 403) return 'Для этого не хватает прав.'
