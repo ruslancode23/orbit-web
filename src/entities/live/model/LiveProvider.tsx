@@ -8,7 +8,7 @@ import {
 } from '@/shared/api'
 
 import { LiveConnection, type LiveEvent, type LiveStatus } from './connection'
-import { LiveContext, type LiveValue } from './context'
+import { LiveContext, type LiveListener, type LiveValue } from './context'
 
 /**
  * Holds the app's single live connection. It lives above the routes, so moving
@@ -28,6 +28,7 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
   const [status, setStatus] = useState<LiveStatus>('connecting')
   const connectionRef = useRef<LiveConnection | null>(null)
   const watchedRef = useRef<string | undefined>(undefined)
+  const listenersRef = useRef(new Set<LiveListener>())
 
   useEffect(() => {
     if (!enabled) return undefined
@@ -36,6 +37,7 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
       onStatus: setStatus,
       onEvent: (event) => {
         applyEvent(queryClient, event)
+        for (const listener of listenersRef.current) listener(event)
       },
     })
     connectionRef.current = connection
@@ -56,6 +58,13 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
         if (watchedRef.current === workspaceId) return
         watchedRef.current = workspaceId
         connectionRef.current?.subscribe(workspaceId)
+      },
+      listen: (listener: LiveListener) => {
+        const listeners = listenersRef.current
+        listeners.add(listener)
+        return () => {
+          listeners.delete(listener)
+        }
       },
     }),
     [status],
