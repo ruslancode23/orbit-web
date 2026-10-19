@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 
 const unique = () => `shell${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
 const password = 'a-long-enough-password'
+const ONE_PIXEL_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
 
 async function signUp(page: Page): Promise<string> {
   const nickname = unique()
@@ -86,6 +88,15 @@ test('a new server from a template opens its first channel', async ({ page }) =>
   await page.getByRole('link', { name: 'Создать сервер' }).click()
   await page.getByLabel('Название сервера').fill('Команда')
   await page.getByLabel(/Описание/).fill('Про космос')
+  // A real picture through the real canvas: cropped, encoded, uploaded.
+  await page.getByLabel('Файл изображения').setInputFiles({
+    name: 'icon.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(ONE_PIXEL_PNG, 'base64'),
+  })
+  const cropper = page.getByRole('dialog', { name: 'Обрезка аватара' })
+  await cropper.getByRole('button', { name: 'Применить' }).click()
+  await expect(cropper).toBeHidden()
   await page.getByRole('button', { name: 'Далее' }).click()
   // «Для команды» is the default; going back keeps what was typed.
   await page.getByRole('button', { name: 'Назад' }).click()
@@ -97,4 +108,10 @@ test('a new server from a template opens its first channel', async ({ page }) =>
 
   await expect(page.getByRole('heading', { name: '# общий', level: 1 })).toBeVisible()
   await expect(page.getByRole('link', { name: '# оффтоп' })).toBeVisible()
+  // The icon came back as a signed link that loads.
+  const icon = page.getByRole('navigation', { name: 'Серверы' }).locator('img')
+  await expect(icon).toHaveCount(1)
+  await expect
+    .poll(() => icon.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBeGreaterThan(0)
 })

@@ -78,7 +78,6 @@ export const DeleteWorkspace = ({ workspace }: DeleteWorkspaceProps) => {
             <Input
               id={inputId}
               autoComplete="off"
-              placeholder={workspace.name}
               {...register('name', { validate: (value) => value.trim() === workspace.name })}
             />
           </div>

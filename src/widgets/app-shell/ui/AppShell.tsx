@@ -53,15 +53,12 @@ export const AppShell = () => {
           />
         ))}
         <Tooltip content="Создать сервер" side="right">
+          {/* A plain class string: the tooltip trigger merges classes as text,
+              so NavLink's class function would not survive it. */}
           <NavLink
             to="/new"
             aria-label="Создать сервер"
-            className={({ isActive }) =>
-              cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-xl text-fg-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none',
-                isActive && 'rounded-xl text-fg ring-2 ring-accent',
-              )
-            }
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-xl text-fg-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
           >
             <span aria-hidden="true">+</span>
           </NavLink>
