@@ -33,9 +33,12 @@ export function describeWorkspaceError(error: unknown, fallback: string): Worksp
       : { field: 'description', message: 'Описание слишком длинное.' }
   }
   if (error.status === 400) {
-    return error.message.includes('description')
-      ? { field: 'description', message: 'Описание — не больше 500 символов.' }
-      : { field: 'name', message: 'Название — от 1 до 64 символов.' }
+    if (error.message.includes('description')) {
+      return { field: 'description', message: 'Описание — не больше 500 символов.' }
+    }
+    if (error.message.includes('name')) {
+      return { field: 'name', message: 'Название — от 1 до 64 символов.' }
+    }
   }
   return { message: fallback }
 }

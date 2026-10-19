@@ -31,6 +31,9 @@ it('keeps the rest for the form as a whole', () => {
   expect(describeWorkspaceError(refusal(403, 'forbidden'), 'x')).toEqual({
     message: 'Для этого нужны права администратора.',
   })
+  expect(describeWorkspaceError(refusal(400, 'request body is invalid'), 'Не вышло.')).toEqual({
+    message: 'Не вышло.',
+  })
   expect(describeWorkspaceError(refusal(500, 'boom'), 'Не вышло.')).toEqual({
     message: 'Не вышло.',
   })
