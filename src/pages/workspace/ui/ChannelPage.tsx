@@ -9,7 +9,9 @@ const ChannelPage = () => {
   const { data: channels } = useChannels(workspaceId)
   const channel = channels?.find((item) => item.id === channelId)
 
-  if (!workspaceId || !channelId) return null
+  if (!workspaceId || !channelId) {
+    return null
+  }
 
   return (
     <section aria-label="Канал" className="flex min-h-0 flex-1 flex-col">

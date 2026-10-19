@@ -58,7 +58,9 @@ export class LiveConnection {
   }
 
   open(): void {
-    if (this.closed || this.socket) return
+    if (this.closed || this.socket) {
+      return
+    }
     this.handlers.onStatus(this.retry === 0 ? 'connecting' : 'reconnecting')
 
     const socket = this.createSocket(this.url)
@@ -68,17 +70,23 @@ export class LiveConnection {
       this.retry = 0
       this.handlers.onStatus('open')
       // Whatever we were watching, we watch again.
-      if (this.subscription) this.sendSubscribe(this.subscription)
+      if (this.subscription) {
+        this.sendSubscribe(this.subscription)
+      }
     })
 
     socket.addEventListener('message', (message: MessageEvent<string>) => {
       const event = parseEvent(message.data)
-      if (event) this.handlers.onEvent(event)
+      if (event) {
+        this.handlers.onEvent(event)
+      }
     })
 
     socket.addEventListener('close', () => {
       this.socket = undefined
-      if (this.closed) return
+      if (this.closed) {
+        return
+      }
       this.scheduleRetry()
     })
 
@@ -96,13 +104,17 @@ export class LiveConnection {
 
   close(): void {
     this.closed = true
-    if (this.timer) clearTimeout(this.timer)
+    if (this.timer) {
+      clearTimeout(this.timer)
+    }
     this.socket?.close()
     this.socket = undefined
   }
 
   private sendSubscribe(subscription: { workspaceId: string; cursors: Record<string, number> }) {
-    if (this.socket?.readyState !== WebSocket.OPEN) return
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return
+    }
     this.socket.send(JSON.stringify({ type: 'subscribe', ...subscription }))
   }
 
@@ -119,7 +131,9 @@ export class LiveConnection {
 function parseEvent(raw: string): LiveEvent | undefined {
   try {
     const parsed: unknown = JSON.parse(raw)
-    if (typeof parsed !== 'object' || parsed === null) return undefined
+    if (typeof parsed !== 'object' || parsed === null) {
+      return undefined
+    }
     const event = parsed as LiveEvent
     return typeof event.type === 'string' ? event : undefined
   } catch {

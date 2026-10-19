@@ -207,4 +207,10 @@ export default defineConfig([
     languageOptions: { globals: globals.node },
   },
   prettier,
+  {
+    // Every if, else and loop body goes in braces, even a one-liner: `if (x) return`
+    // reads as a fragment and grows bugs when a second line is added. After the
+    // prettier config, which turns `curly` off; with "all" the two do not clash.
+    rules: { curly: ['error', 'all'] },
+  },
 ])

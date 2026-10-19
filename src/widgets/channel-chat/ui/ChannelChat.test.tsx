@@ -69,15 +69,21 @@ const stubApi = (initial: Message[] = [second, first], { lastReadSeq = 0 } = {})
       const url = new URL(request.url)
       const method = request.method
 
-      if (url.pathname.endsWith('/auth/me')) return json(anna)
-      if (url.pathname.endsWith('/members')) return json(members)
+      if (url.pathname.endsWith('/auth/me')) {
+        return json(anna)
+      }
+      if (url.pathname.endsWith('/members')) {
+        return json(members)
+      }
       if (url.pathname.endsWith('/unread')) {
         return json([{ channelId, lastReadSeq, unread: 0, mentions: 0 }])
       }
       if (method === 'PUT' && url.pathname.endsWith('/read')) {
         // The server reads seq as a JSON number; a string would be a 400 there.
         const { seq } = (await request.clone().json()) as { seq: unknown }
-        if (typeof seq !== 'number') return new Response('{}', { status: 400 })
+        if (typeof seq !== 'number') {
+          return new Response('{}', { status: 400 })
+        }
         calls.read.push(seq)
         return json({ channelId, lastReadSeq: seq, unread: 0, mentions: 0 })
       }
@@ -85,7 +91,9 @@ const stubApi = (initial: Message[] = [second, first], { lastReadSeq = 0 } = {})
       if (url.pathname.includes('/reactions/')) {
         const emoji = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf('/') + 1))
         const target = messages.find((message) => url.pathname.includes(message.id))
-        if (!target) return json({})
+        if (!target) {
+          return json({})
+        }
         const reactions =
           method === 'PUT'
             ? [...target.reactions, { emoji, count: 1, reacted: true }]
@@ -97,13 +105,17 @@ const stubApi = (initial: Message[] = [second, first], { lastReadSeq = 0 } = {})
         const body = (await request.clone().json()) as { content: string }
         calls.patched.push(body.content)
         const target = messages.find((message) => url.pathname.includes(message.id))
-        if (!target) return json({})
+        if (!target) {
+          return json({})
+        }
         return json(replace(target, { content: body.content, editedAt: new Date() }))
       }
 
       if (method === 'DELETE' && url.pathname.includes('/messages/')) {
         const target = messages.find((message) => url.pathname.includes(message.id))
-        if (!target) return json({})
+        if (!target) {
+          return json({})
+        }
         calls.deleted.push(target.id)
         return json(replace(target, { content: '', deletedAt: new Date() }))
       }
@@ -156,7 +168,9 @@ const giveViewportSize = () => {
 
 const articleOf = (text: string): HTMLElement => {
   const article = screen.getByText(text).closest('article')
-  if (!(article instanceof HTMLElement)) throw new Error(`no article around ${text}`)
+  if (!(article instanceof HTMLElement)) {
+    throw new Error(`no article around ${text}`)
+  }
   return article
 }
 
@@ -384,7 +398,9 @@ describe('attachments', () => {
     vi.stubGlobal('XMLHttpRequest', FakeXhr)
     const result = renderChat()
     const input = result.container.querySelector('input[type="file"]')
-    if (!(input instanceof HTMLInputElement)) throw new Error('no file input')
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('no file input')
+    }
     return { ...result, input }
   }
 

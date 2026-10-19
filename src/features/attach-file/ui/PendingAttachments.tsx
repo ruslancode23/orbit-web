@@ -10,7 +10,9 @@ interface PendingAttachmentsProps {
 
 /** The files going into the next message, with their progress and a way out. */
 export const PendingAttachments = ({ items, onRemove }: PendingAttachmentsProps) => {
-  if (items.length === 0) return null
+  if (items.length === 0) {
+    return null
+  }
 
   return (
     <ul aria-label="Файлы к сообщению" className="flex flex-col gap-1">

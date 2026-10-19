@@ -34,7 +34,9 @@ export function formatSize(bytes: number | bigint): string {
  */
 export function previewSize(attachment: Attachment): { width: number; height: number } {
   const { width, height } = attachment
-  if (!width || !height) return { width: PREVIEW_MAX.width, height: PREVIEW_MAX.height / 2 }
+  if (!width || !height) {
+    return { width: PREVIEW_MAX.width, height: PREVIEW_MAX.height / 2 }
+  }
   const scale = Math.min(1, PREVIEW_MAX.width / width, PREVIEW_MAX.height / height)
   return { width: Math.round(width * scale), height: Math.round(height * scale) }
 }

@@ -25,10 +25,18 @@ const MAX_BODY = 140
  * never for the channel the person is looking at; the mode decides the rest.
  */
 export function shouldNotify(message: IncomingMessage, context: NotifyContext): boolean {
-  if (context.mode === 'off' || context.myId === undefined) return false
-  if (message.author?.id === context.myId) return false
-  if (message.channelId === context.openChannelId && context.pageVisible) return false
-  if (context.mode === 'mentions') return message.mentions.includes(context.myId)
+  if (context.mode === 'off' || context.myId === undefined) {
+    return false
+  }
+  if (message.author?.id === context.myId) {
+    return false
+  }
+  if (message.channelId === context.openChannelId && context.pageVisible) {
+    return false
+  }
+  if (context.mode === 'mentions') {
+    return message.mentions.includes(context.myId)
+  }
   return true
 }
 
@@ -43,11 +51,19 @@ export function notificationBody(message: IncomingMessage): string {
 
 /** Reads a `message.created` event; anything else, or a payload of another shape, gives undefined. */
 export function incomingMessage(event: LiveEvent): IncomingMessage | undefined {
-  if (event.type !== 'message.created') return undefined
+  if (event.type !== 'message.created') {
+    return undefined
+  }
   const payload = event.payload
-  if (typeof payload !== 'object' || payload === null) return undefined
-  if (!('channelId' in payload) || typeof payload.channelId !== 'string') return undefined
-  if (!('content' in payload) || typeof payload.content !== 'string') return undefined
+  if (typeof payload !== 'object' || payload === null) {
+    return undefined
+  }
+  if (!('channelId' in payload) || typeof payload.channelId !== 'string') {
+    return undefined
+  }
+  if (!('content' in payload) || typeof payload.content !== 'string') {
+    return undefined
+  }
   const mentions =
     'mentions' in payload && Array.isArray(payload.mentions)
       ? payload.mentions.filter((id): id is string => typeof id === 'string')
@@ -62,8 +78,14 @@ export function incomingMessage(event: LiveEvent): IncomingMessage | undefined {
 }
 
 function readAuthor(value: unknown): IncomingMessage['author'] {
-  if (typeof value !== 'object' || value === null) return undefined
-  if (!('id' in value) || typeof value.id !== 'string') return undefined
-  if (!('nickname' in value) || typeof value.nickname !== 'string') return undefined
+  if (typeof value !== 'object' || value === null) {
+    return undefined
+  }
+  if (!('id' in value) || typeof value.id !== 'string') {
+    return undefined
+  }
+  if (!('nickname' in value) || typeof value.nickname !== 'string') {
+    return undefined
+  }
   return { id: value.id, nickname: value.nickname }
 }

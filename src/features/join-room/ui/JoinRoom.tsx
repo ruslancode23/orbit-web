@@ -26,11 +26,15 @@ export const JoinRoom = ({ room }: JoinRoomProps) => {
 
   const handleSubmit = async () => {
     const name = displayName.trim()
-    if (!name || busy) return
+    if (!name || busy) {
+      return
+    }
     const token = await tokenMutation
       .mutateAsync({ body: { room, displayName: name } })
       .catch(() => null)
-    if (token) await join({ url: token.url, token: token.token })
+    if (token) {
+      await join({ url: token.url, token: token.token })
+    }
   }
 
   return (
@@ -86,8 +90,12 @@ export const JoinRoom = ({ room }: JoinRoomProps) => {
 
 const describeTokenError = (error: unknown): string => {
   if (isApiError(error)) {
-    if (error.isNetworkError) return 'Нет соединения с сервером.'
-    if (error.isClientError) return error.message
+    if (error.isNetworkError) {
+      return 'Нет соединения с сервером.'
+    }
+    if (error.isClientError) {
+      return error.message
+    }
   }
   return 'Сервер не смог выдать доступ в комнату. Попробуйте ещё раз.'
 }

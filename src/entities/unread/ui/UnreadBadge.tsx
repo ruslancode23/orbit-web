@@ -14,7 +14,9 @@ interface UnreadBadgeProps extends UnreadTotal {
  * sits in says the same in words (`describeUnread`) in its accessible name.
  */
 export const UnreadBadge = ({ unread, mentions, compact = false, className }: UnreadBadgeProps) => {
-  if (unread === 0 && mentions === 0) return null
+  if (unread === 0 && mentions === 0) {
+    return null
+  }
 
   const mentionPill = mentions > 0 && (
     <span className="min-w-5 rounded-full bg-danger px-1.5 text-center text-xs leading-5 font-semibold text-accent-fg">

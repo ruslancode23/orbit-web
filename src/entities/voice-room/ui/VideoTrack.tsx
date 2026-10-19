@@ -13,7 +13,9 @@ export const VideoTrack = ({ track, className, ...props }: VideoTrackProps) => {
   const [element, setElement] = useState<HTMLVideoElement | null>(null)
 
   useEffect(() => {
-    if (!element) return
+    if (!element) {
+      return
+    }
     track.attach(element)
     return () => {
       track.detach(element)

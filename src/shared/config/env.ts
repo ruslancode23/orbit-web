@@ -9,7 +9,9 @@ function required(name: string): string {
 /** A positive whole number from the environment, or the fallback when it is not set. */
 function positiveInteger(name: string, fallback: number): number {
   const value: unknown = import.meta.env[name]
-  if (typeof value !== 'string' || value === '') return fallback
+  if (typeof value !== 'string' || value === '') {
+    return fallback
+  }
   const parsed = Number(value)
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new Error(`Environment variable ${name} must be a positive integer, got ${value}.`)

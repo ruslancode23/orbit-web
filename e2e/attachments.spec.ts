@@ -76,7 +76,9 @@ test('a file over the limit is refused before it is sent', async ({ page }) => {
   await openChannel(page)
   const uploads: string[] = []
   page.on('request', (request) => {
-    if (request.url().includes('/attachments')) uploads.push(request.url())
+    if (request.url().includes('/attachments')) {
+      uploads.push(request.url())
+    }
   })
 
   await fileInput(page).setInputFiles({

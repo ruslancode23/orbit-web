@@ -28,11 +28,21 @@ export function rejectReason(file: File, maxBytes = env.maxUploadBytes): string 
 }
 
 function describeUploadError(error: unknown): string {
-  if (!isApiError(error)) return 'Не получилось загрузить файл.'
-  if (error.isNetworkError) return 'Нет соединения с сервером.'
-  if (error.status === 413) return 'Файл больше, чем принимает сервер.'
-  if (error.status === 415) return 'Такой тип файла не принимается.'
-  if (error.status === 403) return 'В этом канале нельзя прикладывать файлы.'
+  if (!isApiError(error)) {
+    return 'Не получилось загрузить файл.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (error.status === 413) {
+    return 'Файл больше, чем принимает сервер.'
+  }
+  if (error.status === 415) {
+    return 'Такой тип файла не принимается.'
+  }
+  if (error.status === 403) {
+    return 'В этом канале нельзя прикладывать файлы.'
+  }
   return 'Не получилось загрузить файл.'
 }
 
@@ -53,7 +63,9 @@ export function useAttachmentUploads(channelId: string) {
   useEffect(() => {
     const controllers = controllersRef.current
     return () => {
-      for (const controller of controllers.values()) controller.abort()
+      for (const controller of controllers.values()) {
+        controller.abort()
+      }
       controllers.clear()
       setItems([])
     }
@@ -86,7 +98,9 @@ export function useAttachmentUploads(channelId: string) {
       (error: unknown) => {
         controllersRef.current.delete(key)
         // A cancelled upload has already left the list.
-        if (isAbort(error)) return
+        if (isAbort(error)) {
+          return
+        }
         update(key, (item) => ({
           key: item.key,
           file: item.file,

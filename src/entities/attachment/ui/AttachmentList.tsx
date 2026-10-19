@@ -17,7 +17,9 @@ interface AttachmentListProps {
 
 /** The files of one message: images as previews, everything else as a download. */
 export const AttachmentList = ({ attachments }: AttachmentListProps) => {
-  if (attachments.length === 0) return null
+  if (attachments.length === 0) {
+    return null
+  }
   return (
     <ul aria-label="Вложения" className="mt-1 flex flex-wrap gap-2">
       {attachments.map((attachment) => (
@@ -44,7 +46,9 @@ const Unavailable = ({ attachment }: { attachment: Attachment }) => {
 
 const FileAttachment = ({ attachment }: { attachment: Attachment }) => {
   const { data: link, isError } = useAttachmentLink(attachment.id)
-  if (isError) return <Unavailable attachment={attachment} />
+  if (isError) {
+    return <Unavailable attachment={attachment} />
+  }
 
   return (
     <div className="flex items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
@@ -77,7 +81,9 @@ const ImageAttachment = ({ attachment }: { attachment: Attachment }) => {
   const [broken, setBroken] = useState(false)
   const size = previewSize(attachment)
 
-  if (isError || broken) return <Unavailable attachment={attachment} />
+  if (isError || broken) {
+    return <Unavailable attachment={attachment} />
+  }
   if (!link) {
     return (
       <div

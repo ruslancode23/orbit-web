@@ -38,7 +38,9 @@ export function setNotificationMode(mode: NotificationMode): void {
   } catch {
     // Not remembered across reloads; memoryMode keeps it for this page.
   }
-  for (const listener of listeners) listener()
+  for (const listener of listeners) {
+    listener()
+  }
 }
 
 const subscribe = (listener: () => void) => {

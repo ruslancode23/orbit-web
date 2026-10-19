@@ -62,6 +62,8 @@ src/shared    → ui, lib, api, config — без бизнес-логики
   поля для отрисовки — `useWatch`, а не `watch()`: с `watch` React Compiler пропускает компонент. Свой
   `ref` на поле совмещай с `register(...).ref` в одном callback-ref. Состояние не формы (открыт ли
   попап, где каретка) остаётся в `useState`.
+- Тело `if`, `else`, циклов — всегда в фигурных скобках, даже одна строка: `if (x) return` в одну строку
+  не пишем (`curly: all` в ESLint, `pnpm lint:fix` расставит сам).
 - `import type` для типов. Без `any`, без `as` ради обхода типов, без `// @ts-ignore` и `eslint-disable`.
 - Обращения к ОС и браузерным API (уведомления, устройства, захват экрана, автозапуск) — только через
   `getPlatform()` из `@/shared/platform` (`PlatformAdapter`). Компоненты не вызывают Tauri и браузерные API

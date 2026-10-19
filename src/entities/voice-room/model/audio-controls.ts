@@ -25,13 +25,17 @@ export function useAudioControls(room: Room | null) {
 
   // LiveKit keeps the volume per participant and applies it to tracks subscribed later.
   useEffect(() => {
-    if (!room) return
+    if (!room) {
+      return
+    }
     const apply = (participant: RemoteParticipant) => {
       const volume = isDeafened ? 0 : (volumes.get(participant.identity) ?? 1)
       participant.setVolume(volume, Track.Source.Microphone)
       participant.setVolume(isDeafened ? 0 : 1, Track.Source.ScreenShareAudio)
     }
-    for (const participant of room.remoteParticipants.values()) apply(participant)
+    for (const participant of room.remoteParticipants.values()) {
+      apply(participant)
+    }
     room.on(RoomEvent.ParticipantConnected, apply)
     return () => {
       room.off(RoomEvent.ParticipantConnected, apply)
@@ -39,11 +43,15 @@ export function useAudioControls(room: Room | null) {
   }, [room, isDeafened, volumes])
 
   useEffect(() => {
-    if (!room) return
+    if (!room) {
+      return
+    }
     const publish = () => {
       const { localParticipant } = room
       const published = localParticipant.attributes[DEAFENED_ATTRIBUTE] === 'true'
-      if (published === isDeafened) return
+      if (published === isDeafened) {
+        return
+      }
       // Without the permission in the token others just do not see it; local deafen still works.
       localParticipant
         .setAttributes({ [DEAFENED_ATTRIBUTE]: String(isDeafened) })
@@ -59,7 +67,9 @@ export function useAudioControls(room: Room | null) {
 
   const setDeafened = useCallback(
     async (deafened: boolean) => {
-      if (!room) return
+      if (!room) {
+        return
+      }
       const { localParticipant } = room
       setIsDeafened(deafened)
       if (deafened) {
@@ -74,9 +84,13 @@ export function useAudioControls(room: Room | null) {
 
   const setMicrophoneMuted = useCallback(
     async (muted: boolean) => {
-      if (!room) return
+      if (!room) {
+        return
+      }
       // Speaking while hearing nobody makes no sense.
-      if (!muted) setIsDeafened(false)
+      if (!muted) {
+        setIsDeafened(false)
+      }
       await room.localParticipant.setMicrophoneEnabled(!muted)
     },
     [room],

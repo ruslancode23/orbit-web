@@ -9,5 +9,7 @@ export default async function globalSetup() {
   const ready = await fetch(`${API_URL}/readyz`).catch((error: unknown) => {
     throw fail(String(error))
   })
-  if (!ready.ok) throw fail(`readyz answered ${String(ready.status)}`)
+  if (!ready.ok) {
+    throw fail(`readyz answered ${String(ready.status)}`)
+  }
 }

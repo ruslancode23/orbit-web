@@ -150,9 +150,17 @@ export const ManageMembers = ({ workspaceId, role }: ManageMembersProps) => {
 }
 
 const describeError = (error: unknown): string => {
-  if (!isApiError(error)) return 'Не получилось изменить участника.'
-  if (error.isNetworkError) return 'Нет соединения с сервером.'
-  if (error.status === 403) return 'Для этого не хватает прав.'
-  if (error.status === 400) return 'Сервер всегда должен остаться с владельцем.'
+  if (!isApiError(error)) {
+    return 'Не получилось изменить участника.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (error.status === 403) {
+    return 'Для этого не хватает прав.'
+  }
+  if (error.status === 400) {
+    return 'Сервер всегда должен остаться с владельцем.'
+  }
   return 'Не получилось изменить участника.'
 }

@@ -82,12 +82,16 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
 
   // Someone reading older messages must not be yanked back down by a new one.
   useEffect(() => {
-    if (atBottom) virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+    if (atBottom) {
+      virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+    }
   }, [messages.length, atBottom, virtualizer])
 
   // The mark on a jumped-to message is temporary.
   useEffect(() => {
-    if (highlightedId === undefined) return undefined
+    if (highlightedId === undefined) {
+      return undefined
+    }
     const timer = setTimeout(() => {
       setHighlightedId(undefined)
     }, HIGHLIGHT_MS)
@@ -106,7 +110,9 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
 
   const jumpTo = (messageId: string) => {
     const index = messages.findIndex((message) => message.id === messageId)
-    if (index === -1) return
+    if (index === -1) {
+      return
+    }
     virtualizer.scrollToIndex(index, { align: 'center' })
     setHighlightedId(messageId)
   }
@@ -176,7 +182,9 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite }: ChannelChatPro
         >
           {virtualizer.getVirtualItems().map((row) => {
             const message = messages[row.index]
-            if (!message) return null
+            if (!message) {
+              return null
+            }
             const replyTarget =
               message.replyToId === undefined
                 ? undefined

@@ -12,7 +12,9 @@ export class FakeXhr {
 
   static last(): FakeXhr {
     const request = FakeXhr.instances.at(-1)
-    if (!request) throw new Error('no XMLHttpRequest was created')
+    if (!request) {
+      throw new Error('no XMLHttpRequest was created')
+    }
     return request
   }
 

@@ -9,8 +9,12 @@ export type { Message }
 const GROUP_WINDOW_MS = 5 * 60 * 1000
 
 export function startsNewGroup(message: Message, previous: Message | undefined): boolean {
-  if (!previous) return true
-  if (previous.author?.id !== message.author?.id) return true
+  if (!previous) {
+    return true
+  }
+  if (previous.author?.id !== message.author?.id) {
+    return true
+  }
   const gap = message.createdAt.getTime() - previous.createdAt.getTime()
   return gap > GROUP_WINDOW_MS
 }
@@ -27,7 +31,9 @@ export function authorName(message: Message): string {
 
 /** A one-line version of a message for a reply preview. */
 export function messagePreview(message: Message, limit = 120): string {
-  if (message.deletedAt !== undefined) return 'Сообщение удалено'
+  if (message.deletedAt !== undefined) {
+    return 'Сообщение удалено'
+  }
   const content = message.content.replace(/\s+/g, ' ').trim()
   // A message of files alone is previewed by their names.
   const files = message.attachments?.map((file) => file.fileName).join(', ') ?? ''
@@ -59,7 +65,9 @@ function mentions(content: string, token: string): boolean {
   let from = content.indexOf(token)
   while (from !== -1) {
     const next = content.charAt(from + token.length)
-    if (next === '' || !/[\p{L}\p{N}_]/u.test(next)) return true
+    if (next === '' || !/[\p{L}\p{N}_]/u.test(next)) {
+      return true
+    }
     from = content.indexOf(token, from + 1)
   }
   return false

@@ -13,7 +13,9 @@ export function useFileDrop(onFiles: (files: File[]) => void) {
     dragging,
     dropProps: {
       onDragOver: (event: DragEvent) => {
-        if (!carriesFiles(event)) return
+        if (!carriesFiles(event)) {
+          return
+        }
         event.preventDefault()
         event.dataTransfer.dropEffect = 'copy'
         setDragging(true)
@@ -21,11 +23,15 @@ export function useFileDrop(onFiles: (files: File[]) => void) {
       onDragLeave: (event: DragEvent) => {
         // Moving onto a child fires a leave too; only leaving the area counts.
         const next = event.relatedTarget
-        if (next instanceof Node && event.currentTarget.contains(next)) return
+        if (next instanceof Node && event.currentTarget.contains(next)) {
+          return
+        }
         setDragging(false)
       },
       onDrop: (event: DragEvent) => {
-        if (!carriesFiles(event)) return
+        if (!carriesFiles(event)) {
+          return
+        }
         event.preventDefault()
         setDragging(false)
         onFiles([...event.dataTransfer.files])

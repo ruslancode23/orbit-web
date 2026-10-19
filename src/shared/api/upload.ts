@@ -51,7 +51,9 @@ export function uploadAttachmentWithProgress({
     }
 
     request.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) onProgress?.({ loaded: event.loaded, total: event.total })
+      if (event.lengthComputable) {
+        onProgress?.({ loaded: event.loaded, total: event.total })
+      }
     })
     request.addEventListener('abort', () => {
       done()
@@ -96,7 +98,9 @@ function parseJson(text: string): unknown {
 
 // toApiError hands back ApiError for every failed response; this only satisfies the type.
 function asError(error: unknown, status: number): Error {
-  if (error instanceof Error) return error
+  if (error instanceof Error) {
+    return error
+  }
   return new ApiError({
     status,
     code: CLIENT_ERROR_CODES.http,

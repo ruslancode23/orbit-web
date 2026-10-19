@@ -15,7 +15,9 @@ export const AttachButton = ({ onFiles, disabled = false }: AttachButtonProps) =
     const files = [...(event.target.files ?? [])]
     // Picking the same file again must fire a change again.
     event.target.value = ''
-    if (files.length > 0) onFiles(files)
+    if (files.length > 0) {
+      onFiles(files)
+    }
   }
 
   return (

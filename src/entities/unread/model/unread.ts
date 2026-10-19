@@ -103,11 +103,17 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
     : undefined
 
   useEffect(() => {
-    if (!viewing || newestSeq === undefined || lastReadSeq === undefined) return
-    if (newestSeq <= lastReadSeq) return
+    if (!viewing || newestSeq === undefined || lastReadSeq === undefined) {
+      return
+    }
+    if (newestSeq <= lastReadSeq) {
+      return
+    }
     // One request per new message, not one per render while it is in flight.
     const sent = sentRef.current
-    if (sent?.channelId === channelId && sent.seq >= newestSeq) return
+    if (sent?.channelId === channelId && sent.seq >= newestSeq) {
+      return
+    }
     sentRef.current = { channelId, seq: newestSeq }
     mutate({ path: { channelId }, body: { seq: newestSeq } })
   }, [viewing, newestSeq, lastReadSeq, channelId, mutate])

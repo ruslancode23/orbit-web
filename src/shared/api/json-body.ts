@@ -6,7 +6,9 @@
  */
 export function serializeJsonBody(body: unknown): string {
   return JSON.stringify(body, (_key, value: unknown) => {
-    if (typeof value !== 'bigint') return value
+    if (typeof value !== 'bigint') {
+      return value
+    }
     if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < BigInt(Number.MIN_SAFE_INTEGER)) {
       throw new RangeError(`${String(value)} does not fit a JSON number exactly`)
     }

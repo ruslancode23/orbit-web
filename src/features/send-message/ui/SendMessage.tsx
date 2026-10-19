@@ -148,10 +148,14 @@ export const SendMessage = ({
   // at the end of the whole text.
   useLayoutEffect(() => {
     const position = caretRef.current
-    if (position === null) return
+    if (position === null) {
+      return
+    }
     caretRef.current = null
     const field = fieldRef.current
-    if (!field) return
+    if (!field) {
+      return
+    }
     field.focus()
     field.setSelectionRange(position, position)
   })
@@ -188,7 +192,9 @@ export const SendMessage = ({
     (content !== '' || attachmentIds.length > 0) && !attachmentsBusy && !send.isPending
 
   const handleSubmit = () => {
-    if (!canSend) return
+    if (!canSend) {
+      return
+    }
     reset()
     setCaret(0)
     setDismissed(true)
@@ -203,14 +209,18 @@ export const SendMessage = ({
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const files = [...event.clipboardData.files]
-    if (files.length === 0 || !onPasteFiles) return
+    if (files.length === 0 || !onPasteFiles) {
+      return
+    }
     // A pasted screenshot goes in as a file, not as its name in the text.
     event.preventDefault()
     onPasteFiles(files)
   }
 
   const choose = (person: User) => {
-    if (!mention) return
+    if (!mention) {
+      return
+    }
     const before = text.slice(0, mention.start)
     const after = text.slice(caret)
     const inserted = `@${person.nickname} `
@@ -233,7 +243,9 @@ export const SendMessage = ({
       }
       if (event.key === 'Enter' || event.key === 'Tab') {
         event.preventDefault()
-        if (activePerson) choose(activePerson)
+        if (activePerson) {
+          choose(activePerson)
+        }
         return
       }
       if (event.key === 'Escape') {
@@ -363,14 +375,22 @@ const optionId = (listId: string, person: User): string => {
 const mentionQueryAt = (value: string, caret: number): MentionQuery | null => {
   const before = value.slice(0, caret)
   const match = /(?:^|\s)@([^\s@]*)$/u.exec(before)
-  if (!match) return null
+  if (!match) {
+    return null
+  }
   const query = match[1] ?? ''
   return { start: before.length - query.length - 1, query }
 }
 
 const describeError = (error: unknown): string => {
-  if (!isApiError(error)) return 'Сообщение не отправилось.'
-  if (error.isNetworkError) return 'Нет соединения с сервером.'
-  if (error.status === 403) return 'В этом канале вы не можете писать.'
+  if (!isApiError(error)) {
+    return 'Сообщение не отправилось.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (error.status === 403) {
+    return 'В этом канале вы не можете писать.'
+  }
   return 'Сообщение не отправилось.'
 }
