@@ -5,6 +5,14 @@ import { useNavigate } from 'react-router'
 import { useCreateWorkspace } from '@/entities/workspace'
 import { isApiError } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@/shared/ui/dialog'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
@@ -22,66 +30,69 @@ export const CreateWorkspace = () => {
     defaultValues: { name: '' },
   })
 
+  const changeOpen = (next: boolean) => {
+    setOpen(next)
+    if (!next) {
+      reset()
+      create.reset()
+    }
+  }
+
   const submit = handleSubmit(async (values) => {
     const membership = await create
       .mutateAsync({ body: { name: values.name.trim() } })
       .catch(() => null)
     if (!membership) return
-    reset()
-    setOpen(false)
+    changeOpen(false)
     await navigate(`/s/${membership.workspace.id}`)
   })
 
-  if (!open) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Создать сервер"
-        title="Создать сервер"
-        onClick={() => {
-          setOpen(true)
-        }}
-      >
-        +
-      </Button>
-    )
-  }
-
   return (
-    <form
-      className="flex w-48 flex-col gap-2 rounded-md bg-surface p-2"
-      onSubmit={(event) => {
-        void submit(event)
-      }}
-    >
-      <Label htmlFor={nameId}>Название сервера</Label>
-      <Input
-        id={nameId}
-        maxLength={64}
-        aria-invalid={formState.errors.name ? true : undefined}
-        {...register('name', { required: true, validate: (value) => value.trim().length > 0 })}
-      />
-      {create.error && (
-        <p role="alert" className="text-sm text-danger">
-          {describeError(create.error)}
-        </p>
-      )}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={create.isPending}>
-          Создать
+    <Dialog open={open} onOpenChange={changeOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Создать сервер" title="Создать сервер">
+          +
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setOpen(false)
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>Создать сервер</DialogTitle>
+        <DialogDescription>Вы станете его владельцем.</DialogDescription>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            void submit(event)
           }}
         >
-          Отмена
-        </Button>
-      </div>
-    </form>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={nameId}>Название сервера</Label>
+            <Input
+              id={nameId}
+              maxLength={64}
+              aria-invalid={formState.errors.name ? true : undefined}
+              {...register('name', {
+                required: true,
+                validate: (value) => value.trim().length > 0,
+              })}
+            />
+          </div>
+          {create.error && (
+            <p role="alert" className="text-sm text-danger">
+              {describeError(create.error)}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Отмена
+              </Button>
+            </DialogClose>
+            <Button type="submit" disabled={create.isPending}>
+              Создать
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
