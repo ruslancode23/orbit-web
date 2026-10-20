@@ -154,7 +154,7 @@ it('shows the servers, the channels and the open channel', async () => {
   renderShell()
 
   expect(await screen.findByRole('link', { name: '# общий' })).toBeInTheDocument()
-  expect(screen.getByText('Команда Orbit')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Команда Orbit', level: 2 })).toBeInTheDocument()
   expect(screen.getByText('содержимое канала')).toBeInTheDocument()
   expect(screen.getByRole('navigation', { name: 'Серверы' })).toBeInTheDocument()
 })

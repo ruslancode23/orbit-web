@@ -88,7 +88,7 @@ const ChannelHeader = ({ channel, canInvite, onInvite, voice = false }: ChannelH
   const Icon = voice ? SpeakerIcon : HashIcon
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 max-lg:pl-14">
       <Icon className="size-5 shrink-0 text-fg-muted" />
       <h1
         aria-label={voice ? (channel?.name ?? '…') : `# ${channel?.name ?? '…'}`}

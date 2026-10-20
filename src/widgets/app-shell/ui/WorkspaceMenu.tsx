@@ -46,7 +46,7 @@ export const WorkspaceMenu = ({
         <WorkspaceAvatar
           name={workspace.name}
           iconUrl={workspace.iconUrl}
-          colorKey={workspace.id}
+          colorKey={workspace.name}
           size="sm"
           decorative
         />

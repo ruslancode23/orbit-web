@@ -214,6 +214,12 @@ export const SignalIcon = (props: IconProps) => (
   </Icon>
 )
 
+export const MenuIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 6h16M4 12h16M4 18h16" />
+  </Icon>
+)
+
 export const CheckIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="m5 13 4 4L19 7" />

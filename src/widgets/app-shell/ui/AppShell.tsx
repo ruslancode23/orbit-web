@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useParams } from 'react-router'
 
 import { useLive } from '@/entities/live'
@@ -5,7 +6,9 @@ import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
 import { useMessageNotifications } from '@/features/notifications'
-import { PlusIcon } from '@/shared/ui/icon'
+import { cn } from '@/shared/lib/cn'
+import { MenuIcon, PlusIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Tooltip } from '@/shared/ui/tooltip'
 
@@ -16,6 +19,12 @@ import { UserPanel } from './UserPanel'
 import { VoicePanel } from './VoicePanel'
 import { VoiceStage } from './VoiceStage'
 import { WorkspaceMenu } from './WorkspaceMenu'
+import {
+  setChannelSidebarOpen,
+  toggleChannelSidebar,
+  useChannelSidebarOpen,
+} from '../model/channel-sidebar'
+import { useVoiceShortcuts } from '../model/use-voice-shortcuts'
 
 /**
  * The frame every signed-in page sits in: the servers on the left, the channels
@@ -42,12 +51,34 @@ const Shell = () => {
   const { membership } = useWorkspace(workspaceId)
   const { watch } = useLive()
   const { activeChannel } = useVoiceRoom()
+  const channelSidebarOpen = useChannelSidebarOpen()
 
   // One socket for the app; changing servers only changes what it watches.
   if (workspaceId) {
     watch(workspaceId)
   }
   useMessageNotifications({ workspaceId, channelId })
+  useVoiceShortcuts()
+
+  // A narrow screen closes the sliding channel column on Esc and after a move.
+  useEffect(() => {
+    if (!channelSidebarOpen) {
+      return
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setChannelSidebarOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [channelSidebarOpen])
+
+  useEffect(() => {
+    setChannelSidebarOpen(false)
+  }, [workspaceId, channelId, activeChannel?.id])
 
   const canManage = atLeast(membership?.role, 'admin')
   // A member may be allowed to by the server's own settings.
@@ -79,9 +110,23 @@ const Shell = () => {
         </Tooltip>
       </nav>
 
+      {channelSidebarOpen && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-30 bg-bg/70 lg:hidden"
+          onClick={() => {
+            setChannelSidebarOpen(false)
+          }}
+        />
+      )}
+
       <aside
         aria-label="Каналы"
-        className="flex min-h-0 w-64 shrink-0 flex-col border-r border-border"
+        className={cn(
+          'flex min-h-0 w-64 shrink-0 flex-col border-r border-border bg-bg',
+          'max-lg:fixed max-lg:inset-y-0 max-lg:left-16 max-lg:z-40 max-lg:w-72 max-lg:shadow-popover',
+          channelSidebarOpen ? 'max-lg:flex' : 'max-lg:hidden',
+        )}
       >
         {isPending ? (
           <div role="status" aria-label="Загружаем сервер" className="flex flex-col gap-2 p-3">
@@ -122,7 +167,14 @@ const Shell = () => {
         </div>
       </aside>
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <IconButton
+          label="Каналы"
+          onClick={toggleChannelSidebar}
+          className="absolute top-2 left-2 z-20 bg-surface shadow-popover lg:hidden"
+        >
+          <MenuIcon />
+        </IconButton>
         <ConnectionStatus />
         <CreationNotice />
         <VoiceStage />

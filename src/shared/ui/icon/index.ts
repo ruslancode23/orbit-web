@@ -10,6 +10,7 @@ export {
   HeadphonesOffIcon,
   LinkIcon,
   LogOutIcon,
+  MenuIcon,
   MicIcon,
   MicOffIcon,
   MoreIcon,

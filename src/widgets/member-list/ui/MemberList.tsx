@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+
 import { useChannels } from '@/entities/channel'
 import { initials } from '@/entities/participant'
 import { useSession } from '@/entities/session'
@@ -25,12 +27,14 @@ import {
   ScreenIcon,
   SpeakerIcon,
   VolumeIcon,
+  XIcon,
 } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Slider } from '@/shared/ui/slider'
 
-import { useMemberPanelOpen } from '../model/member-panel'
+import { setMemberPanelOpen, useMemberPanelOpen } from '../model/member-panel'
 
 /** Where a member is in voice and what they are doing there. */
 interface VoiceState {
@@ -66,6 +70,23 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
   const { data: presence } = useVoicePresence(workspaceId)
   const { activeChannel, participants, screenShares, setParticipantVolume } = useVoiceRoom()
   const moderation = useMemberModeration(workspaceId)
+
+  // On a narrow screen the column is a drawer over the chat: Esc or the X closes it.
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !window.matchMedia('(max-width: 1023px)').matches) {
+        return
+      }
+      setMemberPanelOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
 
   if (!open) {
     return null
@@ -153,94 +174,115 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
   }
 
   return (
-    <aside
-      aria-label="Участники"
-      className="flex w-60 shrink-0 flex-col overflow-y-auto border-l border-border bg-bg max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-40 max-lg:w-72 max-lg:shadow-popover"
-    >
-      {voiceCount > 0 && (
-        <section aria-label="В голосе" className="flex flex-col gap-2 border-b border-border p-2">
-          <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
-            В голосе — {voiceCount}
-          </h2>
-          {voiceRooms
-            .filter((room) => room.states.length > 0)
-            .map((room) => (
-              <div key={room.channelId} className="flex flex-col gap-0.5">
-                <p className="flex items-center gap-1 px-1 text-xs text-fg-muted">
-                  <SpeakerIcon className="size-3" />
-                  <span className="truncate">{room.channelName}</span>
-                </p>
-                <ul aria-label={`В голосе: ${room.channelName}`}>
-                  {room.states.map((state) => {
-                    const member = members?.find((item) => item.user.id === state.identity)
-                    return (
-                      <li key={state.identity}>
-                        <MemberRow
-                          member={member}
-                          name={member?.user.nickname ?? state.name}
-                          voice={state}
-                          workspaceId={workspaceId}
-                          memberRole={role}
-                          myId={myId}
-                          {...volumeProps(state.identity)}
-                          moderation={moderation}
-                        />
-                      </li>
-                    )
-                  })}
-                </ul>
+    <>
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-30 bg-bg/70 lg:hidden"
+        onClick={() => {
+          setMemberPanelOpen(false)
+        }}
+      />
+      <aside
+        aria-label="Участники"
+        className="flex w-60 shrink-0 flex-col overflow-y-auto border-l border-border bg-bg max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-40 max-lg:w-72 max-lg:shadow-popover"
+      >
+        <div className="flex shrink-0 items-center justify-between p-2 lg:hidden">
+          <h2 className="text-sm font-semibold">Участники</h2>
+          <IconButton
+            label="Скрыть участников"
+            size="sm"
+            onClick={() => {
+              setMemberPanelOpen(false)
+            }}
+          >
+            <XIcon className="size-3.5" />
+          </IconButton>
+        </div>
+        {voiceCount > 0 && (
+          <section aria-label="В голосе" className="flex flex-col gap-2 border-b border-border p-2">
+            <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
+              В голосе — {voiceCount}
+            </h2>
+            {voiceRooms
+              .filter((room) => room.states.length > 0)
+              .map((room) => (
+                <div key={room.channelId} className="flex flex-col gap-0.5">
+                  <p className="flex items-center gap-1 px-1 text-xs text-fg-muted">
+                    <SpeakerIcon className="size-3" />
+                    <span className="truncate">{room.channelName}</span>
+                  </p>
+                  <ul aria-label={`В голосе: ${room.channelName}`}>
+                    {room.states.map((state) => {
+                      const member = members?.find((item) => item.user.id === state.identity)
+                      return (
+                        <li key={state.identity}>
+                          <MemberRow
+                            member={member}
+                            name={member?.user.nickname ?? state.name}
+                            voice={state}
+                            workspaceId={workspaceId}
+                            memberRole={role}
+                            myId={myId}
+                            {...volumeProps(state.identity)}
+                            moderation={moderation}
+                          />
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+          </section>
+        )}
+
+        {members === undefined ? (
+          <div role="status" aria-label="Загружаем участников" className="flex flex-col gap-2 p-3">
+            {[0, 1, 2, 3, 4].map((row) => (
+              <div key={row} className="flex items-center gap-2">
+                <Skeleton className="size-6 shrink-0 rounded-full" />
+                <Skeleton className="h-3 w-32" />
               </div>
             ))}
-        </section>
-      )}
-
-      {members === undefined ? (
-        <div role="status" aria-label="Загружаем участников" className="flex flex-col gap-2 p-3">
-          {[0, 1, 2, 3, 4].map((row) => (
-            <div key={row} className="flex items-center gap-2">
-              <Skeleton className="size-6 shrink-0 rounded-full" />
-              <Skeleton className="h-3 w-32" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        ROLE_GROUPS.map((group) => {
-          const rows = members
-            .filter((member) => member.role === group.role)
-            .sort((a, b) => a.user.nickname.localeCompare(b.user.nickname, 'ru'))
-          if (rows.length === 0) {
-            return null
-          }
-          return (
-            <section
-              key={group.role}
-              aria-label={group.title}
-              className="flex flex-col gap-0.5 p-2 pb-0 last:pb-2"
-            >
-              <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
-                {group.title} — {rows.length}
-              </h2>
-              <ul>
-                {rows.map((member) => (
-                  <li key={member.user.id}>
-                    <MemberRow
-                      member={member}
-                      name={member.user.nickname}
-                      voice={voiceStates.get(member.user.id)}
-                      workspaceId={workspaceId}
-                      memberRole={role}
-                      myId={myId}
-                      {...volumeProps(member.user.id)}
-                      moderation={moderation}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        })
-      )}
-    </aside>
+          </div>
+        ) : (
+          ROLE_GROUPS.map((group) => {
+            const rows = members
+              .filter((member) => member.role === group.role)
+              .sort((a, b) => a.user.nickname.localeCompare(b.user.nickname, 'ru'))
+            if (rows.length === 0) {
+              return null
+            }
+            return (
+              <section
+                key={group.role}
+                aria-label={group.title}
+                className="flex flex-col gap-0.5 p-2 pb-0 last:pb-2"
+              >
+                <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
+                  {group.title} — {rows.length}
+                </h2>
+                <ul>
+                  {rows.map((member) => (
+                    <li key={member.user.id}>
+                      <MemberRow
+                        member={member}
+                        name={member.user.nickname}
+                        voice={voiceStates.get(member.user.id)}
+                        workspaceId={workspaceId}
+                        memberRole={role}
+                        myId={myId}
+                        {...volumeProps(member.user.id)}
+                        moderation={moderation}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )
+          })
+        )}
+      </aside>
+    </>
   )
 }
 
@@ -278,7 +320,6 @@ const MemberRow = ({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={name}
           className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
         >
           <span

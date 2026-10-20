@@ -2,12 +2,23 @@ import { useSyncExternalStore } from 'react'
 
 const STORAGE_KEY = 'orbit.members.open'
 
+/**
+ * Wide screens show the members by default; a phone starts with the chat and
+ * opens the column when asked. A choice once made on this device wins.
+ */
 const readOpen = (): boolean => {
   try {
-    return localStorage.getItem(STORAGE_KEY) !== 'false'
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored !== null) {
+      return stored !== 'false'
+    }
   } catch {
+    // Storage blocked: fall through to the screen size.
+  }
+  if (typeof window.matchMedia !== 'function') {
     return true
   }
+  return window.matchMedia('(min-width: 1024px)').matches
 }
 
 let open = readOpen()

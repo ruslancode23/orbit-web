@@ -17,6 +17,8 @@ import { ChevronDownIcon, HashIcon, LinkIcon, SettingsIcon } from '@/shared/ui/i
 import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 
+import { setChannelSidebarOpen } from '../model/channel-sidebar'
+
 interface ChannelListProps {
   workspaceId: string
   /** The text channel the reader is in; its own count would only flicker. */
@@ -117,6 +119,9 @@ export const ChannelList = ({
                     <li key={channel.id} className="group/row relative">
                       <NavLink
                         to={`/s/${workspaceId}/${channel.id}`}
+                        onClick={() => {
+                          setChannelSidebarOpen(false)
+                        }}
                         aria-label={
                           description ? `# ${channel.name}, ${description}` : `# ${channel.name}`
                         }
