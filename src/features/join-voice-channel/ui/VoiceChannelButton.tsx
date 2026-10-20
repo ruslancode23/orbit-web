@@ -1,5 +1,6 @@
 import { isApiError, type Channel } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
+import { SpeakerIcon } from '@/shared/ui/icon'
 
 import { VoiceChannelMembers } from './VoiceChannelMembers'
 import { useVoiceChannel } from '../model/useVoiceChannel'
@@ -32,7 +33,7 @@ export const VoiceChannelButton = ({ channel, members = [] }: VoiceChannelButton
           void connect(channel)
         }}
       >
-        <span aria-hidden="true">🔊</span>
+        <SpeakerIcon className={active ? 'shrink-0 text-success' : 'shrink-0'} />
         <span className="min-w-0 truncate">{channel.name}</span>
         {active && <span className="ml-auto text-xs text-success">в эфире</span>}
       </Button>

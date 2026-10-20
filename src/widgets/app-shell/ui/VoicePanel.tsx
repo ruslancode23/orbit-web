@@ -11,6 +11,7 @@ import {
   HeadphonesOffIcon,
   MicIcon,
   MicOffIcon,
+  SpeakerIcon,
   VolumeIcon,
 } from '@/shared/ui/icon'
 import { Slider } from '@/shared/ui/slider'
@@ -58,9 +59,9 @@ export const VoicePanel = () => {
       className="flex max-h-96 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-surface p-2"
     >
       <header className="flex items-baseline justify-between gap-2">
-        <h3 className="min-w-0 truncate text-sm font-semibold">
-          <span aria-hidden="true">🔊 </span>
-          {activeChannel.name}
+        <h3 className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold">
+          <SpeakerIcon className="shrink-0 text-success" />
+          <span className="truncate">{activeChannel.name}</span>
         </h3>
         <span className="shrink-0 text-xs text-fg-muted">{STATUS_TEXT[status] ?? ''}</span>
       </header>

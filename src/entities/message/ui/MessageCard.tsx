@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/cn'
+import { ReplyIcon } from '@/shared/ui/icon'
 
 import { MessageText } from './MessageText'
 import { authorName, formatTime, messagePreview, type Message } from '../model/message'
@@ -73,13 +74,14 @@ export const MessageCard = ({
               onJumpTo?.(replyTo.id)
             }}
           >
-            <span aria-hidden="true">↩</span>
+            <ReplyIcon className="size-3 shrink-0" />
             <span className="font-medium">{authorName(replyTo)}</span>
             <span className="truncate">{messagePreview(replyTo)}</span>
           </button>
         ) : (
-          <p className="text-xs text-fg-muted">
-            <span aria-hidden="true">↩ </span>Ответ на сообщение
+          <p className="flex items-center gap-1 text-xs text-fg-muted">
+            <ReplyIcon className="size-3" />
+            Ответ на сообщение
           </p>
         ))}
 

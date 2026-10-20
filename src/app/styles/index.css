@@ -7,6 +7,8 @@
   --color-bg: oklch(0.18 0.01 265);
   --color-surface: oklch(0.23 0.01 265);
   --color-surface-hover: oklch(0.27 0.01 265);
+  /* Panels that sit above the page: menus, popovers, the member list. */
+  --color-surface-raised: oklch(0.26 0.01 265);
   --color-border: oklch(0.32 0.01 265);
   --color-fg: oklch(0.96 0 0);
   --color-fg-muted: oklch(0.72 0.01 265);
@@ -15,6 +17,11 @@
   --color-accent-fg: oklch(0.99 0 0);
   --color-danger: oklch(0.62 0.21 25);
   --color-success: oklch(0.7 0.17 150);
+  --color-warning: oklch(0.78 0.14 80);
+
+  --radius-panel: 0.75rem;
+  --shadow-popover: 0 12px 32px oklch(0 0 0 / 0.45);
+  --default-transition-duration: 150ms;
 
   /* Backgrounds for initials when a server has no icon; light text sits on all of them. */
   --color-avatar-1: oklch(0.52 0.17 265);
@@ -34,5 +41,17 @@
 
   body {
     @apply bg-bg font-sans text-fg antialiased;
+  }
+
+  /* Movement is decoration: nobody should wait for it or be made unwell by it. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

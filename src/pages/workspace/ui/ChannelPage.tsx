@@ -3,6 +3,7 @@ import { useParams } from 'react-router'
 import { useChannels } from '@/entities/channel'
 import { can, useWorkspace } from '@/entities/workspace'
 import { VoiceChannelButton } from '@/features/join-voice-channel'
+import { SpeakerIcon } from '@/shared/ui/icon'
 import { ChannelChat } from '@/widgets/channel-chat'
 
 /** One channel: its name and topic above, the chat below. */
@@ -22,7 +23,10 @@ const ChannelPage = () => {
         aria-label="Голосовой канал"
         className="flex flex-1 flex-col items-center justify-center gap-3 p-6"
       >
-        <h1 className="text-lg font-semibold">🔊 {channel.name}</h1>
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <SpeakerIcon className="size-5" />
+          {channel.name}
+        </h1>
         <p className="max-w-sm text-center text-sm text-fg-muted">
           Это голосовой канал. Подключитесь, чтобы говорить и слышать участников.
         </p>

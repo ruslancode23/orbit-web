@@ -3,7 +3,8 @@ import { useRef, useState } from 'react'
 
 import { addReactionMutation, removeReactionMutation, type Message } from '@/shared/api'
 import { pluralRu } from '@/shared/lib/plural'
-import { Button } from '@/shared/ui/button'
+import { SmileIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
 import { describeActionError } from '../model/describe-error'
 import { replaceMessageInHistory } from '../model/message-cache'
@@ -90,19 +91,19 @@ export const ReactionBar = ({ message, canWrite }: ReactionBarProps) => {
         ))}
 
         {canWrite && (
-          <Button
+          <IconButton
             ref={addButtonRef}
+            label="Добавить реакцию"
             size="sm"
-            variant="ghost"
-            aria-label="Добавить реакцию"
+            pressed={picking}
             aria-expanded={picking}
             aria-controls={picking ? pickerId : undefined}
             onClick={() => {
               setPicking((current) => !current)
             }}
           >
-            <span aria-hidden="true">🙂+</span>
-          </Button>
+            <SmileIcon />
+          </IconButton>
         )}
       </div>
 

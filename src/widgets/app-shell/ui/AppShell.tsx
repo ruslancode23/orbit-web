@@ -21,7 +21,7 @@ import { ManageInvites } from '@/features/manage-invites'
 import { ManageMembers } from '@/features/manage-members'
 import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
-import { SettingsIcon } from '@/shared/ui/icon'
+import { PlusIcon, SettingsIcon } from '@/shared/ui/icon'
 import { Tooltip } from '@/shared/ui/tooltip'
 
 import { ConnectionStatus } from './ConnectionStatus'
@@ -92,9 +92,9 @@ const Shell = () => {
           <NavLink
             to="/new"
             aria-label="Создать сервер"
-            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-xl text-fg-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-fg-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
           >
-            <span aria-hidden="true">+</span>
+            <PlusIcon />
           </NavLink>
         </Tooltip>
       </nav>
