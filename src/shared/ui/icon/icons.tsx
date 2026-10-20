@@ -266,3 +266,20 @@ export const CheckIcon = (props: IconProps) => (
     <path d="m5 13 4 4L19 7" />
   </Icon>
 )
+
+/** Add someone as a friend: a person and a plus. */
+export const UserPlusIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="8.5" cy="7" r="4" />
+    <path d="M19 8v6M16 11h6" />
+  </Icon>
+)
+
+/** Block an account: the universal no-entry sign. */
+export const BanIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m5.6 5.6 12.8 12.8" />
+  </Icon>
+)
