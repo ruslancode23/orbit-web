@@ -25,6 +25,11 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       predicate: (query) => query.queryKey[0] === 'listSecretChats',
     })
   }
+  if (event.type === 'secret.chat.deleted') {
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] === 'listSecretChats',
+    })
+  }
   if (event.type === 'message.' && event.channelId) {
     const path = { channelId: event.channelId }
     // Both shapes of the same history: the chat reads it page by page.

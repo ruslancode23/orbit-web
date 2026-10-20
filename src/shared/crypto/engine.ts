@@ -20,4 +20,5 @@ export interface OlmEngine {
   decrypt: (chatId: string, type: 0 | 1, body: string) => Promise<string>
   pickleSession: (chatId: string) => Promise<string>
   unpickleSession: (chatId: string, pickle: string) => Promise<void>
+  forgetSession: (chatId: string) => Promise<void>
 }

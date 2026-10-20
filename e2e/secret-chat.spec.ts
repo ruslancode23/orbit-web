@@ -50,12 +50,15 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   // The peer opts in first: a secret chat names a device on both sides.
   await peer.goto('/dm')
   await peer.getByRole('button', { name: 'Включить секретные чаты' }).click()
-  await expect(peer.getByRole('heading', { name: 'Секретные чаты' })).toBeVisible()
+  await expect(peer.getByRole('button', { name: 'Включить секретные чаты' })).toHaveCount(0)
 
-  // The owner opens the peer's card in the member column and starts the chat.
+  // The owner opens the dialogue with the peer and starts a secret one from its menu.
   await expect(owner.getByRole('button', { name: peerName, exact: true })).toBeVisible()
   await owner.getByRole('button', { name: peerName, exact: true }).click()
-  await owner.getByRole('button', { name: 'Секретный чат' }).click()
+  await owner.getByRole('button', { name: 'Написать' }).click()
+  await expect(owner).toHaveURL(/\/dm\/[0-9a-f-]+$/)
+  await owner.getByRole('button', { name: 'Действия с диалогом' }).click()
+  await owner.getByRole('menuitem', { name: 'Секретный чат' }).click()
   await expect(owner).toHaveURL(/\/dm\/s\/[0-9a-f-]+$/)
   await expect(owner.getByText(/Сообщения зашифрованы на ваших устройствах/)).toBeVisible()
 
@@ -78,7 +81,8 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
 
   // The peer finds the chat in the personal-messages section and reads it.
   await peer.goto('/dm')
-  await peer.getByRole('link', { name: new RegExp(ownerName) }).click()
+  const secrets = peer.getByRole('list', { name: `Секретные чаты с ${ownerName}` })
+  await secrets.getByRole('link', { name: 'Секретный чат' }).click()
   await expect(peer).toHaveURL(/\/dm\/s\/[0-9a-f-]+$/)
   await expect(peer.getByText(plaintext)).toBeVisible()
 
@@ -92,6 +96,16 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   await expect(peer.getByText('это исчезнет')).toHaveCount(0, { timeout: 12_000 })
   // The timer applies to messages sent after it was set; the first one stays.
   await expect(peer.getByText(plaintext)).toBeVisible()
+
+  // Deleting the secret chat ends it for both: the dialogue stays, the
+  // encrypted copy and its keys are gone.
+  await owner.getByRole('button', { name: 'Действия с чатом' }).click()
+  await owner.getByRole('menuitem', { name: 'Удалить секретный чат' }).click()
+  await owner.getByRole('button', { name: 'Удалить', exact: true }).click()
+  await expect(owner).toHaveURL(/\/dm$/)
+  await peer.reload()
+  await expect(peer.getByText('Секретный чат')).toHaveCount(0)
+  await expect(peer.getByRole('link', { name: /Секретный чат/ })).toHaveCount(0)
 
   await ownerContext.close()
   await peerContext.close()

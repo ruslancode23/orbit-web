@@ -17,6 +17,7 @@ type Operation =
   | { op: 'decrypt'; chatId: string; type: 0 | 1; body: string }
   | { op: 'pickleSession'; chatId: string }
   | { op: 'unpickleSession'; chatId: string; pickle: string }
+  | { op: 'forgetSession'; chatId: string }
 
 type Response = { id: number; ok: true; value: unknown } | { id: number; ok: false; error: string }
 
@@ -87,5 +88,6 @@ export const createWorkerEngine = (): OlmEngine => {
     pickleSession: (chatId) => request<string>({ op: 'pickleSession', chatId }),
     unpickleSession: (chatId, pickle) =>
       request<undefined>({ op: 'unpickleSession', chatId, pickle }),
+    forgetSession: (chatId) => request<undefined>({ op: 'forgetSession', chatId }),
   }
 }

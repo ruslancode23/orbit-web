@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
 import { renderWithProviders } from '@/shared/lib/test'
@@ -134,4 +135,22 @@ it('says a missing dialogue is missing and leads back', async () => {
 
   expect(await screen.findByRole('heading', { name: 'Диалог не найден' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'К личным сообщениям' })).toHaveAttribute('href', '/dm')
+})
+
+it('offers a secret chat in the menu of a pair dialogue', async () => {
+  stubApi()
+  renderPage('/dm/c-direct')
+
+  await screen.findByRole('heading', { name: 'Боб', level: 1 })
+  await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
+
+  expect(await screen.findByRole('menuitem', { name: 'Секретный чат' })).toBeInTheDocument()
+})
+
+it('has no secret chat for a group', async () => {
+  stubApi({ detail: group })
+  renderPage('/dm/c-group')
+
+  await screen.findByRole('heading', { name: 'Боб, Кэрол', level: 1 })
+  expect(screen.queryByRole('button', { name: 'Действия с диалогом' })).not.toBeInTheDocument()
 })

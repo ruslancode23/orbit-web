@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 
 import { useLive } from '@/entities/live'
 import { useSecretChats, useSecretDevice } from '@/entities/secret-chat'
@@ -69,12 +69,27 @@ const LiveSecretChatPage = () => {
 }
 
 const SecretChatScreen = ({ deps }: { deps: SecretChatPageDeps }) => {
-  const { view, loading, error, chat, sending, actions } = useSecretChat(deps)
+  const navigate = useNavigate()
+  const { view, loading, error, deleted, chat, sending, actions } = useSecretChat(deps)
   const [securityOpen, setSecurityOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
 
   const openSecurity = () => {
     setSecurityOpen(true)
+  }
+
+  useEffect(() => {
+    if (deleted) {
+      void navigate('/dm', { replace: true })
+    }
+  }, [deleted, navigate])
+
+  const removeChat = async () => {
+    const removed = await actions.deleteChat()
+    if (removed) {
+      void navigate('/dm', { replace: true })
+    }
+    return removed
   }
 
   if (loading) {
@@ -106,6 +121,7 @@ const SecretChatScreen = ({ deps }: { deps: SecretChatPageDeps }) => {
         timerSeconds={view.timerSeconds}
         onSecurity={openSecurity}
         onTimer={actions.setTimer}
+        onDelete={removeChat}
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">

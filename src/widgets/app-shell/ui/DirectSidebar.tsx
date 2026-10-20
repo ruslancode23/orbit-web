@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router'
 
-import { conversationName, useConversations } from '@/entities/conversation'
+import { conversationName, conversationPeer, useConversations } from '@/entities/conversation'
 import { secretChatName, useSecretChats, useSecretDevice } from '@/entities/secret-chat'
+import type { SecretChat } from '@/entities/secret-chat'
 import { useSession } from '@/entities/session'
 import { SetupSecretChats } from '@/features/start-secret-chat'
 import { cn } from '@/shared/lib/cn'
@@ -51,6 +52,16 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
   const device = useSecretDevice()
   const secretChats = useSecretChats(device.data?.deviceId)
 
+  // A secret chat belongs under the dialogue with the same person: it is one of
+  // their conversations, just encrypted and bound to this device.
+  const secretsByPeer = new Map<string, SecretChat[]>()
+  for (const chat of secretChats.data ?? []) {
+    const list = secretsByPeer.get(chat.peer.userId) ?? []
+    list.push(chat)
+    secretsByPeer.set(chat.peer.userId, list)
+  }
+  const nested = new Set<string>()
+
   return (
     <aside
       aria-label="Личные сообщения"
@@ -74,8 +85,13 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
             <ul className="flex flex-col gap-0.5">
               {conversations.data.map((conversation) => {
                 const name = conversationName(conversation, userId)
+                const peer = conversationPeer(conversation, userId)
+                const secrets = peer ? (secretsByPeer.get(peer.id) ?? []) : []
+                for (const secret of secrets) {
+                  nested.add(secret.id)
+                }
                 return (
-                  <li key={conversation.id}>
+                  <li key={conversation.id} className="flex flex-col gap-0.5">
                     <NavLink to={`/dm/${conversation.id}`} className={rowClass}>
                       <span
                         aria-hidden="true"
@@ -85,6 +101,21 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
                       </span>
                       <span className="min-w-0 flex-1 truncate">{name}</span>
                     </NavLink>
+                    {secrets.length > 0 && (
+                      <ul
+                        aria-label={`Секретные чаты с ${name}`}
+                        className="ml-4 flex flex-col gap-0.5"
+                      >
+                        {secrets.map((secret) => (
+                          <li key={secret.id}>
+                            <NavLink to={`/dm/s/${secret.id}`} className={secretRowClass}>
+                              <LockIcon className="size-3.5 shrink-0" />
+                              <span className="min-w-0 flex-1 truncate">Секретный чат</span>
+                            </NavLink>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 )
               })}
@@ -94,7 +125,7 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
 
         {device.data === null && <SetupSecretChats />}
 
-        {device.data && (
+        {device.data && (secretChats.data ?? []).some((chat) => !nested.has(chat.id)) && (
           <section aria-labelledby="secret-chats-title" className="flex flex-col gap-1">
             <h3
               id="secret-chats-title"
@@ -112,20 +143,22 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
               <p className="px-2 text-xs text-fg-muted">Секретных чатов пока нет</p>
             ) : (
               <ul className="flex flex-col gap-0.5">
-                {secretChats.data.map((chat) => (
-                  <li key={chat.id}>
-                    <NavLink to={`/dm/s/${chat.id}`} className={secretRowClass}>
-                      <span
-                        aria-hidden="true"
-                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-success/15 text-[10px] font-semibold"
-                      >
-                        {initials(secretChatName(chat))}
-                      </span>
-                      <LockIcon className="size-3.5 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate">{secretChatName(chat)}</span>
-                    </NavLink>
-                  </li>
-                ))}
+                {secretChats.data
+                  .filter((chat) => !nested.has(chat.id))
+                  .map((chat) => (
+                    <li key={chat.id}>
+                      <NavLink to={`/dm/s/${chat.id}`} className={secretRowClass}>
+                        <span
+                          aria-hidden="true"
+                          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-success/15 text-[10px] font-semibold"
+                        >
+                          {initials(secretChatName(chat))}
+                        </span>
+                        <LockIcon className="size-3.5 shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">{secretChatName(chat)}</span>
+                      </NavLink>
+                    </li>
+                  ))}
               </ul>
             )}
           </section>

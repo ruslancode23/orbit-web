@@ -5,6 +5,8 @@ import { useForgetSession } from '@/entities/session'
 import { logoutMutation } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
 
+import { clearSecretChats } from '../model/clear-secret-chats'
+
 export const LogoutButton = () => {
   const navigate = useNavigate()
   const forgetSession = useForgetSession()
@@ -23,7 +25,10 @@ export const LogoutButton = () => {
       variant="danger"
       disabled={signOut.isPending}
       onClick={() => {
-        signOut.mutate({})
+        // While the session is still alive, end this device's secret chats.
+        void clearSecretChats().finally(() => {
+          signOut.mutate({})
+        })
       }}
     >
       Выйти

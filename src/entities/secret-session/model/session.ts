@@ -409,6 +409,20 @@ export class SecretSession {
     }
   }
 
+  /**
+   * Deletes the chat for both devices and wipes this device's copy: the
+   * server channel and envelopes, the sealed session, the messages and the
+   * verification mark. Nothing about it can be read afterwards.
+   */
+  async deleteChat(chatId: string): Promise<void> {
+    await this.api.leaveSecretChat(this.device.deviceId, chatId)
+    await this.engine.forgetSession(chatId)
+    this.states.delete(chatId)
+    this.messages.delete(chatId)
+    await this.store.remove(chatScope, chatId)
+    await this.store.remove(messagesScope, chatId)
+  }
+
   async setVerified(chat: SecretChat, verified: boolean): Promise<SecretChatView> {
     const state = await this.loadState(chat)
     state.verified = verified
