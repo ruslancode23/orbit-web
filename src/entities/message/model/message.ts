@@ -63,7 +63,12 @@ export function formatRelativeTime(moment: Date, now: Date = new Date()): string
 
 /** Who wrote it, or a placeholder for an account that is gone. */
 export function authorName(message: Message): string {
-  return message.author?.nickname ?? 'Удалённый аккаунт'
+  const author = message.author
+  if (!author) {
+    return 'Удалённый аккаунт'
+  }
+  const displayName = author.displayName.trim()
+  return displayName === '' ? author.nickname : displayName
 }
 
 /** A one-line version of a message for a reply preview. */

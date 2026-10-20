@@ -2,9 +2,9 @@ import { Link, useParams } from 'react-router'
 
 import { conversationName, conversationPeer, useConversation } from '@/entities/conversation'
 import { useSession } from '@/entities/session'
+import { UserAvatar, UserName, userDisplayName } from '@/entities/user'
 import { SecretChatMenuItem } from '@/features/start-secret-chat'
 import { isApiError } from '@/shared/api'
-import { initials } from '@/shared/lib/initials'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
 import { MoreIcon, UsersIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -91,18 +91,25 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
   const isGroup = conversation.kind === 'group'
   const name = conversationName(conversation, user.id)
   const peer = conversationPeer(conversation, user.id)
+  const title = peer ? userDisplayName(peer) : name
 
   return (
     <section aria-label="Диалог" className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 max-lg:pl-14">
-        <span
-          aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs font-semibold"
-        >
-          {isGroup ? <UsersIcon className="size-4 text-fg-muted" /> : initials(name)}
-        </span>
+        {peer ? (
+          <UserAvatar profile={peer} size={32} decorative />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-hover"
+          >
+            <UsersIcon className="size-4 text-fg-muted" />
+          </span>
+        )}
         <div className="flex min-w-0 flex-col">
-          <h1 className="truncate text-sm font-semibold">{name || 'Диалог'}</h1>
+          <h1 className="truncate text-sm font-semibold">
+            {peer ? <UserName profile={peer} /> : name || 'Диалог'}
+          </h1>
           {isGroup && <p className="truncate text-xs text-fg-muted">Групповой чат</p>}
         </div>
         {peer && (
@@ -119,7 +126,7 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
         )}
       </header>
 
-      <ChannelChat channelId={conversationId} channelName={name} canWrite canAttach />
+      <ChannelChat channelId={conversationId} channelName={title} canWrite canAttach />
     </section>
   )
 }

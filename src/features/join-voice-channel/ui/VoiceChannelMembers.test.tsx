@@ -17,6 +17,26 @@ const member = (id: string, overrides: Partial<VoiceChannelMember> = {}): VoiceC
   ...overrides,
 })
 
+// These rows ask for the profile only when the member list has not already
+// brought one; here nobody shares a server with the test, so it is a 404.
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: { code: 'not_found', message: 'no profile' } }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    ),
+  )
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 it('shows nothing for an empty channel', () => {
   renderWithProviders(<VoiceChannelMembers channelName="room" members={[]} />, { route: '/' })
 

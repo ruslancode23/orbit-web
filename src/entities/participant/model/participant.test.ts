@@ -1,4 +1,4 @@
-import { describeVoiceState, initials, type Participant } from './participant'
+import { describeVoiceState, type Participant } from './participant'
 
 const anna: Participant = {
   identity: 'guest-anna',
@@ -8,18 +8,6 @@ const anna: Participant = {
   isMicrophoneMuted: false,
   isDeafened: false,
 }
-
-describe('initials', () => {
-  it.each([
-    ['Анна Ли', 'АЛ'],
-    ['bob', 'B'],
-    ['  Мария  Петровна Иванова ', 'МП'],
-    ['😀 smile', '😀S'],
-    ['   ', '?'],
-  ])('%j → %j', (name, expected) => {
-    expect(initials(name)).toBe(expected)
-  })
-})
 
 describe('describeVoiceState', () => {
   it('is empty for someone listening quietly', () => {

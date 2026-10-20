@@ -1,7 +1,8 @@
 import { cn } from '@/shared/lib/cn'
+import { Avatar } from '@/shared/ui/avatar'
 import { HeadphonesOffIcon, MicOffIcon } from '@/shared/ui/icon'
 
-import { describeVoiceState, initials, type Participant } from '../model/participant'
+import { describeVoiceState, type Participant } from '../model/participant'
 
 import type { ReactNode } from 'react'
 
@@ -23,16 +24,16 @@ export const ParticipantCard = ({ participant, children, className }: Participan
       className={cn('flex flex-col gap-2 rounded-md bg-surface px-3 py-2', className)}
     >
       <div className="flex items-center gap-3">
-        <span
-          aria-hidden="true"
+        <Avatar
+          name={name}
+          size={40}
+          decorative
           className={cn(
-            'flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-hover text-sm font-semibold ring-2 ring-transparent ring-offset-2 ring-offset-surface',
+            'ring-2 ring-transparent ring-offset-2 ring-offset-surface',
             // No transition on the way in: the ring must appear as soon as the event does.
             isSpeaking ? 'ring-success' : 'transition-shadow duration-300',
           )}
-        >
-          {initials(name)}
-        </span>
+        />
         <span className="min-w-0 flex-1 truncate text-sm">
           {name}
           {isLocal && <span className="text-fg-muted"> (вы)</span>}

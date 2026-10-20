@@ -1,10 +1,11 @@
 import { useState } from 'react'
 
 import { useLive } from '@/entities/live'
-import { initials } from '@/entities/participant'
 import { useSession } from '@/entities/session'
+import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { DeviceMenu } from '@/features/select-device'
+import { Avatar } from '@/shared/ui/avatar'
 import {
   HeadphonesIcon,
   HeadphonesOffIcon,
@@ -37,7 +38,7 @@ export const UserPanel = () => {
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const connection = CONNECTION[status]
-  const name = user?.nickname ?? '…'
+  const name = user ? userDisplayName(user) : '…'
 
   const toggleMicrophone = async () => {
     try {
@@ -63,12 +64,11 @@ export const UserPanel = () => {
       >
         <div className="flex min-w-0 items-center gap-2">
           <span className="relative shrink-0">
-            <span
-              aria-hidden="true"
-              className="flex size-8 items-center justify-center rounded-full bg-surface-hover text-xs font-semibold"
-            >
-              {initials(name)}
-            </span>
+            {user ? (
+              <UserAvatar profile={user} size={32} decorative />
+            ) : (
+              <Avatar name="…" size={32} decorative />
+            )}
             <span
               aria-hidden="true"
               title={connection.text}

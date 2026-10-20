@@ -1,7 +1,8 @@
 import { cn } from '@/shared/lib/cn'
+import { Avatar } from '@/shared/ui/avatar'
 import { HeadphonesOffIcon, MicOffIcon, ScreenIcon } from '@/shared/ui/icon'
 
-import { describeVoiceState, initials, type Participant } from '../model/participant'
+import { describeVoiceState, type Participant } from '../model/participant'
 
 interface ParticipantTileProps {
   participant: Participant
@@ -26,15 +27,15 @@ export const ParticipantTile = ({ participant, screenSharing = false }: Particip
         participant.isSpeaking ? 'border-success' : 'border-border',
       )}
     >
-      <span
-        aria-hidden="true"
+      <Avatar
+        name={participant.name}
+        size={80}
+        decorative
         className={cn(
-          'flex size-16 shrink-0 items-center justify-center rounded-full bg-surface-hover text-lg font-semibold ring-2 ring-transparent ring-offset-2 ring-offset-surface',
+          'ring-2 ring-transparent ring-offset-2 ring-offset-surface',
           participant.isSpeaking ? 'ring-success' : 'transition-shadow duration-300',
         )}
-      >
-        {initials(participant.name)}
-      </span>
+      />
       <p className="flex w-full items-center justify-center gap-1 truncate text-sm font-medium">
         <span className="truncate">{participant.name}</span>
         {participant.isLocal && <span className="shrink-0 text-xs text-fg-muted">(вы)</span>}
