@@ -41,6 +41,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
             {items.map((item) => (
               <Primitive.Root
                 key={item.id}
+                role="status"
                 defaultOpen
                 duration={5000}
                 onOpenChange={(open) => {

@@ -3,11 +3,14 @@ import { useLive } from '@/entities/live'
 const TEXT = {
   connecting: 'Подключаемся…',
   open: '',
-  reconnecting: 'Связь прервалась, пробуем вернуться…',
+  reconnecting: 'Нет соединения, переподключаемся…',
   offline: 'Нет связи с сервером. Пробуем снова.',
 } as const
 
-/** Says out loud when the live connection is not there; silent while it is. */
+/**
+ * A thin banner above the channel while the live connection is down. It is not
+ * in the sidebar: the feed is what looks stale when the stream stops.
+ */
 export const ConnectionStatus = () => {
   const { status } = useLive()
   const text = TEXT[status]
@@ -16,8 +19,15 @@ export const ConnectionStatus = () => {
   }
 
   return (
-    <p role="status" className="text-sm text-fg-muted">
+    <div
+      role="status"
+      className="flex shrink-0 items-center justify-center gap-2 border-b border-warning/40 bg-warning/10 px-3 py-1.5 text-xs text-warning"
+    >
+      <span
+        aria-hidden="true"
+        className="size-2 animate-pulse rounded-full bg-warning motion-reduce:animate-none"
+      />
       {text}
-    </p>
+    </div>
   )
 }

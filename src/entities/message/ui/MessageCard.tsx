@@ -60,7 +60,7 @@ export const MessageCard = ({
     <article
       data-message-id={message.id}
       className={cn(
-        'group relative px-4 py-0.5',
+        'group relative px-4 py-0.5 focus-within:z-10 hover:z-10',
         startsGroup && 'mt-3',
         mentionsMe && 'border-l-2 border-accent bg-accent/10',
         highlighted && 'bg-surface-hover ring-1 ring-accent',

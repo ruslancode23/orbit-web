@@ -27,6 +27,7 @@ import {
   VolumeIcon,
 } from '@/shared/ui/icon'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
+import { Skeleton } from '@/shared/ui/skeleton'
 import { Slider } from '@/shared/ui/slider'
 
 import { useMemberPanelOpen } from '../model/member-panel'
@@ -193,41 +194,52 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
         </section>
       )}
 
-      {ROLE_GROUPS.map((group) => {
-        const rows = (members ?? [])
-          .filter((member) => member.role === group.role)
-          .sort((a, b) => a.user.nickname.localeCompare(b.user.nickname, 'ru'))
-        if (rows.length === 0) {
-          return null
-        }
-        return (
-          <section
-            key={group.role}
-            aria-label={group.title}
-            className="flex flex-col gap-0.5 p-2 pb-0 last:pb-2"
-          >
-            <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
-              {group.title} — {rows.length}
-            </h2>
-            <ul>
-              {rows.map((member) => (
-                <li key={member.user.id}>
-                  <MemberRow
-                    member={member}
-                    name={member.user.nickname}
-                    voice={voiceStates.get(member.user.id)}
-                    workspaceId={workspaceId}
-                    memberRole={role}
-                    myId={myId}
-                    {...volumeProps(member.user.id)}
-                    moderation={moderation}
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )
-      })}
+      {members === undefined ? (
+        <div role="status" aria-label="Загружаем участников" className="flex flex-col gap-2 p-3">
+          {[0, 1, 2, 3, 4].map((row) => (
+            <div key={row} className="flex items-center gap-2">
+              <Skeleton className="size-6 shrink-0 rounded-full" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        ROLE_GROUPS.map((group) => {
+          const rows = members
+            .filter((member) => member.role === group.role)
+            .sort((a, b) => a.user.nickname.localeCompare(b.user.nickname, 'ru'))
+          if (rows.length === 0) {
+            return null
+          }
+          return (
+            <section
+              key={group.role}
+              aria-label={group.title}
+              className="flex flex-col gap-0.5 p-2 pb-0 last:pb-2"
+            >
+              <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
+                {group.title} — {rows.length}
+              </h2>
+              <ul>
+                {rows.map((member) => (
+                  <li key={member.user.id}>
+                    <MemberRow
+                      member={member}
+                      name={member.user.nickname}
+                      voice={voiceStates.get(member.user.id)}
+                      workspaceId={workspaceId}
+                      memberRole={role}
+                      myId={myId}
+                      {...volumeProps(member.user.id)}
+                      moderation={moderation}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        })
+      )}
     </aside>
   )
 }

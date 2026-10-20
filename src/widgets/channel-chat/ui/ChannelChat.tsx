@@ -15,6 +15,7 @@ import { isApiError } from '@/shared/api'
 import { usePageVisible } from '@/shared/lib/page-visibility'
 import { ChevronDownIcon, HashIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 import { MessageRow } from './MessageRow'
 import { useChannelHistory } from './useChannelHistory'
@@ -176,9 +177,18 @@ export const ChannelChat = ({
           aria-label="Сообщения"
         >
           {isPending && (
-            <p role="status" className="p-4 text-sm text-fg-muted">
-              Загружаем сообщения…
-            </p>
+            <div role="status" aria-label="Загружаем сообщения" className="flex flex-col gap-4 p-4">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="flex gap-3">
+                  <Skeleton className="size-9 shrink-0 rounded-full" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
           {error && (
             <p role="alert" className="p-4 text-sm text-danger">
@@ -224,7 +234,7 @@ export const ChannelChat = ({
                   key={row.key}
                   ref={virtualizer.measureElement}
                   data-index={row.index}
-                  className="absolute top-0 left-0 w-full"
+                  className="absolute top-0 left-0 w-full focus-within:z-10 hover:z-10"
                   style={{ transform: `translateY(${String(row.start)}px)` }}
                 >
                   {message.id === firstUnreadId && <NewMessagesDivider />}

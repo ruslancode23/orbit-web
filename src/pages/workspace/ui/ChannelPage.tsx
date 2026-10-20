@@ -1,13 +1,15 @@
+import { useState } from 'react'
 import { useParams } from 'react-router'
 
 import { useChannels, type Channel } from '@/entities/channel'
 import { ParticipantTile } from '@/entities/participant'
 import { useVoiceRoom } from '@/entities/voice-room'
-import { can, useWorkspace } from '@/entities/workspace'
+import { atLeast, can, useWorkspace } from '@/entities/workspace'
 import { useVoiceChannel } from '@/features/join-voice-channel'
+import { ManageInvites } from '@/features/manage-invites'
 import { ScreenShares } from '@/features/share-screen'
 import { Button } from '@/shared/ui/button'
-import { HashIcon, SpeakerIcon, UsersIcon } from '@/shared/ui/icon'
+import { HashIcon, LinkIcon, SpeakerIcon, UsersIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 import { ChannelChat } from '@/widgets/channel-chat'
 import { MemberList, toggleMemberPanel, useMemberPanelOpen } from '@/widgets/member-list'
@@ -19,44 +21,77 @@ import { MemberList, toggleMemberPanel, useMemberPanelOpen } from '@/widgets/mem
 const ChannelPage = () => {
   const { workspaceId, channelId } = useParams()
   const { data: channels } = useChannels(workspaceId)
-  const channel = channels?.find((item) => item.id === channelId)
   const { membership } = useWorkspace(workspaceId)
+  const [invitesOpen, setInvitesOpen] = useState(false)
+  const channel = channels?.find((item) => item.id === channelId)
 
   if (!workspaceId || !channelId) {
     return null
   }
 
-  if (channel?.kind === 'voice') {
-    return <VoiceChannelPage channel={channel} workspaceId={workspaceId} />
+  const canInvite = can(membership, 'canInvite')
+  const canManage = atLeast(membership?.role, 'admin')
+  const openInvites = () => {
+    setInvitesOpen(true)
   }
 
   return (
-    <section aria-label="Канал" className="flex min-h-0 flex-1 flex-col">
-      <ChannelHeader channel={channel} />
-      <div className="flex min-h-0 flex-1">
-        <ChannelChat
+    <>
+      {channel?.kind === 'voice' ? (
+        <VoiceChannelPage
+          channel={channel}
           workspaceId={workspaceId}
-          channelId={channelId}
-          {...(channel === undefined
-            ? {}
-            : { channelName: channel.name, channelTopic: channel.topic })}
-          canWrite={channel?.canWrite ?? false}
-          canAttach={can(membership, 'canAttachFiles')}
+          canInvite={canInvite}
+          onInvite={openInvites}
         />
-        <MemberList workspaceId={workspaceId} />
-      </div>
-    </section>
+      ) : (
+        <section aria-label="Канал" className="flex min-h-0 flex-1 flex-col">
+          <ChannelHeader channel={channel} canInvite={canInvite} onInvite={openInvites} />
+          <div className="flex min-h-0 flex-1">
+            <ChannelChat
+              workspaceId={workspaceId}
+              channelId={channelId}
+              {...(channel === undefined
+                ? {}
+                : { channelName: channel.name, channelTopic: channel.topic })}
+              canWrite={channel?.canWrite ?? false}
+              canAttach={can(membership, 'canAttachFiles')}
+            />
+            <MemberList workspaceId={workspaceId} />
+          </div>
+        </section>
+      )}
+
+      {canInvite && (
+        <ManageInvites
+          workspaceId={workspaceId}
+          canInvite
+          canManage={canManage}
+          open={invitesOpen}
+          onOpenChange={setInvitesOpen}
+        />
+      )}
+    </>
   )
 }
 
-const ChannelHeader = ({ channel }: { channel: Channel | undefined }) => {
+interface ChannelHeaderProps {
+  channel: Channel | undefined
+  canInvite: boolean
+  onInvite: () => void
+  /** A voice channel shows a speaker instead of a hash. */
+  voice?: boolean
+}
+
+const ChannelHeader = ({ channel, canInvite, onInvite, voice = false }: ChannelHeaderProps) => {
   const memberOpen = useMemberPanelOpen()
+  const Icon = voice ? SpeakerIcon : HashIcon
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
-      <HashIcon className="size-5 shrink-0 text-fg-muted" />
+      <Icon className="size-5 shrink-0 text-fg-muted" />
       <h1
-        aria-label={`# ${channel?.name ?? '…'}`}
+        aria-label={voice ? (channel?.name ?? '…') : `# ${channel?.name ?? '…'}`}
         className="min-w-0 shrink-0 truncate text-sm font-semibold"
       >
         {channel?.name ?? '…'}
@@ -70,6 +105,11 @@ const ChannelHeader = ({ channel }: { channel: Channel | undefined }) => {
         </>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        {canInvite && (
+          <IconButton label="Пригласить людей" onClick={onInvite}>
+            <LinkIcon />
+          </IconButton>
+        )}
         <IconButton
           label="Участники"
           tooltip={memberOpen ? 'Скрыть участников' : 'Показать участников'}
@@ -83,32 +123,25 @@ const ChannelHeader = ({ channel }: { channel: Channel | undefined }) => {
   )
 }
 
-const VoiceChannelPage = ({ channel, workspaceId }: { channel: Channel; workspaceId: string }) => {
+const VoiceChannelPage = ({
+  channel,
+  workspaceId,
+  canInvite,
+  onInvite,
+}: {
+  channel: Channel
+  workspaceId: string
+  canInvite: boolean
+  onInvite: () => void
+}) => {
   const { connect, connecting } = useVoiceChannel()
   const { activeChannel, participants, screenShares } = useVoiceRoom()
-  const memberOpen = useMemberPanelOpen()
   const here = activeChannel?.id === channel.id
   const screenSharers = new Set(screenShares.map((share) => share.participantIdentity))
 
   return (
     <section aria-label="Голосовой канал" className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
-        <SpeakerIcon className="size-5 shrink-0 text-fg-muted" />
-        <h1 aria-label={channel.name} className="min-w-0 shrink-0 truncate text-sm font-semibold">
-          {channel.name}
-        </h1>
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          <IconButton
-            label="Участники"
-            tooltip={memberOpen ? 'Скрыть участников' : 'Показать участников'}
-            pressed={memberOpen}
-            onClick={toggleMemberPanel}
-          >
-            <UsersIcon />
-          </IconButton>
-        </div>
-      </header>
-
+      <ChannelHeader channel={channel} canInvite={canInvite} onInvite={onInvite} voice />
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
           {here ? (

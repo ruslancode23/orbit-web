@@ -108,17 +108,18 @@ const Shell = () => {
               canManage={canManage}
               canInvite={canInvite}
             />
-
-            <div className="flex shrink-0 flex-col gap-2 border-t border-border p-2">
-              {activeChannel && <VoicePanel />}
-              <UserPanel />
-            </div>
           </>
         ) : (
           <p className="p-3 text-sm text-fg-muted">
             {memberships?.length ? 'Выберите сервер' : 'Создайте свой первый сервер'}
           </p>
         )}
+
+        {/* The person is here even on the very first screen, with no server yet. */}
+        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-border p-2">
+          {activeChannel && <VoicePanel />}
+          <UserPanel />
+        </div>
       </aside>
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { signOut } from './helpers.ts'
+
 // The server is shared with the other specs, so every account here gets a name
 // of its own instead of relying on a clean database.
 const unique = () => `e2e${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
@@ -28,7 +30,7 @@ test('register, stay signed in across a reload, sign out', async ({ page }) => {
   await page.reload()
   await expect(page.getByText(nickname, { exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Выйти' }).click()
+  await signOut(page)
   await expect(page).toHaveURL(/\/login$/)
 
   // And it is really gone: the guarded page sends us back.
@@ -43,7 +45,7 @@ test('a wrong password says so without saying which half was wrong', async ({ pa
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
   await expect(page.getByText(nickname, { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Выйти' }).click()
+  await signOut(page)
 
   await page.getByLabel('Ник или email').fill(nickname)
   await page.getByLabel('Пароль').fill('not-my-password')
@@ -65,7 +67,7 @@ test('a taken nickname is refused', async ({ page }) => {
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
   await expect(page.getByText(nickname, { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Выйти' }).click()
+  await signOut(page)
 
   await page.goto('/register')
   await page.getByLabel('Ник').fill(nickname)
