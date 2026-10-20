@@ -1,163 +1,90 @@
-import { useState } from 'react'
+import { Link } from 'react-router'
 
-import { ParticipantCard } from '@/entities/participant'
-import { useVoiceRoom, type VoiceParticipant, type VoiceRoomStatus } from '@/entities/voice-room'
+import { useVoiceRoom, type VoiceRoomStatus } from '@/entities/voice-room'
 import { useVoiceChannel } from '@/features/join-voice-channel'
-import { ReconnectRoom } from '@/features/reconnect-room'
 import { ShareScreenButton } from '@/features/share-screen'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/button'
-import {
-  HeadphonesIcon,
-  HeadphonesOffIcon,
-  MicIcon,
-  MicOffIcon,
-  SpeakerIcon,
-  VolumeIcon,
-} from '@/shared/ui/icon'
-import { Slider } from '@/shared/ui/slider'
-import { Toggle } from '@/shared/ui/toggle'
+import { PhoneOffIcon, SignalIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
-const STATUS_TEXT: Partial<Record<VoiceRoomStatus, string>> = {
-  connecting: 'Подключаемся…',
-  connected: 'Подключено',
-  reconnecting: 'Переподключаемся…',
-  disconnected: 'Нет связи',
-  error: 'Не удалось подключиться',
+const SIGNAL: Record<VoiceRoomStatus, { text: string; className: string }> = {
+  idle: { text: 'Не подключено', className: 'text-fg-muted' },
+  connecting: { text: 'Подключаемся…', className: 'text-warning' },
+  connected: { text: 'Подключено', className: 'text-success' },
+  reconnecting: { text: 'Переподключаемся…', className: 'text-warning' },
+  disconnected: { text: 'Нет связи', className: 'text-danger' },
+  error: { text: 'Не удалось подключиться', className: 'text-danger' },
 }
 
 /**
- * The voice connection that survives moving between text channels and servers.
- * It sits at the bottom of the sidebar, as in Discord: the channel, who is in
- * it, the microphone and screen controls, and one way out.
+ * One line at the bottom of the channel column: the connection, the channel it
+ * is for, the screen and the way out. Mute, deafen and the devices live in the
+ * user panel right below; who is in the channel is in the member column.
  */
 export const VoicePanel = () => {
-  const { activeChannel, status, error, leave, reconnect, connecting } = useVoiceChannel()
-  const { room, participants, setMicrophoneMuted, setDeafened, setParticipantVolume } =
-    useVoiceRoom()
-  const [actionError, setActionError] = useState<string | null>(null)
+  const { activeChannel, status, error, leave, reconnect, connecting, connectionLoss } =
+    useVoiceChannel()
+  const { isSharingScreen } = useVoiceRoom()
 
   if (!activeChannel) {
     return null
   }
 
-  const me = participants.find((participant) => participant.isLocal)
-  const isMuted = me?.isMicrophoneMuted ?? false
-  const isDeafened = me?.isDeafened ?? false
-
-  const run = async (action: () => Promise<void>) => {
-    setActionError(null)
-    try {
-      await action()
-    } catch {
-      setActionError('Не удалось переключить микрофон. Проверьте, что он подключён.')
-    }
-  }
+  const signal = SIGNAL[status]
 
   return (
     <section
       aria-label="Голос подключён"
-      className="flex max-h-96 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-surface p-2"
+      className="flex flex-col gap-1 rounded-md border border-border bg-surface p-2"
     >
-      <header className="flex items-baseline justify-between gap-2">
-        <h3 className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold">
-          <SpeakerIcon className="shrink-0 text-success" />
-          <span className="truncate">{activeChannel.name}</span>
-        </h3>
-        <span className="shrink-0 text-xs text-fg-muted">{STATUS_TEXT[status] ?? ''}</span>
-      </header>
+      <div className="flex items-center gap-2">
+        <span title={signal.text} className={cn('shrink-0', signal.className)}>
+          <SignalIcon />
+          <span className="sr-only">{signal.text}</span>
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <p className="text-[11px] leading-tight text-fg-muted">Голос подключён</p>
+          <Link
+            to={`/s/${activeChannel.workspaceId}/${activeChannel.id}`}
+            className="truncate text-sm font-medium hover:underline focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+          >
+            {activeChannel.name}
+          </Link>
+        </div>
+        <ShareScreenButton />
+        <IconButton
+          label="Отключиться"
+          variant="danger"
+          onClick={() => void leave()}
+          tooltip={isSharingScreen ? 'Отключиться (показ экрана остановится)' : 'Отключиться'}
+        >
+          <PhoneOffIcon />
+        </IconButton>
+      </div>
 
       {error && (
         <p role="alert" className="text-xs text-danger">
           {error}
         </p>
       )}
-      {actionError && (
-        <p role="alert" className="text-xs text-danger">
-          {actionError}
-        </p>
-      )}
 
-      <ReconnectRoom onReconnect={reconnect} connecting={connecting} />
-
-      {status === 'connecting' && (
-        <p role="status" className="text-xs text-fg-muted">
-          Подключаемся к голосовому каналу…
-        </p>
-      )}
-
-      {room && (
-        <>
-          <div role="group" aria-label="Звук" className="flex gap-2">
-            <Toggle
-              size="icon"
-              aria-label={isMuted ? 'Включить микрофон' : 'Выключить микрофон'}
-              title={isMuted ? 'Включить микрофон' : 'Выключить микрофон'}
-              pressed={isMuted}
-              onPressedChange={(muted) => void run(() => setMicrophoneMuted(muted))}
+      {connectionLoss && (
+        <div role="alert" className="flex flex-col gap-1 text-xs text-danger">
+          <span>{connectionLoss.message}</span>
+          {connectionLoss.canRetry && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="self-start"
+              disabled={connecting}
+              onClick={() => void reconnect()}
             >
-              {isMuted ? <MicOffIcon /> : <MicIcon />}
-            </Toggle>
-            <Toggle
-              size="icon"
-              aria-label="Выключить звук"
-              title="Выключить звук: вы никого не слышите, микрофон тоже выключается"
-              pressed={isDeafened}
-              onPressedChange={(deafened) => void run(() => setDeafened(deafened))}
-            >
-              {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
-            </Toggle>
-          </div>
-
-          <ul aria-label="Участники" className="flex flex-col gap-1">
-            {participants.map((participant) => (
-              <li key={participant.identity}>
-                <ParticipantCard participant={participant}>
-                  {!participant.isLocal && (
-                    <ParticipantVolume
-                      participant={participant}
-                      onChange={(volume) => {
-                        setParticipantVolume(participant.identity, volume)
-                      }}
-                    />
-                  )}
-                </ParticipantCard>
-              </li>
-            ))}
-          </ul>
-
-          <ShareScreenButton />
-        </>
+              {connecting ? 'Переподключаемся…' : 'Переподключиться'}
+            </Button>
+          )}
+        </div>
       )}
-
-      <Button size="sm" variant="danger" onClick={() => void leave()}>
-        Отключиться
-      </Button>
     </section>
-  )
-}
-
-const ParticipantVolume = ({
-  participant,
-  onChange,
-}: {
-  participant: VoiceParticipant
-  onChange: (volume: number) => void
-}) => {
-  return (
-    <div className="flex items-center gap-2 text-fg-muted">
-      <VolumeIcon className="shrink-0" />
-      <Slider
-        aria-label={`Громкость: ${participant.name}`}
-        value={[Math.round(participant.volume * 100)]}
-        max={100}
-        step={5}
-        getValueText={(percent) => `${String(percent)} %`}
-        onValueChange={([percent]) => {
-          if (percent !== undefined) {
-            onChange(percent / 100)
-          }
-        }}
-      />
-    </div>
   )
 }

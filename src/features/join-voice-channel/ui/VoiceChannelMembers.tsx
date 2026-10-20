@@ -6,7 +6,7 @@ import { HeadphonesOffIcon, MicOffIcon, ScreenIcon } from '@/shared/ui/icon'
 
 import type { VoiceChannelMember } from '../model/members'
 
-const SHOWN = 5
+const SHOWN = 8
 
 /** Who is in a voice channel, before joining it: names, mute, screen and speech. */
 export const VoiceChannelMembers = ({
