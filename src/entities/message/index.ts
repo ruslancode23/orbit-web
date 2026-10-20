@@ -1,5 +1,7 @@
 export {
   authorName,
+  formatFullTime,
+  formatRelativeTime,
   formatTime,
   mentionedIds,
   mentionToken,

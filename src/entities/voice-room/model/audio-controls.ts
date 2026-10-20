@@ -7,11 +7,37 @@ import type { VoiceParticipant } from './context'
 export const DEAFENED_ATTRIBUTE = 'deafened'
 
 /**
- * Mute, deafen and per-participant volume for the connected room.
+ * Mute and deafen are choices about the person, not about the room: they are
+ * remembered on this device and applied to the next room as it connects.
+ */
+const MICROPHONE_MUTED_KEY = 'orbit.voice.microphone-muted'
+const DEAFENED_KEY = 'orbit.voice.deafened'
+
+const readFlag = (key: string): boolean => {
+  try {
+    return localStorage.getItem(key) === 'true'
+  } catch {
+    // Storage can be blocked; the choice then lasts for this page only.
+    return false
+  }
+}
+
+const writeFlag = (key: string, value: boolean): void => {
+  try {
+    localStorage.setItem(key, String(value))
+  } catch {
+    // Same: the control still works, it just is not remembered.
+  }
+}
+
+/**
+ * Mute, deafen and per-participant volume. The state lives here even before a
+ * room exists, so the user panel can be used first and connect later.
  * Deafen is local playback at zero plus the `deafened` attribute, so others can see it.
  */
 export function useAudioControls(room: Room | null) {
-  const [isDeafened, setIsDeafened] = useState(false)
+  const [isMicrophoneMuted, setIsMicrophoneMuted] = useState(() => readFlag(MICROPHONE_MUTED_KEY))
+  const [isDeafened, setIsDeafened] = useState(() => readFlag(DEAFENED_KEY))
   const [volumes, setVolumes] = useState<ReadonlyMap<string, number>>(new Map())
   const [stateRoom, setStateRoom] = useState(room)
   const mutedBeforeDeafenRef = useRef(false)
@@ -19,7 +45,6 @@ export function useAudioControls(room: Room | null) {
   // A new room (or leaving) starts with everyone audible.
   if (room !== stateRoom) {
     setStateRoom(room)
-    setIsDeafened(false)
     setVolumes(new Map())
   }
 
@@ -67,31 +92,38 @@ export function useAudioControls(room: Room | null) {
 
   const setDeafened = useCallback(
     async (deafened: boolean) => {
-      if (!room) {
+      setIsDeafened(deafened)
+      writeFlag(DEAFENED_KEY, deafened)
+      if (deafened) {
+        // Remember what the microphone was doing, so undeafening can restore it.
+        mutedBeforeDeafenRef.current = isMicrophoneMuted
+        setIsMicrophoneMuted(true)
+        writeFlag(MICROPHONE_MUTED_KEY, true)
+        await room?.localParticipant.setMicrophoneEnabled(false)
         return
       }
-      const { localParticipant } = room
-      setIsDeafened(deafened)
-      if (deafened) {
-        mutedBeforeDeafenRef.current = !localParticipant.isMicrophoneEnabled
-        await localParticipant.setMicrophoneEnabled(false)
-      } else if (!mutedBeforeDeafenRef.current) {
-        await localParticipant.setMicrophoneEnabled(true)
+      const muted = mutedBeforeDeafenRef.current
+      setIsMicrophoneMuted(muted)
+      writeFlag(MICROPHONE_MUTED_KEY, muted)
+      if (room) {
+        await room.localParticipant.setMicrophoneEnabled(!muted)
       }
     },
-    [room],
+    [room, isMicrophoneMuted],
   )
 
   const setMicrophoneMuted = useCallback(
     async (muted: boolean) => {
-      if (!room) {
-        return
-      }
+      setIsMicrophoneMuted(muted)
+      writeFlag(MICROPHONE_MUTED_KEY, muted)
       // Speaking while hearing nobody makes no sense.
       if (!muted) {
         setIsDeafened(false)
+        writeFlag(DEAFENED_KEY, false)
       }
-      await room.localParticipant.setMicrophoneEnabled(!muted)
+      if (room) {
+        await room.localParticipant.setMicrophoneEnabled(!muted)
+      }
     },
     [room],
   )
@@ -100,7 +132,14 @@ export function useAudioControls(room: Room | null) {
     setVolumes((current) => new Map(current).set(identity, volume))
   }, [])
 
-  return { isDeafened, volumes, setDeafened, setMicrophoneMuted, setParticipantVolume }
+  return {
+    isMicrophoneMuted,
+    isDeafened,
+    volumes,
+    setDeafened,
+    setMicrophoneMuted,
+    setParticipantVolume,
+  }
 }
 
 /** Adds what only this client knows: its own deafen state and the chosen volumes. */

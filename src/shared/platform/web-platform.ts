@@ -47,6 +47,48 @@ export function createWebPlatform(): PlatformAdapter {
           devices?.removeEventListener('devicechange', listener)
         }
       },
+      async requestAccess() {
+        try {
+          const stream = await requireMediaDevices().getUserMedia({ audio: true })
+          // The permission is what was asked for; the capture itself is not needed.
+          for (const track of stream.getTracks()) {
+            track.stop()
+          }
+          return true
+        } catch {
+          return false
+        }
+      },
+      canSelectOutput() {
+        return typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype
+      },
+      async playTestSound(deviceId) {
+        const context = new AudioContext()
+        const element = new Audio()
+        try {
+          const oscillator = context.createOscillator()
+          const gain = context.createGain()
+          gain.gain.value = 0.08
+          oscillator.frequency.value = 440
+          oscillator.connect(gain)
+          oscillator.start()
+          gain.connect(context.destination)
+          // Route through an element when the browser can target a speaker.
+          if (deviceId !== null && 'setSinkId' in element) {
+            const stream = context.createMediaStreamDestination()
+            gain.connect(stream)
+            element.srcObject = stream.stream
+            await element.setSinkId(deviceId)
+            await element.play()
+          }
+          await new Promise((resolve) => setTimeout(resolve, 400))
+          oscillator.stop()
+        } finally {
+          element.pause()
+          element.srcObject = null
+          await context.close()
+        }
+      },
     },
 
     screenCapture: {

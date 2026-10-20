@@ -2,7 +2,8 @@ import { useState } from 'react'
 
 import { useVoiceRoom } from '@/entities/voice-room'
 import { getPlatform, type ScreenCapture } from '@/shared/platform'
-import { Button } from '@/shared/ui/button'
+import { ScreenIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
 import type { Room } from 'livekit-client'
 
@@ -34,17 +35,18 @@ export const ShareScreenButton = () => {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <Button
-        variant={isSharingScreen ? 'secondary' : 'primary'}
-        aria-pressed={isSharingScreen}
+    <div className="flex flex-col gap-1">
+      <IconButton
+        label={isSharingScreen ? 'Остановить показ' : 'Показать экран'}
+        variant={isSharingScreen ? 'danger' : 'ghost'}
+        pressed={isSharingScreen}
         disabled={pending}
         onClick={() => void toggle()}
       >
-        {isSharingScreen ? 'Остановить показ' : 'Показать экран'}
-      </Button>
+        <ScreenIcon />
+      </IconButton>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-xs text-danger">
           {error}
         </p>
       )}

@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
+import { openServerSettings } from './helpers.ts'
+
 const API_URL = process.env.VITE_API_URL ?? 'http://localhost:8080'
 const password = 'a-long-enough-password'
 const unique = (prefix: string) =>
@@ -38,8 +40,10 @@ test('settings reach the members live, and a member is kept out of them', async 
   const member = await memberContext.newPage()
   await member.goto(`/s/${workspace.id}/${general.id}`)
   await expect(member.getByRole('heading', { name: 'Команда', level: 2 })).toBeVisible()
-  await expect(member.getByRole('button', { name: '+ Канал' })).toHaveCount(0)
-  await expect(member.getByRole('link', { name: 'Настройки сервера' })).toHaveCount(0)
+  await member.getByRole('button', { name: 'Меню сервера' }).click()
+  await expect(member.getByRole('menuitem', { name: 'Создать канал' })).toHaveCount(0)
+  await expect(member.getByRole('menuitem', { name: 'Настройки сервера' })).toHaveCount(0)
+  await member.keyboard.press('Escape')
 
   // Straight to the address: sent back to the server.
   await member.goto(`/s/${workspace.id}/settings`)
@@ -47,7 +51,7 @@ test('settings reach the members live, and a member is kept out of them', async 
 
   const owner = await ownerContext.newPage()
   await owner.goto(`/s/${workspace.id}/${general.id}`)
-  await owner.getByRole('link', { name: 'Настройки сервера' }).click()
+  await openServerSettings(owner)
   await expect(owner.getByRole('heading', { name: 'Настройки сервера' })).toBeVisible()
 
   await owner.getByLabel('Название сервера').fill('Экипаж')
@@ -60,7 +64,8 @@ test('settings reach the members live, and a member is kept out of them', async 
   await expect(owner.getByText('Сохранено')).toBeVisible()
 
   await expect(member.getByRole('heading', { name: 'Экипаж', level: 2 })).toBeVisible()
-  await expect(member.getByRole('button', { name: '+ Канал' })).toBeVisible()
+  await member.getByRole('button', { name: 'Меню сервера' }).click()
+  await expect(member.getByRole('menuitem', { name: 'Создать канал' })).toBeVisible()
 
   // Deleting asks for the name, then takes the owner home.
   await owner.getByRole('button', { name: 'Удалить сервер' }).click()

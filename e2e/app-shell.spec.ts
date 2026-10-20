@@ -26,7 +26,8 @@ async function createWorkspace(page: Page, name: string, template = /Пусто�
 }
 
 async function createChannel(page: Page, name: string) {
-  await page.getByRole('button', { name: '+ Канал' }).click()
+  await page.getByRole('button', { name: 'Меню сервера' }).click()
+  await page.getByRole('menuitem', { name: 'Создать канал' }).click()
   await page.getByLabel('Название канала').fill(name)
   await page.getByRole('button', { name: 'Создать', exact: true }).click()
   await expect(page.getByRole('link', { name: `# ${name}` })).toBeVisible()
@@ -75,8 +76,9 @@ test('the owner sees managing, and the member list names them', async ({ page })
   const nickname = await signUp(page)
   await createWorkspace(page, 'Команда')
 
-  await expect(page.getByRole('button', { name: '+ Канал' })).toBeVisible()
-  await page.getByRole('button', { name: 'Участники' }).click()
+  await page.getByRole('button', { name: 'Меню сервера' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Создать канал' })).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Участники и баны' }).click()
 
   await expect(page.getByText(`${nickname} (владелец)`)).toBeVisible()
   // Nobody moderates themselves.
@@ -114,4 +116,17 @@ test('a new server from a template opens its first channel', async ({ page }) =>
   await expect
     .poll(() => icon.evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBeGreaterThan(0)
+})
+
+test('the keyboard mutes and deafens without a voice channel', async ({ page }) => {
+  await signUp(page)
+  await createWorkspace(page, 'Команда')
+  const user = page.getByRole('region', { name: 'Пользователь' })
+
+  await expect(user.getByRole('button', { name: 'Выключить микрофон' })).toBeVisible()
+  await page.keyboard.press('Control+Shift+M')
+  await expect(user.getByRole('button', { name: 'Включить микрофон' })).toBeVisible()
+
+  await page.keyboard.press('Control+Shift+D')
+  await expect(user.getByRole('button', { name: 'Включить звук' })).toBeVisible()
 })

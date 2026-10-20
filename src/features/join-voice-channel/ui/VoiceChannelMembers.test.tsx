@@ -20,7 +20,7 @@ const member = (id: string, overrides: Partial<VoiceChannelMember> = {}): VoiceC
 it('shows nothing for an empty channel', () => {
   renderWithProviders(<VoiceChannelMembers channelName="room" members={[]} />, { route: '/' })
 
-  expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  expect(screen.queryByRole('list', { name: 'Участники канала room' })).not.toBeInTheDocument()
 })
 
 it('shows the voice state of each participant', () => {
@@ -42,14 +42,14 @@ it('shows the voice state of each participant', () => {
   expect(list).toHaveTextContent('показывает экран')
 })
 
-it('collapses a long list to five people and expands it back', async () => {
-  const members = Array.from({ length: 7 }, (_, index) => member(String(index)))
+it('collapses a long list to eight people and expands it back', async () => {
+  const members = Array.from({ length: 10 }, (_, index) => member(String(index)))
   renderWithProviders(<VoiceChannelMembers channelName="room" members={members} />, { route: '/' })
 
   const list = screen.getByRole('list', { name: 'Участники канала room' })
-  expect(list.querySelectorAll('li')).toHaveLength(5)
+  expect(list.querySelectorAll('li')).toHaveLength(8)
   await userEvent.click(screen.getByRole('button', { name: '+2' }))
-  expect(list.querySelectorAll('li')).toHaveLength(7)
+  expect(list.querySelectorAll('li')).toHaveLength(10)
   await userEvent.click(screen.getByRole('button', { name: 'Свернуть' }))
-  expect(list.querySelectorAll('li')).toHaveLength(5)
+  expect(list.querySelectorAll('li')).toHaveLength(8)
 })

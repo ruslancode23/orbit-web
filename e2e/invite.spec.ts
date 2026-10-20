@@ -1,8 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const unique = (prefix: string) =>
-  `${prefix}${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
-const password = 'a-long-enough-password'
+import { createChannel, inviteLink, password, unique, userPanel } from './helpers.ts'
 
 async function openServer(page: Page) {
   await page.goto('/register')
@@ -17,18 +15,7 @@ async function openServer(page: Page) {
   await page.getByRole('button', { name: 'Далее' }).click()
   await page.getByRole('button', { name: 'Создать сервер' }).click()
 
-  await page.getByRole('button', { name: '+ Канал' }).click()
-  await page.getByLabel('Название канала').fill('общий')
-  await page.getByRole('button', { name: 'Создать', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '# общий', level: 1 })).toBeVisible()
-}
-
-async function inviteLink(page: Page): Promise<string> {
-  await page.getByRole('button', { name: 'Пригласить' }).click()
-  await page.getByRole('button', { name: 'Создать ссылку' }).click()
-  const field = page.getByLabel('Ссылка-приглашение')
-  await expect(field).toBeVisible()
-  return field.inputValue()
+  await createChannel(page, 'общий')
 }
 
 test('an invite link brings a guest in, and the guest can keep the account', async ({
@@ -55,18 +42,23 @@ test('an invite link brings a guest in, and the guest can keep the account', asy
   await guestPage.getByRole('button', { name: 'Войти как гость' }).click()
 
   await expect(guestPage).toHaveURL(/\/s\/[0-9a-f-]+$/)
-  await expect(guestPage.getByText(`${guestName} (гость)`)).toBeVisible()
+  await expect(userPanel(guestPage).getByText(guestName, { exact: true })).toBeVisible()
+  await expect(userPanel(guestPage).getByText('гость', { exact: true })).toBeVisible()
   await guestPage.getByRole('link', { name: '# общий' }).click()
   await expect(guestPage.getByRole('textbox', { name: 'Сообщение' })).toBeVisible()
 
   // The guest keeps its place and its history by turning the account into a full one.
+  await guestPage.getByRole('button', { name: 'Настройки пользователя' }).click()
+  await guestPage.getByRole('tab', { name: 'Аккаунт' }).click()
   await guestPage.getByRole('button', { name: 'Создать аккаунт' }).click()
   await guestPage.getByLabel('Пароль').fill(password)
   await guestPage.getByRole('button', { name: 'Создать аккаунт' }).click()
 
+  await expect(guestPage.getByText('Полный аккаунт')).toBeVisible()
   await expect(guestPage.getByText('Вы вошли как гость.')).toHaveCount(0)
-  await expect(guestPage.getByText(`${guestName} (гость)`)).toHaveCount(0)
-  await expect(guestPage.getByText(guestName, { exact: true })).toBeVisible()
+  await guestPage.keyboard.press('Escape')
+  await expect(userPanel(guestPage).getByText(guestName, { exact: true })).toBeVisible()
+  await expect(userPanel(guestPage).getByText('гость', { exact: true })).toHaveCount(0)
 
   await guestContext.close()
 })

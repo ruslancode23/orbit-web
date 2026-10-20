@@ -40,6 +40,15 @@ export interface PlatformMediaDevices {
   list: (kind: MediaDeviceKind) => Promise<MediaDeviceInfo[]>
   /** Calls `listener` when a device is plugged in or removed; returns the unsubscribe function. */
   onChange: (listener: () => void) => () => void
+  /**
+   * Asks for microphone access so the device labels become visible. Returns
+   * whether it was granted; a refusal is a choice, not an error.
+   */
+  requestAccess: () => Promise<boolean>
+  /** Whether a chosen speaker can be used (`setSinkId`), as in Chrome and Edge. */
+  canSelectOutput: () => boolean
+  /** Plays a short tone through the chosen speakers; `null` means the system default. */
+  playTestSound: (deviceId: string | null) => Promise<void>
 }
 
 export interface ScreenCaptureOptions {

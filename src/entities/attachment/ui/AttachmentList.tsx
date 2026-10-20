@@ -1,7 +1,8 @@
 import { Dialog } from 'radix-ui'
 import { useState } from 'react'
 
-import { Button } from '@/shared/ui/button'
+import { DownloadIcon, FileIcon, XIcon } from '@/shared/ui/icon'
+import { Tooltip } from '@/shared/ui/tooltip'
 
 import {
   formatSize,
@@ -44,6 +45,23 @@ const Unavailable = ({ attachment }: { attachment: Attachment }) => {
   )
 }
 
+/** A signed link that opens the file in a new tab; it is a hint, not a label. */
+const DownloadLink = ({ href, fileName }: { href: string; fileName: string }) => {
+  return (
+    <Tooltip content="Скачать">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Скачать ${fileName}`}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+      >
+        <DownloadIcon />
+      </a>
+    </Tooltip>
+  )
+}
+
 const FileAttachment = ({ attachment }: { attachment: Attachment }) => {
   const { data: link, isError } = useAttachmentLink(attachment.id)
   if (isError) {
@@ -52,21 +70,15 @@ const FileAttachment = ({ attachment }: { attachment: Attachment }) => {
 
   return (
     <div className="flex items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
-      <span aria-hidden="true">📄</span>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-hover text-fg-muted">
+        <FileIcon />
+      </span>
       <span className="flex min-w-0 flex-col">
         <span className="truncate font-medium">{attachment.fileName}</span>
         <span className="text-xs text-fg-muted">{formatSize(attachment.sizeBytes)}</span>
       </span>
       {link ? (
-        <a
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Скачать ${attachment.fileName}`}
-          className="rounded-md px-2 py-1 text-accent hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
-        >
-          Скачать
-        </a>
+        <DownloadLink href={link.url} fileName={attachment.fileName} />
       ) : (
         <span className="text-xs text-fg-muted">Готовим ссылку…</span>
       )}
@@ -131,14 +143,20 @@ const ImageAttachment = ({ attachment }: { attachment: Attachment }) => {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md px-2 py-1 text-sm text-accent hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+              aria-label={`Скачать ${attachment.fileName}`}
+              className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
             >
-              Скачать
+              <DownloadIcon />
             </a>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm">
-                Закрыть
-              </Button>
+              <button
+                type="button"
+                aria-label="Закрыть"
+                title="Закрыть"
+                className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+              >
+                <XIcon />
+              </button>
             </Dialog.Close>
           </div>
           <img src={link.url} alt={attachment.fileName} className="min-h-0 flex-1 object-contain" />

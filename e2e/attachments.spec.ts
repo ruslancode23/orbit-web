@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { createChannel } from './helpers.ts'
+
 const unique = () => `files${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
 const password = 'a-long-enough-password'
 
@@ -22,10 +24,7 @@ async function openChannel(page: Page) {
   await page.getByRole('button', { name: 'Далее' }).click()
   await page.getByRole('button', { name: 'Создать сервер' }).click()
 
-  await page.getByRole('button', { name: '+ Канал' }).click()
-  await page.getByLabel('Название канала').fill('общий')
-  await page.getByRole('button', { name: 'Создать', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '# общий', level: 1 })).toBeVisible()
+  await createChannel(page, 'общий')
 }
 
 const fileInput = (page: Page) => page.locator('input[type="file"]')

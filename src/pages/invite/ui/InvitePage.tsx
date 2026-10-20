@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router'
 import { useSession } from '@/entities/session'
 import { AcceptInvite, GuestJoinForm } from '@/features/accept-invite'
 import { isApiError, previewInviteOptions } from '@/shared/api'
+import { Logo } from '@/shared/ui/logo'
 import { PageLoader } from '@/shared/ui/page-loader'
 
 /** «1 участник», «2 участника», «5 участников». */
@@ -50,11 +51,12 @@ const InvitePage = () => {
   const next = encodeURIComponent(location.pathname)
 
   return (
-    <main className="flex h-full items-center justify-center p-6">
+    <main className="flex min-h-dvh items-center justify-center bg-bg p-6">
       <section
         aria-labelledby="invite-title"
-        className="flex w-full max-w-md flex-col gap-4 rounded-lg border border-border bg-surface p-6"
+        className="flex w-full max-w-md flex-col gap-4 rounded-panel border border-border bg-surface p-6 shadow-popover"
       >
+        <Logo className="size-8" />
         <header className="flex flex-col gap-1">
           <p className="text-sm text-fg-muted">Приглашение на сервер</p>
           <h1 id="invite-title" className="text-2xl font-semibold">
@@ -98,11 +100,12 @@ const InvitePage = () => {
 
 const DeadInvite = ({ network = false }: { network?: boolean }) => {
   return (
-    <main className="flex h-full items-center justify-center p-6">
+    <main className="flex min-h-dvh items-center justify-center bg-bg p-6">
       <section
         aria-labelledby="invite-dead-title"
-        className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-surface p-6"
+        className="flex w-full max-w-md flex-col gap-3 rounded-panel border border-border bg-surface p-6 shadow-popover"
       >
+        <Logo className="size-8" />
         <h1 id="invite-dead-title" className="text-xl font-semibold">
           Приглашение недействительно
         </h1>

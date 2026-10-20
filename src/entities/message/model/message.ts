@@ -24,6 +24,43 @@ export function formatTime(moment: Date): string {
   return moment.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })
 }
 
+/** The exact moment for a tooltip: the day and the time. */
+export function formatFullTime(moment: Date): string {
+  return moment.toLocaleString('ru', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const RELATIVE = new Intl.RelativeTimeFormat('ru', { numeric: 'auto' })
+
+/**
+ * How long ago a message was written, in words: «только что», «5 минут назад»,
+ * «2 дня назад». Older than a week, the date itself says more.
+ */
+export function formatRelativeTime(moment: Date, now: Date = new Date()): string {
+  const seconds = Math.round((moment.getTime() - now.getTime()) / 1000)
+  const minutes = Math.round(seconds / 60)
+  const hours = Math.round(minutes / 60)
+  const days = Math.round(hours / 24)
+  if (Math.abs(seconds) < 60) {
+    return 'только что'
+  }
+  if (Math.abs(minutes) < 60) {
+    return RELATIVE.format(minutes, 'minute')
+  }
+  if (Math.abs(hours) < 24) {
+    return RELATIVE.format(hours, 'hour')
+  }
+  if (Math.abs(days) < 7) {
+    return RELATIVE.format(days, 'day')
+  }
+  return moment.toLocaleDateString('ru', { day: 'numeric', month: 'short' })
+}
+
 /** Who wrote it, or a placeholder for an account that is gone. */
 export function authorName(message: Message): string {
   return message.author?.nickname ?? 'Удалённый аккаунт'

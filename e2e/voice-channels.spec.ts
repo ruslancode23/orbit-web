@@ -1,8 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const unique = (prefix: string) =>
-  `${prefix}${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
-const password = 'a-long-enough-password'
+import { createChannel, inviteLink, password, unique, userPanel } from './helpers.ts'
 
 async function createVoiceServer(page: Page): Promise<string> {
   const nickname = unique('owner')
@@ -18,20 +16,8 @@ async function createVoiceServer(page: Page): Promise<string> {
   await page.getByRole('button', { name: 'Далее' }).click()
   await page.getByRole('button', { name: 'Создать сервер' }).click()
 
-  await page.getByRole('button', { name: '+ Канал' }).click()
-  await page.getByLabel('Тип канала').selectOption('voice')
-  await page.getByLabel('Название канала').fill('переговорка')
-  await page.getByRole('button', { name: 'Создать', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Голосовой канал переговорка' })).toBeVisible()
+  await createChannel(page, 'переговорка', 'voice')
   return nickname
-}
-
-async function inviteLink(page: Page): Promise<string> {
-  await page.getByRole('button', { name: 'Пригласить' }).click()
-  await page.getByRole('button', { name: 'Создать ссылку' }).click()
-  const field = page.getByLabel('Ссылка-приглашение')
-  await expect(field).toBeVisible()
-  return field.inputValue()
 }
 
 async function remoteAudioPeak(page: Page): Promise<number> {
@@ -64,19 +50,20 @@ async function remoteAudioPeak(page: Page): Promise<number> {
 }
 
 const panel = (page: Page) => page.getByRole('region', { name: 'Голос подключён' })
-const participants = (page: Page) => panel(page).getByRole('list', { name: 'Участники' })
+const voiceMembers = (page: Page) => page.getByRole('list', { name: 'В голосе: переговорка' })
 
 test('two accounts join a voice channel in one click and hear each other', async ({ browser }) => {
   const ownerContext = await browser.newContext({ permissions: ['microphone'] })
   const owner = await ownerContext.newPage()
   const ownerName = await createVoiceServer(owner)
   const link = await inviteLink(owner)
+  await owner.keyboard.press('Escape')
 
   // The owner joins and mutes before the guest arrives: presence is visible to
   // people who are not in the channel yet.
   await owner.getByRole('button', { name: 'Голосовой канал переговорка' }).click()
   await expect(panel(owner)).toContainText('Подключено')
-  await panel(owner).getByRole('button', { name: 'Выключить микрофон' }).click()
+  await userPanel(owner).getByRole('button', { name: 'Выключить микрофон' }).click()
 
   const guestContext = await browser.newContext({ permissions: ['microphone'] })
   const guest = await guestContext.newPage()
@@ -92,28 +79,26 @@ test('two accounts join a voice channel in one click and hear each other', async
   await guest.getByRole('button', { name: 'Голосовой канал переговорка' }).click()
 
   // The mute icon was checked above; bring the owner's microphone back for audio.
-  await panel(owner).getByRole('button', { name: 'Включить микрофон' }).click()
+  await userPanel(owner).getByRole('button', { name: 'Включить микрофон' }).click()
 
   await expect(panel(owner)).toContainText('Подключено')
   await expect(panel(guest)).toContainText('Подключено')
-  await expect(participants(owner)).toContainText(guestName)
-  await expect(participants(guest)).toContainText('(вы)')
+  await expect(voiceMembers(owner)).toContainText(guestName)
+  await expect(voiceMembers(guest)).toContainText(ownerName)
+  await expect(voiceMembers(guest)).toContainText(guestName)
 
   // Each side receives the other's fake microphone.
   await expect.poll(() => remoteAudioPeak(owner), { timeout: 15_000 }).toBeGreaterThan(0)
   await expect.poll(() => remoteAudioPeak(guest), { timeout: 15_000 }).toBeGreaterThan(0)
 
   // A text channel is a different route, but the call stays: the provider lives in the shell.
-  await owner.getByRole('button', { name: '+ Канал' }).click()
-  await owner.getByLabel('Название канала').fill('общий')
-  await owner.getByRole('button', { name: 'Создать', exact: true }).click()
-  await expect(owner.getByRole('heading', { name: '# общий', level: 1 })).toBeVisible()
+  await createChannel(owner, 'общий')
   await expect(panel(owner)).toContainText('Подключено')
-  await expect(participants(owner)).toContainText(guestName)
+  await expect(voiceMembers(owner)).toContainText(guestName)
 
   await guest.getByRole('button', { name: 'Отключиться' }).click()
   await expect(panel(guest)).toHaveCount(0)
-  await expect(participants(owner)).not.toContainText(guestName)
+  await expect(voiceMembers(owner)).not.toContainText(guestName)
 
   await ownerContext.close()
   await guestContext.close()

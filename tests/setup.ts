@@ -7,3 +7,11 @@ globalThis.ResizeObserver = class {
   unobserve = vi.fn()
   disconnect = vi.fn()
 }
+
+// jsdom has no pointer capture; Radix Toast (and other primitives) ask for it on drag.
+// Assigned on the prototype, where the browser keeps them.
+Object.assign(Element.prototype, {
+  hasPointerCapture: () => false,
+  setPointerCapture: () => undefined,
+  releasePointerCapture: () => undefined,
+})

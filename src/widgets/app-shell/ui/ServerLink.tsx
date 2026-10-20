@@ -23,19 +23,24 @@ export const ServerLink = ({ workspace, watched }: ServerLinkProps) => {
     <Tooltip content={workspace.name} side="right">
       <NavLink
         to={`/s/${workspace.id}`}
-        aria-label={description ? `${workspace.name}, ${description}` : workspace.name}
         className="rounded-2xl focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
       >
         {({ isActive }) => (
-          <WorkspaceAvatar
-            name={workspace.name}
-            iconUrl={workspace.iconUrl}
-            colorKey={workspace.id}
-            active={isActive}
-            unread={total.unread > 0}
-            badge={total.mentions > 0 && <UnreadBadge {...total} compact />}
-            decorative
-          />
+          <>
+            <WorkspaceAvatar
+              name={workspace.name}
+              iconUrl={workspace.iconUrl}
+              colorKey={workspace.name}
+              active={isActive}
+              unread={total.unread > 0}
+              badge={total.mentions > 0 && <UnreadBadge {...total} compact />}
+              decorative
+            />
+            {/* The name comes from the content, so the visible initials never clash with a label. */}
+            <span className="sr-only">
+              {description ? `${workspace.name}, ${description}` : workspace.name}
+            </span>
+          </>
         )}
       </NavLink>
     </Tooltip>

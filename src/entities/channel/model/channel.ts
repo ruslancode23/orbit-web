@@ -3,8 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type Channel,
   createChannelMutation,
+  deleteChannelMutation,
   listChannelsOptions,
   listChannelsQueryKey,
+  updateChannelMutation,
 } from '@/shared/api'
 
 export type { Channel }
@@ -21,6 +23,32 @@ export function useCreateChannel(workspaceId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     ...createChannelMutation(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: listChannelsQueryKey({ path: { workspaceId } }),
+      })
+    },
+  })
+}
+
+/** Rename a channel, change its topic or make it read-only; admins and the owner only. */
+export function useUpdateChannel(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    ...updateChannelMutation(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: listChannelsQueryKey({ path: { workspaceId } }),
+      })
+    },
+  })
+}
+
+/** Delete a channel with its messages; admins and the owner only. */
+export function useDeleteChannel(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    ...deleteChannelMutation(),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: listChannelsQueryKey({ path: { workspaceId } }),

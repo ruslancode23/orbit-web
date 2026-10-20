@@ -20,10 +20,14 @@ import {
   type User,
 } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
+import { SendIcon, XIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
 interface SendMessageProps {
   workspaceId: string
   channelId: string
+  /** The text after the hash in the placeholder: «Написать в #общий». */
+  channelName?: string
   /** The message the new one answers, if the reader chose one. */
   replyTo?: Message
   onCancelReply?: () => void
@@ -77,6 +81,7 @@ const MAX_SUGGESTIONS = 8
 export const SendMessage = ({
   workspaceId,
   channelId,
+  channelName,
   replyTo,
   onCancelReply,
   onSent,
@@ -263,13 +268,13 @@ export const SendMessage = ({
   return (
     <div className="flex flex-col gap-2 border-t border-border p-4">
       {replyTo && (
-        <div className="flex items-center gap-2 text-xs text-fg-muted">
-          <span className="truncate">
+        <div className="flex items-center gap-2 rounded-md bg-surface px-2 py-1 text-xs text-fg-muted">
+          <span className="min-w-0 flex-1 truncate">
             Ответ на сообщение {authorName(replyTo)}: {messagePreview(replyTo)}
           </span>
-          <Button size="sm" variant="ghost" aria-label="Отменить ответ" onClick={onCancelReply}>
-            Отмена
-          </Button>
+          <IconButton label="Отменить ответ" size="sm" onClick={onCancelReply}>
+            <XIcon />
+          </IconButton>
         </div>
       )}
       {send.isPaused && (
@@ -297,15 +302,15 @@ export const SendMessage = ({
           Ждём, пока загрузятся файлы.
         </p>
       )}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1 rounded-panel border border-border bg-surface py-1.5 pr-1.5 pl-1 focus-within:ring-2 focus-within:ring-accent">
         {attachControl}
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           {open && (
             <ul
               id={listId}
               role="listbox"
               aria-label="Подсказки упоминаний"
-              className="absolute bottom-full left-0 z-10 mb-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg"
+              className="absolute bottom-full left-0 z-20 mb-1 max-h-56 w-full overflow-y-auto rounded-panel border border-border bg-surface-raised p-1 shadow-popover"
             >
               {suggestions.map((person, index) => (
                 <li key={person.id} role="presentation">
@@ -338,13 +343,13 @@ export const SendMessage = ({
               registerContent(element)
               fieldRef.current = element
             }}
-            placeholder="Напишите сообщение"
+            placeholder={channelName ? `Написать в #${channelName}` : 'Написать сообщение'}
             maxLength={4000}
             aria-autocomplete="list"
             aria-controls={open ? listId : undefined}
             aria-activedescendant={open ? activeOptionId : undefined}
             aria-describedby={open ? hintId : undefined}
-            className="max-h-40 min-h-10 w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+            className="max-h-40 min-h-8 w-full resize-none bg-transparent px-1 py-1.5 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-none"
             onSelect={(event) => {
               setCaret(event.currentTarget.selectionStart)
             }}
@@ -355,9 +360,15 @@ export const SendMessage = ({
             }}
           />
         </div>
-        <Button disabled={!canSend} onClick={handleSubmit}>
-          Отправить
-        </Button>
+        <IconButton
+          label="Отправить"
+          variant="subtle"
+          className="bg-accent text-accent-fg hover:bg-accent-hover hover:text-accent-fg disabled:opacity-40"
+          disabled={!canSend}
+          onClick={handleSubmit}
+        >
+          <SendIcon />
+        </IconButton>
       </div>
       {open && (
         <p id={hintId} className="sr-only">

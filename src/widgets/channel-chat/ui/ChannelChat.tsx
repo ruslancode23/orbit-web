@@ -13,7 +13,9 @@ import {
 import { SendMessage } from '@/features/send-message'
 import { isApiError } from '@/shared/api'
 import { usePageVisible } from '@/shared/lib/page-visibility'
-import { Button } from '@/shared/ui/button'
+import { ChevronDownIcon, HashIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 import { MessageRow } from './MessageRow'
 import { useChannelHistory } from './useChannelHistory'
@@ -21,6 +23,10 @@ import { useChannelHistory } from './useChannelHistory'
 interface ChannelChatProps {
   workspaceId: string
   channelId: string
+  /** The channel's name, for the placeholder and the first-screen title. */
+  channelName?: string
+  /** The channel's topic, shown while it is still empty. */
+  channelTopic?: string
   /** False in a read-only channel: the composer is then not offered. */
   canWrite: boolean
   /** False when the server does not let this member attach files. */
@@ -39,7 +45,14 @@ const HIGHLIGHT_MS = 2000
  * scrolls at the same speed as a short one; older pages load as the reader
  * goes up, and new messages stick to the bottom only while the reader is there.
  */
-export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: ChannelChatProps) => {
+export const ChannelChat = ({
+  workspaceId,
+  channelId,
+  channelName,
+  channelTopic,
+  canWrite,
+  canAttach,
+}: ChannelChatProps) => {
   const { user } = useSession()
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useChannelHistory(channelId)
@@ -83,11 +96,16 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: Cha
   })
 
   // Someone reading older messages must not be yanked back down by a new one.
-  useEffect(() => {
-    if (atBottom) {
-      virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+  // The size only settles after rows are measured, and again when a picture
+  // arrives: following the bottom means following the height, not one call.
+  const totalSize = virtualizer.getTotalSize()
+  useLayoutEffect(() => {
+    const element = scrollRef.current
+    if (!atBottom || !element) {
+      return
     }
-  }, [messages.length, atBottom, virtualizer])
+    element.scrollTop = element.scrollHeight
+  }, [atBottom, totalSize, messages.length, channelId])
 
   // The mark on a jumped-to message is temporary.
   useEffect(() => {
@@ -149,99 +167,124 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: Cha
           Отпустите, чтобы прикрепить файлы
         </div>
       )}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto"
-        role="log"
-        aria-live="polite"
-        aria-label="Сообщения"
-      >
-        {isPending && (
-          <p role="status" className="p-4 text-sm text-fg-muted">
-            Загружаем сообщения…
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="p-4 text-sm text-danger">
-            {isApiError(error) && error.isNetworkError
-              ? 'Нет соединения с сервером.'
-              : 'Не получилось загрузить историю.'}
-          </p>
-        )}
-        {isFetchingNextPage && (
-          <p role="status" className="p-2 text-center text-xs text-fg-muted">
-            Загружаем старые сообщения…
-          </p>
-        )}
-        {!isPending && !error && messages.length === 0 && (
-          <p className="p-4 text-sm text-fg-muted">Здесь пока ничего не написано.</p>
-        )}
-
+      <div className="relative min-h-0 flex-1">
         <div
-          className="relative w-full"
-          style={{ height: `${String(virtualizer.getTotalSize())}px` }}
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="h-full overflow-y-auto"
+          role="log"
+          aria-live="polite"
+          aria-label="Сообщения"
         >
-          {virtualizer.getVirtualItems().map((row) => {
-            const message = messages[row.index]
-            if (!message) {
-              return null
-            }
-            const replyTarget =
-              message.replyToId === undefined
-                ? undefined
-                : messages.find((item) => item.id === message.replyToId)
-            return (
-              <div
-                key={row.key}
-                ref={virtualizer.measureElement}
-                data-index={row.index}
-                className="absolute top-0 left-0 w-full"
-                style={{ transform: `translateY(${String(row.start)}px)` }}
+          {isPending && (
+            <div role="status" aria-label="Загружаем сообщения" className="flex flex-col gap-4 p-4">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="flex gap-3">
+                  <Skeleton className="size-9 shrink-0 rounded-full" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {error && (
+            <p role="alert" className="p-4 text-sm text-danger">
+              {isApiError(error) && error.isNetworkError
+                ? 'Нет соединения с сервером.'
+                : 'Не получилось загрузить историю.'}
+            </p>
+          )}
+          {isFetchingNextPage && (
+            <p role="status" className="p-2 text-center text-xs text-fg-muted">
+              Загружаем старые сообщения…
+            </p>
+          )}
+          {!isPending && !error && messages.length === 0 && (
+            <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+              <span
+                aria-hidden="true"
+                className="flex size-16 items-center justify-center rounded-full bg-surface-hover"
               >
-                {message.id === firstUnreadId && <NewMessagesDivider />}
-                <MessageRow
-                  message={message}
-                  previous={messages[row.index - 1]}
-                  mentionsMe={user ? message.mentions.includes(user.id) : false}
-                  myNickname={user?.nickname}
-                  canWrite={canWrite}
-                  replyTo={replyTarget}
-                  editing={editingId === message.id}
-                  highlighted={highlightedId === message.id}
-                  onStartEdit={() => {
-                    setEditingId(message.id)
-                  }}
-                  onStopEdit={() => {
-                    setEditingId(undefined)
-                  }}
-                  onReply={() => {
-                    setReplyTo(message)
-                  }}
-                  onJumpTo={jumpTo}
-                />
-              </div>
-            )
-          })}
-        </div>
-      </div>
+                <HashIcon className="size-8 text-fg-muted" />
+              </span>
+              <p className="text-lg font-semibold">Это начало #{channelName ?? 'канала'}</p>
+              {channelTopic && <p className="max-w-md text-sm text-fg-muted">{channelTopic}</p>}
+              <p className="text-sm text-fg-muted">Здесь пока ничего не написано.</p>
+            </div>
+          )}
 
-      {!atBottom && (
-        <Button
-          variant="ghost"
-          className="mx-auto mb-1"
-          onClick={() => {
-            setAtBottom(true)
-          }}
-        >
-          К новым сообщениям
-        </Button>
-      )}
+          <div
+            className="relative w-full"
+            style={{ height: `${String(virtualizer.getTotalSize())}px` }}
+          >
+            {virtualizer.getVirtualItems().map((row) => {
+              const message = messages[row.index]
+              if (!message) {
+                return null
+              }
+              const replyTarget =
+                message.replyToId === undefined
+                  ? undefined
+                  : messages.find((item) => item.id === message.replyToId)
+              return (
+                <div
+                  key={row.key}
+                  ref={virtualizer.measureElement}
+                  data-index={row.index}
+                  className="absolute top-0 left-0 w-full focus-within:z-10 hover:z-10"
+                  style={{ transform: `translateY(${String(row.start)}px)` }}
+                >
+                  {message.id === firstUnreadId && <NewMessagesDivider />}
+                  <MessageRow
+                    message={message}
+                    previous={messages[row.index - 1]}
+                    mentionsMe={user ? message.mentions.includes(user.id) : false}
+                    myNickname={user?.nickname}
+                    canWrite={canWrite}
+                    replyTo={replyTarget}
+                    editing={editingId === message.id}
+                    highlighted={highlightedId === message.id}
+                    onStartEdit={() => {
+                      setEditingId(message.id)
+                    }}
+                    onStopEdit={() => {
+                      setEditingId(undefined)
+                    }}
+                    onReply={() => {
+                      setReplyTo(message)
+                    }}
+                    onJumpTo={jumpTo}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {!atBottom && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+            <IconButton
+              label="К новым сообщениям"
+              variant="subtle"
+              className="pointer-events-auto size-9 rounded-full shadow-popover"
+              onClick={() => {
+                setAtBottom(true)
+              }}
+            >
+              <ChevronDownIcon />
+            </IconButton>
+          </div>
+        )}
+      </div>
 
       {canWrite ? (
         <SendMessage
           workspaceId={workspaceId}
           channelId={channelId}
+          {...(channelName === undefined ? {} : { channelName })}
           {...(activeReply === undefined ? {} : { replyTo: activeReply })}
           onCancelReply={() => {
             setReplyTo(undefined)

@@ -1,5 +1,6 @@
 import { formatSize } from '@/entities/attachment'
-import { Button } from '@/shared/ui/button'
+import { XIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
 import type { UploadItem } from '../model/uploads'
 
@@ -41,18 +42,15 @@ export const PendingAttachments = ({ items, onRemove }: PendingAttachmentsProps)
               </span>
             )}
 
-            <Button
-              variant="ghost"
+            <IconButton
               size="sm"
-              aria-label={
-                item.status === 'uploading' ? `Отменить загрузку ${name}` : `Убрать ${name}`
-              }
+              label={item.status === 'uploading' ? `Отменить загрузку ${name}` : `Убрать ${name}`}
               onClick={() => {
                 onRemove(item.key)
               }}
             >
-              {item.status === 'uploading' ? 'Отменить' : 'Убрать'}
-            </Button>
+              <XIcon className="size-3.5" />
+            </IconButton>
           </li>
         )
       })}

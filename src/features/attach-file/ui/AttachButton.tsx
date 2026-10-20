@@ -1,6 +1,7 @@
 import { useRef, type ChangeEvent } from 'react'
 
-import { Button } from '@/shared/ui/button'
+import { PaperclipIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
 interface AttachButtonProps {
   onFiles: (files: File[]) => void
@@ -31,18 +32,15 @@ export const AttachButton = ({ onFiles, disabled = false }: AttachButtonProps) =
         aria-hidden="true"
         onChange={handleChange}
       />
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Прикрепить файл"
-        title="Прикрепить файл"
+      <IconButton
+        label="Прикрепить файл"
         disabled={disabled}
         onClick={() => {
           inputRef.current?.click()
         }}
       >
-        <span aria-hidden="true">📎</span>
-      </Button>
+        <PaperclipIcon />
+      </IconButton>
     </>
   )
 }

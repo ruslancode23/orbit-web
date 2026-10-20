@@ -1,33 +1,30 @@
-import { Link, NavLink, Outlet, useParams } from 'react-router'
+import { useEffect } from 'react'
+import { NavLink, Outlet, useParams } from 'react-router'
 
-import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
-import { useSession } from '@/entities/session'
-import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
-import { useVoicePresence } from '@/entities/voice-presence'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
-import { atLeast, can, useWorkspace, useWorkspaces, WorkspaceAvatar } from '@/entities/workspace'
-import { LogoutButton } from '@/features/auth'
-import { ClaimGuest } from '@/features/claim-guest'
-import { CreateChannel } from '@/features/create-channel'
+import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
-import { InstallApp } from '@/features/install-app'
-import {
-  membersFromPresence,
-  membersFromRoom,
-  VoiceChannelButton,
-} from '@/features/join-voice-channel'
-import { ManageInvites } from '@/features/manage-invites'
-import { ManageMembers } from '@/features/manage-members'
-import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
+import { useMessageNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
-import { SettingsIcon } from '@/shared/ui/icon'
+import { MenuIcon, PlusIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
+import { Skeleton } from '@/shared/ui/skeleton'
 import { Tooltip } from '@/shared/ui/tooltip'
 
+import { ChannelList } from './ChannelList'
 import { ConnectionStatus } from './ConnectionStatus'
 import { ServerLink } from './ServerLink'
+import { UserPanel } from './UserPanel'
 import { VoicePanel } from './VoicePanel'
 import { VoiceStage } from './VoiceStage'
+import { WorkspaceMenu } from './WorkspaceMenu'
+import {
+  setChannelSidebarOpen,
+  toggleChannelSidebar,
+  useChannelSidebarOpen,
+} from '../model/channel-sidebar'
+import { useVoiceShortcuts } from '../model/use-voice-shortcuts'
 
 /**
  * The frame every signed-in page sits in: the servers on the left, the channels
@@ -50,26 +47,38 @@ export const AppShell = () => {
 
 const Shell = () => {
   const { workspaceId, channelId } = useParams()
-  const { user } = useSession()
   const { data: memberships, isPending } = useWorkspaces()
   const { membership } = useWorkspace(workspaceId)
-  const { data: channels } = useChannels(workspaceId)
-  const { data: voicePresence } = useVoicePresence(workspaceId)
-  const {
-    activeChannel,
-    participants: roomParticipants,
-    screenShares,
-    isSharingScreen,
-    room,
-  } = useVoiceRoom()
-  const { data: unread } = useWorkspaceUnread(workspaceId, { watched: true })
   const { watch } = useLive()
+  const { activeChannel } = useVoiceRoom()
+  const channelSidebarOpen = useChannelSidebarOpen()
 
   // One socket for the app; changing servers only changes what it watches.
   if (workspaceId) {
     watch(workspaceId)
   }
   useMessageNotifications({ workspaceId, channelId })
+  useVoiceShortcuts()
+
+  // A narrow screen closes the sliding channel column on Esc and after a move.
+  useEffect(() => {
+    if (!channelSidebarOpen) {
+      return
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setChannelSidebarOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [channelSidebarOpen])
+
+  useEffect(() => {
+    setChannelSidebarOpen(false)
+  }, [workspaceId, channelId, activeChannel?.id])
 
   const canManage = atLeast(membership?.role, 'admin')
   // A member may be allowed to by the server's own settings.
@@ -77,8 +86,11 @@ const Shell = () => {
   const canInvite = can(membership, 'canInvite')
 
   return (
-    <div className="flex h-full">
-      <nav aria-label="Серверы" className="flex w-16 flex-col items-center gap-2 bg-surface p-2">
+    <div className="flex h-dvh overflow-hidden">
+      <nav
+        aria-label="Серверы"
+        className="flex min-h-0 w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto bg-surface p-2"
+      >
         {memberships?.map(({ workspace }) => (
           <ServerLink
             key={workspace.id}
@@ -86,131 +98,84 @@ const Shell = () => {
             watched={workspace.id === workspaceId}
           />
         ))}
+        <span aria-hidden="true" className="h-px w-8 shrink-0 bg-border" />
         <Tooltip content="Создать сервер" side="right">
-          {/* A plain class string: the tooltip trigger merges classes as text,
-              so NavLink's class function would not survive it. */}
           <NavLink
             to="/new"
             aria-label="Создать сервер"
-            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-xl text-fg-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-fg-muted transition-colors hover:rounded-xl hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
           >
-            <span aria-hidden="true">+</span>
+            <PlusIcon />
           </NavLink>
         </Tooltip>
       </nav>
 
-      <aside aria-label="Каналы" className="flex w-56 flex-col gap-2 border-r border-border p-3">
+      {channelSidebarOpen && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-30 bg-bg/70 lg:hidden"
+          onClick={() => {
+            setChannelSidebarOpen(false)
+          }}
+        />
+      )}
+
+      <aside
+        aria-label="Каналы"
+        className={cn(
+          'flex min-h-0 w-64 shrink-0 flex-col border-r border-border bg-bg',
+          'max-lg:fixed max-lg:inset-y-0 max-lg:left-16 max-lg:z-40 max-lg:w-72 max-lg:shadow-popover',
+          channelSidebarOpen ? 'max-lg:flex' : 'max-lg:hidden',
+        )}
+      >
         {isPending ? (
-          <p role="status" className="text-sm text-fg-muted">
-            Загружаем…
-          </p>
+          <div role="status" aria-label="Загружаем сервер" className="flex flex-col gap-2 p-3">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-4/5" />
+          </div>
         ) : membership ? (
           <>
-            <header className="flex items-center gap-2">
-              <WorkspaceAvatar
-                name={membership.workspace.name}
-                iconUrl={membership.workspace.iconUrl}
-                colorKey={membership.workspace.id}
-                size="sm"
-                decorative
+            <div className="shrink-0 px-2 pt-2">
+              <WorkspaceMenu
+                workspace={membership.workspace}
+                role={membership.role}
+                canManage={canManage}
+                canInvite={canInvite}
+                canCreateChannels={canCreateChannels}
               />
-              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
-                {membership.workspace.name}
-              </h2>
-              {canManage && (
-                <Tooltip content="Настройки сервера">
-                  <Link
-                    to={`/s/${membership.workspace.id}/settings`}
-                    aria-label="Настройки сервера"
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
-                  >
-                    <SettingsIcon />
-                  </Link>
-                </Tooltip>
-              )}
-            </header>
-            <ul className="flex flex-col gap-1">
-              {channels?.map((channel) => {
-                const counts = unread?.find((item) => item.channelId === channel.id)
-                // The open channel is being read: its count would only flicker.
-                const shown =
-                  counts && channel.id !== channelId
-                    ? { unread: counts.unread, mentions: counts.mentions }
-                    : { unread: 0, mentions: 0 }
-                const description = describeUnread(shown)
-                if (channel.kind === 'voice') {
-                  const current = activeChannel?.id === channel.id
-                  const screenSharers = screenShares.map((share) => share.participantIdentity)
-                  if (current && isSharingScreen && room) {
-                    screenSharers.push(room.localParticipant.identity)
-                  }
-                  const members = current
-                    ? membersFromRoom(roomParticipants, screenSharers)
-                    : membersFromPresence(
-                        voicePresence?.find((presence) => presence.channelId === channel.id),
-                      )
-                  return (
-                    <li key={channel.id}>
-                      <VoiceChannelButton channel={channel} members={members} />
-                    </li>
-                  )
-                }
-                return (
-                  <li key={channel.id}>
-                    <NavLink
-                      to={`/s/${membership.workspace.id}/${channel.id}`}
-                      aria-label={
-                        description ? `# ${channel.name}, ${description}` : `# ${channel.name}`
-                      }
-                      className={({ isActive }) =>
-                        cn(
-                          'flex items-center gap-2 rounded-md px-2 py-1 text-sm',
-                          isActive ? 'bg-surface-hover' : 'hover:bg-surface',
-                          shown.unread > 0 ? 'font-semibold text-fg' : 'text-fg-muted',
-                          isActive && 'text-fg',
-                        )
-                      }
-                    >
-                      <span className="min-w-0 flex-1 truncate"># {channel.name}</span>
-                      <UnreadBadge unread={shown.unread} mentions={shown.mentions} />
-                    </NavLink>
-                  </li>
-                )
-              })}
-            </ul>
-            {canCreateChannels && <CreateChannel workspaceId={membership.workspace.id} />}
-            <ManageInvites
+            </div>
+
+            <ChannelList
               workspaceId={membership.workspace.id}
-              canInvite={canInvite}
+              activeChannelId={channelId}
               canManage={canManage}
+              canInvite={canInvite}
             />
-            {canManage && (
-              <ManageMembers workspaceId={membership.workspace.id} role={membership.role} />
-            )}
           </>
         ) : (
-          <p className="text-sm text-fg-muted">
+          <p className="p-3 text-sm text-fg-muted">
             {memberships?.length ? 'Выберите сервер' : 'Создайте свой первый сервер'}
           </p>
         )}
 
-        <div className="mt-auto flex flex-col gap-2">
-          <VoicePanel />
-          <InstallApp />
-          <ClaimGuest />
-          <NotificationSettings />
-          <ConnectionStatus />
-          {user && (
-            <p className="truncate text-sm text-fg-muted">
-              {user.nickname}
-              {user.isGuest && <span className="text-xs"> (гость)</span>}
-            </p>
-          )}
-          <LogoutButton />
+        {/* The person is here even on the very first screen, with no server yet. */}
+        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-border p-2">
+          {activeChannel && <VoicePanel />}
+          <UserPanel />
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <IconButton
+          label="Каналы"
+          onClick={toggleChannelSidebar}
+          className="absolute top-2 left-2 z-20 bg-surface shadow-popover lg:hidden"
+        >
+          <MenuIcon />
+        </IconButton>
+        <ConnectionStatus />
         <CreationNotice />
         <VoiceStage />
         <Outlet />
