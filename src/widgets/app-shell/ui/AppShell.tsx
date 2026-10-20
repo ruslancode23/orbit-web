@@ -1,19 +1,20 @@
 import { useEffect } from 'react'
-import { NavLink, Outlet, useParams } from 'react-router'
+import { NavLink, Outlet, useLocation, useParams } from 'react-router'
 
 import { useLive } from '@/entities/live'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
-import { useMessageNotifications } from '@/features/notifications'
+import { useMessageNotifications, useSecretNotifications } from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
-import { MenuIcon, PlusIcon } from '@/shared/ui/icon'
+import { MenuIcon, MessageIcon, PlusIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Tooltip } from '@/shared/ui/tooltip'
 
 import { ChannelList } from './ChannelList'
 import { ConnectionStatus } from './ConnectionStatus'
+import { DirectSidebar } from './DirectSidebar'
 import { ServerLink } from './ServerLink'
 import { UserPanel } from './UserPanel'
 import { VoicePanel } from './VoicePanel'
@@ -47,6 +48,9 @@ export const AppShell = () => {
 
 const Shell = () => {
   const { workspaceId, channelId } = useParams()
+  const location = useLocation()
+  // The personal-messages section replaces the channel column, not the shell.
+  const inDirect = location.pathname === '/dm' || location.pathname.startsWith('/dm/')
   const { data: memberships, isPending } = useWorkspaces()
   const { membership } = useWorkspace(workspaceId)
   const { watch } = useLive()
@@ -58,6 +62,7 @@ const Shell = () => {
     watch(workspaceId)
   }
   useMessageNotifications({ workspaceId, channelId })
+  useSecretNotifications()
   useVoiceShortcuts()
 
   // A narrow screen closes the sliding channel column on Esc and after a move.
@@ -78,7 +83,7 @@ const Shell = () => {
 
   useEffect(() => {
     setChannelSidebarOpen(false)
-  }, [workspaceId, channelId, activeChannel?.id])
+  }, [workspaceId, channelId, activeChannel?.id, location.pathname])
 
   const canManage = atLeast(membership?.role, 'admin')
   // A member may be allowed to by the server's own settings.
@@ -91,6 +96,16 @@ const Shell = () => {
         aria-label="Серверы"
         className="flex min-h-0 w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto bg-surface p-2"
       >
+        <Tooltip content="Личные сообщения" side="right">
+          <NavLink
+            to="/dm"
+            aria-label="Личные сообщения"
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-fg-muted transition-colors hover:rounded-xl hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
+          >
+            <MessageIcon />
+          </NavLink>
+        </Tooltip>
+        <span aria-hidden="true" className="h-px w-8 shrink-0 bg-border" />
         {memberships?.map(({ workspace }) => (
           <ServerLink
             key={workspace.id}
@@ -121,14 +136,16 @@ const Shell = () => {
       )}
 
       <aside
-        aria-label="Каналы"
+        aria-label={inDirect ? 'Личные сообщения' : 'Каналы'}
         className={cn(
           'flex min-h-0 w-64 shrink-0 flex-col border-r border-border bg-bg',
           'max-lg:fixed max-lg:inset-y-0 max-lg:left-16 max-lg:z-40 max-lg:w-72 max-lg:shadow-popover',
           channelSidebarOpen ? 'max-lg:flex' : 'max-lg:hidden',
         )}
       >
-        {isPending ? (
+        {inDirect ? (
+          <DirectSidebar className="w-full border-r-0" />
+        ) : isPending ? (
           <div role="status" aria-label="Загружаем сервер" className="flex flex-col gap-2 p-3">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-4 w-3/4" />

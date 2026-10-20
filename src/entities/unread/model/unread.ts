@@ -62,7 +62,8 @@ export function describeUnread({ unread, mentions }: UnreadTotal): string {
 }
 
 interface ReadOnViewOptions {
-  workspaceId: string
+  /** Absent in a dialogue; the cursor still moves, there is just no counter. */
+  workspaceId?: string
   channelId: string
   /** The newest message loaded in the channel; undefined while there is none. */
   newestSeq: bigint | undefined
@@ -85,6 +86,9 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
   const { mutate } = useMutation({
     ...markChannelReadMutation(),
     onSuccess: (state) => {
+      if (workspaceId === undefined) {
+        return
+      }
       queryClient.setQueryData<ChannelUnread[]>(
         listUnreadQueryKey({ path: { workspaceId } }),
         (channels) =>
@@ -98,9 +102,13 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
   })
 
   // A channel created after the counts were fetched has simply never been read.
-  const lastReadSeq = data
-    ? (data.find((item) => item.channelId === channelId)?.lastReadSeq ?? 0n)
-    : undefined
+  // A dialogue has no counters, so its cursor is moved without one.
+  const lastReadSeq =
+    workspaceId === undefined
+      ? 0n
+      : data
+        ? (data.find((item) => item.channelId === channelId)?.lastReadSeq ?? 0n)
+        : undefined
 
   useEffect(() => {
     if (!viewing || newestSeq === undefined || lastReadSeq === undefined) {

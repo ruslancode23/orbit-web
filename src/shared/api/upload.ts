@@ -13,6 +13,8 @@ export interface UploadProgress {
 export interface UploadAttachmentVariables {
   channelId: string
   file: File
+  /** Secret chat files carry their own deadline; the server caps it at a week. */
+  expiresAt?: Date
   signal?: AbortSignal
   onProgress?: (progress: UploadProgress) => void
 }
@@ -27,6 +29,7 @@ export interface UploadAttachmentVariables {
 export function uploadAttachmentWithProgress({
   channelId,
   file,
+  expiresAt,
   signal,
   onProgress,
 }: UploadAttachmentVariables): Promise<Attachment> {
@@ -38,6 +41,9 @@ export function uploadAttachmentWithProgress({
 
     const request = new XMLHttpRequest()
     const url = new URL(`/api/v1/channels/${encodeURIComponent(channelId)}/attachments`, env.apiUrl)
+    if (expiresAt) {
+      url.searchParams.set('expiresAt', expiresAt.toISOString())
+    }
     request.open('POST', url)
     // The session cookie, as `credentials: 'include'` does for the SDK.
     request.withCredentials = true

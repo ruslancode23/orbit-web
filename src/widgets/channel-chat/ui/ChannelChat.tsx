@@ -21,7 +21,8 @@ import { MessageRow } from './MessageRow'
 import { useChannelHistory } from './useChannelHistory'
 
 interface ChannelChatProps {
-  workspaceId: string
+  /** Absent in a dialogue: a conversation has no server to read members from. */
+  workspaceId?: string
   channelId: string
   /** The channel's name, for the placeholder and the first-screen title. */
   channelName?: string

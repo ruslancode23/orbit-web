@@ -8,6 +8,7 @@ export type {
   PlatformNotification,
   PlatformNotifications,
   PlatformScreenCapture,
+  PlatformSecretStore,
   ScreenCapture,
   ScreenCaptureOptions,
 } from './platform-adapter'

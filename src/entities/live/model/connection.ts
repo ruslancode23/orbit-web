@@ -42,6 +42,8 @@ export class LiveConnection {
   private timer: ReturnType<typeof setTimeout> | undefined
   private closed = false
   private subscription: { workspaceId: string; cursors: Record<string, number> } | undefined
+  /** Per-conversation cursors of the account stream: a dialogue has no server. */
+  private conversations: Record<string, number> | undefined
 
   private readonly handlers: ConnectionHandlers
   private readonly url: string
@@ -73,6 +75,9 @@ export class LiveConnection {
       if (this.subscription) {
         this.sendSubscribe(this.subscription)
       }
+      if (this.conversations) {
+        this.sendResume(this.conversations)
+      }
     })
 
     socket.addEventListener('message', (message: MessageEvent<string>) => {
@@ -102,6 +107,16 @@ export class LiveConnection {
     this.sendSubscribe(this.subscription)
   }
 
+  /**
+   * Catch up the account stream: the dialogs this device has and where it
+   * stopped in each. Conversations belong to no server, so this is a separate
+   * frame the socket repeats after a reconnect.
+   */
+  resume(conversations: Record<string, number>): void {
+    this.conversations = conversations
+    this.sendResume(conversations)
+  }
+
   close(): void {
     this.closed = true
     if (this.timer) {
@@ -116,6 +131,13 @@ export class LiveConnection {
       return
     }
     this.socket.send(JSON.stringify({ type: 'subscribe', ...subscription }))
+  }
+
+  private sendResume(conversations: Record<string, number>) {
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return
+    }
+    this.socket.send(JSON.stringify({ type: 'resume', conversations }))
   }
 
   private scheduleRetry() {

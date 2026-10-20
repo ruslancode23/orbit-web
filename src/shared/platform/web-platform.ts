@@ -1,4 +1,5 @@
 import { createWebInstall } from './web-install'
+import { createWebSecretStore } from './web-secret-store'
 
 import type { NotificationPermissionState, PlatformAdapter } from './platform-adapter'
 
@@ -111,6 +112,8 @@ export function createWebPlatform(): PlatformAdapter {
     },
 
     install: createWebInstall(),
+
+    secretStore: createWebSecretStore(),
 
     autostart: {
       isSupported: () => false,

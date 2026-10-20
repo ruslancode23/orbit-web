@@ -8,6 +8,8 @@ export interface LiveValue {
   status: LiveStatus
   /** Watch one server; calling it again switches servers on the same socket. */
   watch: (workspaceId: string) => void
+  /** Catch up the account stream: per-conversation cursors, repeated on reconnect. */
+  resume: (conversations: Record<string, number>) => void
   /**
    * Hears every event after the cache has been told about it. For reactions
    * that are not data — a notification — never for keeping a second copy.

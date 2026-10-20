@@ -1,4 +1,5 @@
 import type {
+  PlatformSecretStore,
   PlatformAutostart,
   PlatformInstall,
   PlatformMediaDevices,
@@ -38,6 +39,7 @@ export function createFakePlatform() {
       isEnabled: vi.fn<PlatformAutostart['isEnabled']>(() => Promise.resolve(false)),
       setEnabled: vi.fn<PlatformAutostart['setEnabled']>(() => Promise.resolve()),
     },
+    secretStore: createFakeSecretStore(),
     install: {
       isSupported: vi.fn<PlatformInstall['isSupported']>(() => true),
       canPrompt: vi.fn<PlatformInstall['canPrompt']>(() => false),
@@ -83,4 +85,35 @@ export class FakeMediaStreamTrack extends EventTarget implements MediaStreamTrac
   getCapabilities = (): MediaTrackCapabilities => ({})
   getConstraints = (): MediaTrackConstraints => ({})
   getSettings = (): MediaTrackSettings => ({})
+}
+
+/** Device-local storage for tests: a Map instead of IndexedDB. */
+export function createFakeSecretStore(): PlatformSecretStore {
+  const values = new Map<string, Map<string, unknown>>()
+  const scopeOf = (scope: string) => {
+    const existing = values.get(scope)
+    if (existing) {
+      return existing
+    }
+    const created = new Map<string, unknown>()
+    values.set(scope, created)
+    return created
+  }
+  return {
+    get: <T>(scope: string, key: string, fallback: T | null) =>
+      Promise.resolve((scopeOf(scope).get(key) as T | undefined) ?? fallback),
+    set: <T>(scope: string, key: string, value: T) => {
+      scopeOf(scope).set(key, value)
+      return Promise.resolve(value)
+    },
+    remove: (scope: string, key: string) => {
+      scopeOf(scope).delete(key)
+      return Promise.resolve()
+    },
+    keys: (scope: string) => Promise.resolve([...scopeOf(scope).keys()]),
+    clear: (scope: string) => {
+      values.delete(scope)
+      return Promise.resolve()
+    },
+  }
 }

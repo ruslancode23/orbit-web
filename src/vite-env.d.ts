@@ -9,3 +9,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** libolm's emscripten build reads its init options from this global. */
+declare var OLM_OPTIONS: { locateFile?: (file: string) => string } | undefined
