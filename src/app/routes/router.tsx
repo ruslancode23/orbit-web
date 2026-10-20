@@ -28,8 +28,11 @@ export const router = createBrowserRouter([
         children: [
           { path: '/', element: <ShellPlaceholder /> },
           { path: '/new', element: <NewWorkspacePage /> },
-          // Personal messages and secret chats live outside any server.
+          // Personal messages and secret chats live outside any server. A
+          // fixed segment outranks `:conversationId`, so `/me/friends` opens
+          // the friends section and is never read as a dialogue id.
           { path: '/me', element: <DirectPage /> },
+          { path: '/me/friends', element: <DirectPage /> },
           { path: '/me/:conversationId', element: <DirectPage /> },
           { path: '/me/s/:secretChatId', element: <SecretChatRoute /> },
           // The section was `/dm` before; keep the old links working.

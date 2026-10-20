@@ -6,8 +6,8 @@ import { useSession } from '@/entities/session'
 import { applyPersonalEvent, resetConversationUnread } from '@/entities/unread'
 import { usePageVisible } from '@/shared/lib/page-visibility'
 
-/** `/me/:conversationId` is an open dialogue; `/me` and `/me/s/...` are not. */
-const OPEN_CONVERSATION = /^\/me\/([^/]+)$/u
+/** `/me/:conversationId` is an open dialogue; `/me`, `/me/friends` and `/me/s/...` are not. */
+const OPEN_CONVERSATION = /^\/me\/(?!friends$)([^/]+)$/u
 
 /**
  * Keeps the dialogue counters from the personal stream: a message that arrives
