@@ -23,6 +23,7 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
   const [status, setStatus] = useState<LiveStatus>('connecting')
   const connectionRef = useRef<LiveConnection | null>(null)
   const watchedRef = useRef<string | undefined>(undefined)
+  const conversationsRef = useRef<Record<string, number> | undefined>(undefined)
   const listenersRef = useRef(new Set<LiveListener>())
 
   useEffect(() => {
@@ -40,6 +41,12 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
       },
     })
     connectionRef.current = connection
+    // The socket is not open yet, so `resume` would be dropped: the frame is
+    // kept here and sent when it comes up, and after every reconnect by the
+    // connection itself.
+    if (conversationsRef.current) {
+      connection.resume(conversationsRef.current)
+    }
     connection.open()
     // Re-watch what this session was watching before a remount.
     if (watchedRef.current) {
@@ -63,6 +70,7 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
         connectionRef.current?.subscribe(workspaceId)
       },
       resume: (conversations: Record<string, number>) => {
+        conversationsRef.current = conversations
         connectionRef.current?.resume(conversations)
       },
       listen: (listener: LiveListener) => {

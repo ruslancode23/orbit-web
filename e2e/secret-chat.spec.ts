@@ -48,7 +48,7 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   await joinServer(peer, link)
 
   // The peer opts in first: a secret chat names a device on both sides.
-  await peer.goto('/dm')
+  await peer.goto('/me')
   await peer.getByRole('button', { name: 'Включить секретные чаты' }).click()
   await expect(peer.getByRole('button', { name: 'Включить секретные чаты' })).toHaveCount(0)
 
@@ -56,10 +56,10 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   await expect(owner.getByRole('button', { name: peerName, exact: true })).toBeVisible()
   await owner.getByRole('button', { name: peerName, exact: true }).click()
   await owner.getByRole('button', { name: 'Написать' }).click()
-  await expect(owner).toHaveURL(/\/dm\/[0-9a-f-]+$/)
+  await expect(owner).toHaveURL(/\/me\/[0-9a-f-]+$/)
   await owner.getByRole('button', { name: 'Действия с диалогом' }).click()
   await owner.getByRole('menuitem', { name: 'Секретный чат' }).click()
-  await expect(owner).toHaveURL(/\/dm\/s\/[0-9a-f-]+$/)
+  await expect(owner).toHaveURL(/\/me\/s\/[0-9a-f-]+$/)
   await expect(owner.getByText(/Сообщения зашифрованы на ваших устройствах/)).toBeVisible()
 
   const envelopeBodies: string[] = []
@@ -80,10 +80,10 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   }
 
   // The peer finds the chat in the personal-messages section and reads it.
-  await peer.goto('/dm')
+  await peer.goto('/me')
   const secrets = peer.getByRole('list', { name: `Секретные чаты с ${ownerName}` })
   await secrets.getByRole('link', { name: 'Секретный чат' }).click()
-  await expect(peer).toHaveURL(/\/dm\/s\/[0-9a-f-]+$/)
+  await expect(peer).toHaveURL(/\/me\/s\/[0-9a-f-]+$/)
   await expect(peer.getByText(plaintext)).toBeVisible()
 
   // A timer: five seconds after the peer reads it, the message is gone there.
@@ -102,7 +102,7 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   await owner.getByRole('button', { name: 'Действия с чатом' }).click()
   await owner.getByRole('menuitem', { name: 'Удалить секретный чат' }).click()
   await owner.getByRole('button', { name: 'Удалить', exact: true }).click()
-  await expect(owner).toHaveURL(/\/dm$/)
+  await expect(owner).toHaveURL(/\/me$/)
   await peer.reload()
   await expect(peer.getByText('Секретный чат')).toHaveCount(0)
   await expect(peer.getByRole('link', { name: /Секретный чат/ })).toHaveCount(0)

@@ -34,7 +34,7 @@ export const StartDirectChat = ({
       { body: { userIds: [userId] } },
       {
         onSuccess: (conversation) => {
-          void navigate(`/dm/${conversation.id}`)
+          void navigate(`/me/${conversation.id}`)
         },
         onError: (error) => {
           toast(

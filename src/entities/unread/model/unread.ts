@@ -9,6 +9,8 @@ import {
 } from '@/shared/api'
 import { pluralRu } from '@/shared/lib/plural'
 
+import { markConversationRead } from './conversation-unread'
+
 export type { ChannelUnread }
 
 /**
@@ -87,6 +89,13 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
     ...markChannelReadMutation(),
     onSuccess: (state) => {
       if (workspaceId === undefined) {
+        // A dialogue has no server counters: its own store keeps the badge,
+        // and `read.changed` tells the other tabs.
+        markConversationRead(state.channelId, {
+          unread: state.unread,
+          mentions: state.mentions,
+          lastReadSeq: Number(state.lastReadSeq),
+        })
         return
       }
       queryClient.setQueryData<ChannelUnread[]>(
@@ -126,5 +135,6 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
     mutate({ path: { channelId }, body: { seq: newestSeq } })
   }, [viewing, newestSeq, lastReadSeq, channelId, mutate])
 
-  return { lastReadSeq }
+  // A dialogue has no divider: everything in it is the unread part on arrival.
+  return { lastReadSeq: workspaceId === undefined ? undefined : lastReadSeq }
 }

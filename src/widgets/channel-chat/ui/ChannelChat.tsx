@@ -10,7 +10,7 @@ import {
   useAttachmentUploads,
   useFileDrop,
 } from '@/features/attach-file'
-import { SendMessage } from '@/features/send-message'
+import { SendMessage, type MentionPerson } from '@/features/send-message'
 import { isApiError } from '@/shared/api'
 import { usePageVisible } from '@/shared/lib/page-visibility'
 import { ChevronDownIcon, HashIcon } from '@/shared/ui/icon'
@@ -28,6 +28,8 @@ interface ChannelChatProps {
   channelName?: string
   /** The channel's topic, shown while it is still empty. */
   channelTopic?: string
+  /** Whom `@` suggests; a dialogue has participants instead of server members. */
+  mentionPeople?: readonly MentionPerson[]
   /** False in a read-only channel: the composer is then not offered. */
   canWrite: boolean
   /** False when the server does not let this member attach files. */
@@ -51,6 +53,7 @@ export const ChannelChat = ({
   channelId,
   channelName,
   channelTopic,
+  mentionPeople,
   canWrite,
   canAttach,
 }: ChannelChatProps) => {
@@ -284,6 +287,7 @@ export const ChannelChat = ({
       {canWrite ? (
         <SendMessage
           workspaceId={workspaceId}
+          {...(mentionPeople === undefined ? {} : { mentionPeople })}
           channelId={channelId}
           {...(channelName === undefined ? {} : { channelName })}
           {...(activeReply === undefined ? {} : { replyTo: activeReply })}

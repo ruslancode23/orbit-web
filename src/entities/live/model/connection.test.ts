@@ -89,6 +89,21 @@ it('subscribes once the socket is up, whichever came first', () => {
   ])
 })
 
+it('resumes the account stream once the socket is up and after a drop', () => {
+  const { connection, sockets } = connect()
+
+  connection.resume({ c1: 7 })
+  expect(sockets[0]?.sent).toHaveLength(0)
+
+  sockets[0]?.accept()
+  expect(sockets[0]?.sent).toEqual([JSON.stringify({ type: 'resume', conversations: { c1: 7 } })])
+
+  sockets[0]?.drop()
+  vi.advanceTimersByTime(600)
+  sockets[1]?.accept()
+  expect(sockets[1]?.sent).toEqual([JSON.stringify({ type: 'resume', conversations: { c1: 7 } })])
+})
+
 it('passes events through and ignores a frame it cannot read', () => {
   const { sockets, events } = connect()
   sockets[0]?.accept()

@@ -62,7 +62,7 @@ const renderFeature = () =>
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/" element={<StartDirectChat userId={bob.id} />} />
-        <Route path="/dm/:conversationId" element={<ConversationProbe />} />
+        <Route path="/me/:conversationId" element={<ConversationProbe />} />
       </Routes>
     </MemoryRouter>,
   )

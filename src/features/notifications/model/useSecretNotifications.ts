@@ -42,14 +42,14 @@ export function useSecretNotifications(): void {
         return
       }
       // The chat is on screen and the tab is visible: the person is reading it.
-      if (isPageVisible() && location.pathname === `/dm/s/${chatId}`) {
+      if (isPageVisible() && location.pathname === `/me/s/${chatId}`) {
         return
       }
       getPlatform().notifications.show({
         title: 'Новое сообщение в секретном чате',
         tag: `secret-${chatId}`,
         onClick: () => {
-          void navigate(`/dm/s/${chatId}`)
+          void navigate(`/me/s/${chatId}`)
         },
       })
     })

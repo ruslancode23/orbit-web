@@ -1,13 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   getConversationOptions,
   getConversationQueryKey,
   listConversationsOptions,
   listConversationsQueryKey,
+  listMessagesOptions,
   startConversationMutation,
   type Conversation,
   type ConversationMember,
+  type Message,
 } from '@/shared/api'
 
 /** Every dialogue this account takes part in, in the order the server keeps it. */
@@ -69,4 +71,64 @@ export const conversationName = (conversation: Conversation, userId: string): st
   }
   const names = conversationMembersExcept(conversation, userId).map((member) => member.nickname)
   return names.length > 0 ? names.join(', ') : 'Групповой чат'
+}
+
+/** A dialogue together with the newest message the list previews. */
+export interface ConversationSummary {
+  conversation: Conversation
+  /** Absent while the dialogue has no messages, or while its latest page loads. */
+  lastMessage?: Message
+}
+
+interface SummaryList {
+  summaries: ConversationSummary[]
+  isPending: boolean
+  error: unknown
+  isFetching: boolean
+}
+
+/** The latest message is one page of one: the list shows a single line of it. */
+const LATEST_MESSAGE_LIMIT = 1
+
+/**
+ * The dialogues with their latest message, liveliest first.
+ *
+ * The current server contract has no summary on `GET /conversations`, so the
+ * preview comes from the history endpoint — one small request per dialogue,
+ * cached and shared by every preview. When conversation summaries arrive
+ * (DM-2), this hook is the only place that changes.
+ */
+export const useConversationSummaries = (): SummaryList => {
+  const conversations = useConversations()
+  const ids = conversations.data?.map((conversation) => conversation.id) ?? []
+
+  return useQueries({
+    queries: ids.map((channelId) => ({
+      ...listMessagesOptions({ path: { channelId }, query: { limit: LATEST_MESSAGE_LIMIT } }),
+      staleTime: 30_000,
+    })),
+    combine: (results) => {
+      const list: ConversationSummary[] = (conversations.data ?? []).map((conversation, index) => {
+        const lastMessage = results[index]?.data?.messages[0]
+        return lastMessage === undefined ? { conversation } : { conversation, lastMessage }
+      })
+      list.sort(byLastActivity)
+      return {
+        summaries: list,
+        isPending: conversations.isPending,
+        error: conversations.error,
+        isFetching: conversations.isFetching || results.some((result) => result.isFetching),
+      }
+    },
+  })
+}
+
+/** Moments with a message come first; a fresh dialogue without one follows by its birth. */
+const byLastActivity = (a: ConversationSummary, b: ConversationSummary): number => {
+  const left = a.lastMessage?.createdAt.getTime() ?? a.conversation.createdAt.getTime()
+  const right = b.lastMessage?.createdAt.getTime() ?? b.conversation.createdAt.getTime()
+  if (left !== right) {
+    return right - left
+  }
+  return a.conversation.id.localeCompare(b.conversation.id)
 }

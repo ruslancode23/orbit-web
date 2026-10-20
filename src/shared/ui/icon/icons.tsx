@@ -242,6 +242,19 @@ export const SignalIcon = (props: IconProps) => (
   </Icon>
 )
 
+export const SearchIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </Icon>
+)
+
+export const HideIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A9.6 9.6 0 0 1 12 5c5 0 9 4.5 9 7a11 11 0 0 1-3.1 4.3M6.6 6.6C4.4 8.1 3 10.1 3 12c0 2.5 4 7 9 7a9.8 9.8 0 0 0 4.4-1" />
+  </Icon>
+)
+
 export const MenuIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M4 6h16M4 12h16M4 18h16" />

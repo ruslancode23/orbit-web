@@ -9,6 +9,7 @@ import ChannelPage from '@/pages/workspace'
 import WorkspaceSettingsPage from '@/pages/workspace-settings'
 import { AppShell, ShellPlaceholder } from '@/widgets/app-shell'
 
+import { LegacyDirectRedirect } from './LegacyDirectRedirect'
 import { RequireSession } from './RequireSession'
 import { SecretChatRoute } from './SecretChatRoute'
 
@@ -28,9 +29,11 @@ export const router = createBrowserRouter([
           { path: '/', element: <ShellPlaceholder /> },
           { path: '/new', element: <NewWorkspacePage /> },
           // Personal messages and secret chats live outside any server.
-          { path: '/dm', element: <DirectPage /> },
-          { path: '/dm/:conversationId', element: <DirectPage /> },
-          { path: '/dm/s/:secretChatId', element: <SecretChatRoute /> },
+          { path: '/me', element: <DirectPage /> },
+          { path: '/me/:conversationId', element: <DirectPage /> },
+          { path: '/me/s/:secretChatId', element: <SecretChatRoute /> },
+          // The section was `/dm` before; keep the old links working.
+          { path: '/dm/*', element: <LegacyDirectRedirect /> },
           { path: '/s/:workspaceId', element: <ShellPlaceholder /> },
           // A fixed segment outranks `:channelId`, so this is never read as a channel.
           { path: '/s/:workspaceId/settings', element: <WorkspaceSettingsPage /> },

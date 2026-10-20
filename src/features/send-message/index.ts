@@ -1,1 +1,1 @@
-export { SendMessage } from './ui/SendMessage'
+export { SendMessage, type MentionPerson } from './ui/SendMessage'
