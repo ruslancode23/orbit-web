@@ -16,6 +16,7 @@ import { DEAFENED_ATTRIBUTE, useAudioControls, useParticipantsWithAudio } from '
 import {
   VoiceRoomContext,
   type ConnectionLoss,
+  type ActiveVoiceChannel,
   type JoinParams,
   type RemoteScreenShare,
   type VoiceParticipant,
@@ -35,6 +36,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
   const roomRef = useRef<Room | null>(null)
   const audioRef = useRef<HTMLDivElement | null>(null)
   const [room, setRoom] = useState<Room | null>(null)
+  const [activeChannel, setActiveChannel] = useState<ActiveVoiceChannel | null>(null)
   const [status, setStatus] = useState<VoiceRoomStatus>('idle')
   const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [screenShares, setScreenShares] = useState<RemoteScreenShare[]>([])
@@ -50,8 +52,9 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const join = useCallback(
-    async ({ url, token }: JoinParams) => {
+    async ({ url, token, channel }: JoinParams) => {
       await roomRef.current?.disconnect()
+      setActiveChannel(channel ?? null)
 
       const next = new Room({ adaptiveStream: true, dynacast: true })
       roomRef.current = next
@@ -164,6 +167,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
     // disconnect() stops local tracks: the microphone and any screen share are released.
     await current?.disconnect()
     reset()
+    setActiveChannel(null)
     setConnectionLoss(null)
     setStatus('idle')
   }, [reset])
@@ -189,6 +193,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       error,
       connectionLoss,
       room,
+      activeChannel,
       join,
       leave,
       setMicrophoneMuted,
@@ -203,6 +208,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       error,
       connectionLoss,
       room,
+      activeChannel,
       join,
       leave,
       setMicrophoneMuted,

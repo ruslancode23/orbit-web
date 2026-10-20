@@ -3,6 +3,7 @@ export {
   HeadphonesOffIcon,
   MicIcon,
   MicOffIcon,
+  ScreenIcon,
   SettingsIcon,
   VolumeIcon,
 } from './icons'

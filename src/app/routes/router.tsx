@@ -6,7 +6,6 @@ import NewWorkspacePage from '@/pages/new-workspace'
 import RegisterPage from '@/pages/register'
 import ChannelPage from '@/pages/workspace'
 import WorkspaceSettingsPage from '@/pages/workspace-settings'
-import { PageLoader } from '@/shared/ui/page-loader'
 import { AppShell, ShellPlaceholder } from '@/widgets/app-shell'
 
 import { RequireSession } from './RequireSession'
@@ -33,15 +32,5 @@ export const router = createBrowserRouter([
         ],
       },
     ],
-  },
-  {
-    // Still open: the voice room runs on the development token endpoint, which
-    // knows nothing about accounts yet (task 2.12 note in AGENTS.md).
-    path: '/room/:roomId',
-    HydrateFallback: PageLoader,
-    lazy: async () => {
-      const { default: RoomPage } = await import('@/pages/room')
-      return { Component: RoomPage }
-    },
   },
 ])

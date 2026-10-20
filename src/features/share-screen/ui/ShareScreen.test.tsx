@@ -38,7 +38,7 @@ const renderConnected = async () => {
       <ScreenShares />
     </VoiceRoomProvider>,
   )
-  await userEvent.click(screen.getByRole('button', { name: 'connect' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'connect' }))
   return fakeLiveKit.lastRoom()
 }
 

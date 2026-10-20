@@ -4,12 +4,19 @@ import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
 import { useSession } from '@/entities/session'
 import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
+import { useVoicePresence } from '@/entities/voice-presence'
+import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces, WorkspaceAvatar } from '@/entities/workspace'
 import { LogoutButton } from '@/features/auth'
 import { ClaimGuest } from '@/features/claim-guest'
 import { CreateChannel } from '@/features/create-channel'
 import { CreationNotice } from '@/features/create-workspace'
 import { InstallApp } from '@/features/install-app'
+import {
+  membersFromPresence,
+  membersFromRoom,
+  VoiceChannelButton,
+} from '@/features/join-voice-channel'
 import { ManageInvites } from '@/features/manage-invites'
 import { ManageMembers } from '@/features/manage-members'
 import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
@@ -19,6 +26,8 @@ import { Tooltip } from '@/shared/ui/tooltip'
 
 import { ConnectionStatus } from './ConnectionStatus'
 import { ServerLink } from './ServerLink'
+import { VoicePanel } from './VoicePanel'
+import { VoiceStage } from './VoiceStage'
 
 /**
  * The frame every signed-in page sits in: the servers on the left, the channels
@@ -27,13 +36,32 @@ import { ServerLink } from './ServerLink'
  * What is shown follows the role the server reports — a button nobody may press
  * is not drawn — but that is a convenience, not protection: every action is
  * checked again on the server.
+ *
+ * The voice room lives above the routes, so changing a text channel or a server
+ * never interrupts the call.
  */
 export const AppShell = () => {
+  return (
+    <VoiceRoomProvider>
+      <Shell />
+    </VoiceRoomProvider>
+  )
+}
+
+const Shell = () => {
   const { workspaceId, channelId } = useParams()
   const { user } = useSession()
   const { data: memberships, isPending } = useWorkspaces()
   const { membership } = useWorkspace(workspaceId)
   const { data: channels } = useChannels(workspaceId)
+  const { data: voicePresence } = useVoicePresence(workspaceId)
+  const {
+    activeChannel,
+    participants: roomParticipants,
+    screenShares,
+    isSharingScreen,
+    room,
+  } = useVoiceRoom()
   const { data: unread } = useWorkspaceUnread(workspaceId, { watched: true })
   const { watch } = useLive()
 
@@ -110,6 +138,23 @@ export const AppShell = () => {
                     ? { unread: counts.unread, mentions: counts.mentions }
                     : { unread: 0, mentions: 0 }
                 const description = describeUnread(shown)
+                if (channel.kind === 'voice') {
+                  const current = activeChannel?.id === channel.id
+                  const screenSharers = screenShares.map((share) => share.participantIdentity)
+                  if (current && isSharingScreen && room) {
+                    screenSharers.push(room.localParticipant.identity)
+                  }
+                  const members = current
+                    ? membersFromRoom(roomParticipants, screenSharers)
+                    : membersFromPresence(
+                        voicePresence?.find((presence) => presence.channelId === channel.id),
+                      )
+                  return (
+                    <li key={channel.id}>
+                      <VoiceChannelButton channel={channel} members={members} />
+                    </li>
+                  )
+                }
                 return (
                   <li key={channel.id}>
                     <NavLink
@@ -150,6 +195,7 @@ export const AppShell = () => {
         )}
 
         <div className="mt-auto flex flex-col gap-2">
+          <VoicePanel />
           <InstallApp />
           <ClaimGuest />
           <NotificationSettings />
@@ -166,6 +212,7 @@ export const AppShell = () => {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <CreationNotice />
+        <VoiceStage />
         <Outlet />
       </main>
     </div>
