@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
@@ -35,17 +35,20 @@ const json = (body: unknown, status = 200) =>
   })
 
 interface StubOptions {
+  conversations?: unknown[]
   detail?: unknown
   detailStatus?: number
 }
 
 /**
- * The page uses the chat widget, and the widget asks for the history of the
- * channel id. A conversation id is a channel id, so the same stub answers both;
- * the empty workspace path is what `workspaceId=""` produces until the server
- * grows unread support for conversations.
+ * The page uses the chat widget, which asks for the history of the channel id.
+ * A conversation id is a channel id, so the same stub answers both.
  */
-const stubApi = ({ detail = direct, detailStatus = 200 }: StubOptions = {}) => {
+const stubApi = ({
+  conversations = [direct, group],
+  detail = direct,
+  detailStatus = 200,
+}: StubOptions = {}) => {
   const calls: string[] = []
   vi.stubGlobal(
     'fetch',
@@ -55,6 +58,9 @@ const stubApi = ({ detail = direct, detailStatus = 200 }: StubOptions = {}) => {
       calls.push(`${request.method} ${url.pathname}`)
       if (url.pathname.endsWith('/auth/me')) {
         return json(anna)
+      }
+      if (url.pathname === '/api/v1/conversations') {
+        return json(conversations)
       }
       if (url.pathname === '/api/v1/conversations/c-direct') {
         return detailStatus === 200
@@ -68,6 +74,9 @@ const stubApi = ({ detail = direct, detailStatus = 200 }: StubOptions = {}) => {
         return detailStatus === 200
           ? json(detail)
           : json({ error: { code: 'not_found', message: 'no conversation' } }, detailStatus)
+      }
+      if (url.pathname === '/api/v1/workspaces') {
+        return json([])
       }
       if (url.pathname.endsWith('/unread')) {
         return json([])
@@ -84,12 +93,12 @@ const stubApi = ({ detail = direct, detailStatus = 200 }: StubOptions = {}) => {
   return calls
 }
 
-const renderPage = (route = '/dm') =>
+const renderPage = (route = '/me') =>
   renderWithProviders(
     <MemoryRouter initialEntries={[route]}>
       <Routes>
-        <Route path="/dm" element={<DirectPage />} />
-        <Route path="/dm/:conversationId" element={<DirectPage />} />
+        <Route path="/me" element={<DirectPage />} />
+        <Route path="/me/:conversationId" element={<DirectPage />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -98,48 +107,73 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-it('asks to pick a dialogue when none is open', () => {
-  renderPage('/dm')
+it('offers to write when there are no dialogues yet', async () => {
+  stubApi({ conversations: [] })
+  renderPage('/me')
 
-  expect(screen.getByRole('heading', { name: 'Выберите диалог' })).toBeInTheDocument()
-  expect(screen.getByText(/Слева — личные сообщения и секретные чаты/)).toBeInTheDocument()
+  expect(
+    await screen.findByRole('heading', { name: 'Здесь будут ваши личные сообщения' }),
+  ).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Написать' })).toBeInTheDocument()
+})
+
+it('asks to pick a dialogue when some exist', async () => {
+  stubApi()
+  renderPage('/me')
+
+  expect(await screen.findByRole('heading', { name: 'Выберите диалог' })).toBeInTheDocument()
 })
 
 it('opens a pair dialogue with the peer and the usual composer', async () => {
   stubApi()
-  renderPage('/dm/c-direct')
+  renderPage('/me/c-direct')
 
   expect(await screen.findByRole('heading', { name: 'Боб', level: 1 })).toBeInTheDocument()
-  expect(screen.queryByText('Групповой чат')).not.toBeInTheDocument()
   expect(screen.getByRole('region', { name: 'Чат' })).toBeInTheDocument()
   const composer = screen.getByLabelText('Сообщение')
   expect(composer).toHaveAttribute('placeholder', 'Написать в #Боб')
   expect(screen.getByRole('button', { name: 'Прикрепить файл' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Добавить людей' })).not.toBeInTheDocument()
 })
 
-it('names the members of a group and marks it as one', async () => {
+it('names the members of a group and offers adding people', async () => {
   stubApi({ detail: group })
-  renderPage('/dm/c-group')
+  renderPage('/me/c-group')
 
   expect(await screen.findByRole('heading', { name: 'Боб, Кэрол', level: 1 })).toBeInTheDocument()
-  expect(screen.getByText('Групповой чат')).toBeInTheDocument()
+  expect(screen.getByText('3 участника: Боб, Кэрол')).toBeInTheDocument()
+  const add = screen.getByRole('button', { name: 'Добавить людей' })
+  expect(add).toBeDisabled()
   expect(screen.getByLabelText('Сообщение')).toHaveAttribute(
     'placeholder',
     'Написать в #Боб, Кэрол',
   )
 })
 
+it('suggests the group members after @', async () => {
+  stubApi({ detail: group })
+  renderPage('/me/c-group')
+
+  await screen.findByRole('heading', { name: 'Боб, Кэрол', level: 1 })
+  await userEvent.type(screen.getByLabelText('Сообщение'), '@')
+
+  const hints = await screen.findByRole('listbox', { name: 'Подсказки упоминаний' })
+  expect(within(hints).getByRole('option', { name: 'Боб' })).toBeInTheDocument()
+  expect(within(hints).getByRole('option', { name: 'Кэрол' })).toBeInTheDocument()
+  expect(within(hints).queryByRole('option', { name: 'Анна' })).not.toBeInTheDocument()
+})
+
 it('says a missing dialogue is missing and leads back', async () => {
   stubApi({ detailStatus: 404 })
-  renderPage('/dm/c-direct')
+  renderPage('/me/c-direct')
 
   expect(await screen.findByRole('heading', { name: 'Диалог не найден' })).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'К личным сообщениям' })).toHaveAttribute('href', '/dm')
+  expect(screen.getByRole('link', { name: 'К личным сообщениям' })).toHaveAttribute('href', '/me')
 })
 
 it('offers a secret chat in the menu of a pair dialogue', async () => {
   stubApi()
-  renderPage('/dm/c-direct')
+  renderPage('/me/c-direct')
 
   await screen.findByRole('heading', { name: 'Боб', level: 1 })
   await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
@@ -149,7 +183,7 @@ it('offers a secret chat in the menu of a pair dialogue', async () => {
 
 it('has no secret chat for a group', async () => {
   stubApi({ detail: group })
-  renderPage('/dm/c-group')
+  renderPage('/me/c-group')
 
   await screen.findByRole('heading', { name: 'Боб, Кэрол', level: 1 })
   expect(screen.queryByRole('button', { name: 'Действия с диалогом' })).not.toBeInTheDocument()

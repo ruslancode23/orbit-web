@@ -13,19 +13,22 @@ import { useForm, useWatch } from 'react-hook-form'
 import { authorName, mentionedIds, messagePreview, type Message } from '@/entities/message'
 import { useSession } from '@/entities/session'
 import { useWorkspaceMembers } from '@/entities/workspace'
-import {
-  isApiError,
-  listMessagesInfiniteQueryKey,
-  sendMessageMutation,
-  type User,
-} from '@/shared/api'
+import { isApiError, listMessagesInfiniteQueryKey, sendMessageMutation } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
 import { SendIcon, XIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 
+/** Whom `@` may suggest: the members of a server or of one dialogue. */
+export interface MentionPerson {
+  id: string
+  nickname: string
+}
+
 interface SendMessageProps {
-  /** Absent in a dialogue: mentioning people of a server is not a thing there. */
+  /** Absent in a dialogue: the participants come in `mentionPeople` instead. */
   workspaceId?: string
+  /** The people `@` suggests; overrides the members of the server. */
+  mentionPeople?: readonly MentionPerson[]
   channelId: string
   /** The text after the hash in the placeholder: «Написать в #общий». */
   channelName?: string
@@ -81,6 +84,7 @@ const MAX_SUGGESTIONS = 8
  */
 export const SendMessage = ({
   workspaceId,
+  mentionPeople,
   channelId,
   channelName,
   replyTo,
@@ -110,7 +114,8 @@ export const SendMessage = ({
   const queryClient = useQueryClient()
   const { user } = useSession()
   const { data: members } = useWorkspaceMembers(workspaceId)
-  const people = members?.map((member) => member.user) ?? []
+  const people: readonly MentionPerson[] =
+    mentionPeople ?? members?.map((member) => member.user) ?? []
 
   const send = useMutation({
     ...sendMessageMutation(),
@@ -223,7 +228,7 @@ export const SendMessage = ({
     onPasteFiles(files)
   }
 
-  const choose = (person: User) => {
+  const choose = (person: MentionPerson) => {
     if (!mention) {
       return
     }
@@ -380,7 +385,7 @@ export const SendMessage = ({
   )
 }
 
-const optionId = (listId: string, person: User): string => {
+const optionId = (listId: string, person: MentionPerson): string => {
   return `${listId}-${person.id}`
 }
 
