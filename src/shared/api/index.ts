@@ -25,6 +25,7 @@ export {
   getLiveness,
   leaveSecretChat,
   getReadiness,
+  getUserProfile,
   listDevices,
   listSecretChats,
   listSecretEnvelopes,
@@ -36,8 +37,10 @@ export {
   uploadOneTimeKeys,
 } from './generated/sdk.gen'
 export type {
+  AccentColor,
   Attachment,
   AttachmentLink,
+  CustomStatus,
   Device,
   DeviceRegistration,
   KeyBundle,
