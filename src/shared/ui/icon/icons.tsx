@@ -267,6 +267,14 @@ export const CheckIcon = (props: IconProps) => (
   </Icon>
 )
 
+/** Copy a value to the clipboard: two overlapping sheets. */
+export const CopyIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+  </Icon>
+)
+
 /** Add someone as a friend: a person and a plus. */
 export const UserPlusIcon = (props: IconProps) => (
   <Icon {...props}>

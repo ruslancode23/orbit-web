@@ -2,6 +2,7 @@ export {
   BanIcon,
   BellIcon,
   CheckIcon,
+  CopyIcon,
   ClockIcon,
   ChevronDownIcon,
   DownloadIcon,

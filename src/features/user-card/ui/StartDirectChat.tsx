@@ -11,6 +11,8 @@ interface StartDirectChatProps {
   className?: string
   size?: ButtonProps['size']
   variant?: ButtonProps['variant']
+  /** Closes the surface the button sits in before the dialogue opens. */
+  onDone?: () => void
 }
 
 /**
@@ -24,6 +26,7 @@ export const StartDirectChat = ({
   className,
   size = 'sm',
   variant = 'secondary',
+  onDone,
 }: StartDirectChatProps) => {
   const navigate = useNavigate()
   const toast = useToast()
@@ -34,6 +37,7 @@ export const StartDirectChat = ({
       { body: { userIds: [userId] } },
       {
         onSuccess: (conversation) => {
+          onDone?.()
           void navigate(`/me/${conversation.id}`)
         },
         onError: (error) => {
