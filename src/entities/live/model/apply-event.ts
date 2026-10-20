@@ -8,6 +8,8 @@ import {
   listWorkspacesQueryKey,
 } from '@/shared/api'
 
+import { applyUserProfile, parseUserProfile } from './user-updated'
+
 import type { LiveEvent } from './connection'
 import type { QueryClient } from '@tanstack/react-query'
 
@@ -68,6 +70,15 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       void queryClient.invalidateQueries({
         queryKey: getWorkspaceQueryKey({ path: { workspaceId: event.workspaceId } }),
       })
+    }
+  }
+  // A display name, avatar, accent, bio or custom status changed. The stream
+  // carries the whole profile, so it replaces the copy in the feed and the
+  // member lists instead of making everyone refetch them.
+  if (event.type === 'user.updated') {
+    const profile = parseUserProfile(event.payload)
+    if (profile) {
+      applyUserProfile(queryClient, profile)
     }
   }
   // Someone joined, left, was banned or changed role: the member list and the
