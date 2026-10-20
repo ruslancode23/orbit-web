@@ -12,6 +12,9 @@ import {
 } from 'livekit-client'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { readDevicePreferences } from '@/shared/lib/device-preference'
+import { getPlatform } from '@/shared/platform'
+
 import { DEAFENED_ATTRIBUTE, useAudioControls, useParticipantsWithAudio } from './audio-controls'
 import {
   VoiceRoomContext,
@@ -51,12 +54,49 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
     setIsSharingScreen(false)
   }, [])
 
+  // Mute and deafen belong to the person, not to one room: the choice is kept
+  // while moving between servers and applied as the next room connects.
+  const {
+    isMicrophoneMuted,
+    isDeafened,
+    volumes,
+    setDeafened,
+    setMicrophoneMuted,
+    setParticipantVolume,
+  } = useAudioControls(room)
+
   const join = useCallback(
     async ({ url, token, channel }: JoinParams) => {
       await roomRef.current?.disconnect()
       setActiveChannel(channel ?? null)
 
-      const next = new Room({ adaptiveStream: true, dynacast: true })
+      // The chosen devices may have gone away since they were picked; connect
+      // with the ones that are still here instead of failing the join.
+      const preferences = readDevicePreferences()
+      const inputs = await getPlatform()
+        .mediaDevices.list('audioinput')
+        .catch(() => [])
+      const outputs = await getPlatform()
+        .mediaDevices.list('audiooutput')
+        .catch(() => [])
+      const microphoneId =
+        preferences.microphoneId !== undefined &&
+        inputs.some((device) => device.deviceId === preferences.microphoneId)
+          ? preferences.microphoneId
+          : undefined
+      const speakerId =
+        preferences.speakerId !== undefined &&
+        getPlatform().mediaDevices.canSelectOutput() &&
+        outputs.some((device) => device.deviceId === preferences.speakerId)
+          ? preferences.speakerId
+          : undefined
+
+      const next = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        ...(microphoneId === undefined ? {} : { audioCaptureDefaults: { deviceId: microphoneId } }),
+        ...(speakerId === undefined ? {} : { audioOutput: { deviceId: speakerId } }),
+      })
       roomRef.current = next
       let joined = false
       const sync = () => {
@@ -145,7 +185,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         await next.connect(url, token)
         // Called from the join click, so the browser allows audio playback.
         await next.startAudio()
-        await next.localParticipant.setMicrophoneEnabled(true)
+        await next.localParticipant.setMicrophoneEnabled(!isMicrophoneMuted)
         sync()
         setRoom(next)
         joined = true
@@ -158,7 +198,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         setStatus('error')
       }
     },
-    [reset],
+    [reset, isMicrophoneMuted],
   )
 
   const leave = useCallback(async () => {
@@ -172,8 +212,6 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
     setStatus('idle')
   }, [reset])
 
-  const { isDeafened, volumes, setDeafened, setMicrophoneMuted, setParticipantVolume } =
-    useAudioControls(room)
   const participantsWithAudio = useParticipantsWithAudio(participants, isDeafened, volumes)
 
   useEffect(
@@ -194,6 +232,8 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       connectionLoss,
       room,
       activeChannel,
+      isMicrophoneMuted,
+      isDeafened,
       join,
       leave,
       setMicrophoneMuted,
@@ -209,6 +249,8 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       connectionLoss,
       room,
       activeChannel,
+      isMicrophoneMuted,
+      isDeafened,
       join,
       leave,
       setMicrophoneMuted,

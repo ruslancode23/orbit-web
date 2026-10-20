@@ -43,8 +43,10 @@ afterEach(() => {
 })
 
 const open = async (role: 'owner' | 'admin') => {
-  renderWithProviders(<ManageMembers workspaceId={workspaceId} role={role} />, { route: '/' })
-  await userEvent.click(screen.getByRole('button', { name: 'Участники' }))
+  renderWithProviders(
+    <ManageMembers workspaceId={workspaceId} role={role} open onOpenChange={vi.fn()} />,
+    { route: '/' },
+  )
   await screen.findByText(/Bob/)
 }
 

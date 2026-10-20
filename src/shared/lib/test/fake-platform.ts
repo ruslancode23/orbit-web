@@ -23,6 +23,9 @@ export function createFakePlatform() {
     mediaDevices: {
       list: vi.fn<PlatformMediaDevices['list']>(() => Promise.resolve([])),
       onChange: vi.fn<PlatformMediaDevices['onChange']>(() => () => undefined),
+      requestAccess: vi.fn<PlatformMediaDevices['requestAccess']>(() => Promise.resolve(true)),
+      canSelectOutput: vi.fn<PlatformMediaDevices['canSelectOutput']>(() => true),
+      playTestSound: vi.fn<PlatformMediaDevices['playTestSound']>(() => Promise.resolve()),
     },
     screenCapture: {
       isSupported: vi.fn<PlatformScreenCapture['isSupported']>(() => true),

@@ -20,7 +20,7 @@ const member = (id: string, overrides: Partial<VoiceChannelMember> = {}): VoiceC
 it('shows nothing for an empty channel', () => {
   renderWithProviders(<VoiceChannelMembers channelName="room" members={[]} />, { route: '/' })
 
-  expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  expect(screen.queryByRole('list', { name: 'Участники канала room' })).not.toBeInTheDocument()
 })
 
 it('shows the voice state of each participant', () => {

@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router'
 import { LiveProvider } from '@/entities/live'
 import { useSession } from '@/entities/session'
 import { createQueryClient } from '@/shared/api'
+import { ToastProvider } from '@/shared/ui/toast'
 
 import { router } from '../routes/router'
 
@@ -13,9 +14,11 @@ export const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LiveLayer>
-        <RouterProvider router={router} />
-      </LiveLayer>
+      <ToastProvider>
+        <LiveLayer>
+          <RouterProvider router={router} />
+        </LiveLayer>
+      </ToastProvider>
     </QueryClientProvider>
   )
 }

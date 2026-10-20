@@ -61,12 +61,18 @@ const json = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   })
 
-const open = async (canManage = true) => {
+const open = (canManage = true) => {
   const user = userEvent.setup()
-  renderWithProviders(<ManageInvites workspaceId={workspaceId} canInvite canManage={canManage} />, {
-    route: '/',
-  })
-  await user.click(screen.getByRole('button', { name: 'Пригласить' }))
+  renderWithProviders(
+    <ManageInvites
+      workspaceId={workspaceId}
+      canInvite
+      canManage={canManage}
+      open
+      onOpenChange={vi.fn()}
+    />,
+    { route: '/' },
+  )
   return user
 }
 
@@ -76,7 +82,7 @@ afterEach(() => {
 
 it('creates a link, shows it and copies it', async () => {
   const calls = stubApi()
-  const user = await open()
+  const user = open()
 
   await user.selectOptions(screen.getByLabelText('Срок действия'), '1 день')
   await user.click(screen.getByRole('button', { name: 'Создать ссылку' }))
@@ -96,7 +102,7 @@ it('creates a link, shows it and copies it', async () => {
 
 it('lists the links of the server and revokes one', async () => {
   const calls = stubApi()
-  const user = await open()
+  const user = open()
 
   expect(await screen.findByText('Использовано 2 из 5')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /Отозвать приглашение/ }))
@@ -109,7 +115,7 @@ it('lists the links of the server and revokes one', async () => {
 
 it('gives a member the link but not the list of all links', async () => {
   const calls = stubApi()
-  const user = await open(false)
+  const user = open(false)
 
   expect(screen.queryByText('Все ссылки')).not.toBeInTheDocument()
   expect(calls.some((call) => call.method === 'GET')).toBe(false)
@@ -121,9 +127,15 @@ it('gives a member the link but not the list of all links', async () => {
 it('is not offered when the server does not let this member invite', () => {
   stubApi()
   renderWithProviders(
-    <ManageInvites workspaceId={workspaceId} canInvite={false} canManage={false} />,
+    <ManageInvites
+      workspaceId={workspaceId}
+      canInvite={false}
+      canManage={false}
+      open
+      onOpenChange={vi.fn()}
+    />,
     { route: '/' },
   )
 
-  expect(screen.queryByRole('button', { name: 'Пригласить' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

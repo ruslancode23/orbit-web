@@ -1,0 +1,124 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
+
+import { WorkspaceAvatar, type Workspace, type WorkspaceRole } from '@/entities/workspace'
+import { CreateChannel } from '@/features/create-channel'
+import { ManageInvites } from '@/features/manage-invites'
+import { ManageMembers } from '@/features/manage-members'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
+import { ChevronDownIcon, LinkIcon, PlusIcon, SettingsIcon, UsersIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
+
+interface WorkspaceMenuProps {
+  workspace: Workspace
+  role: WorkspaceRole
+  canManage: boolean
+  canInvite: boolean
+  canCreateChannels: boolean
+}
+
+/**
+ * The header of the channel column: the server's name and everything that may
+ * be done to the server itself — invite people, create a channel, look at the
+ * members, open the server settings.
+ */
+export const WorkspaceMenu = ({
+  workspace,
+  role,
+  canManage,
+  canInvite,
+  canCreateChannels,
+}: WorkspaceMenuProps) => {
+  const navigate = useNavigate()
+  const [invitesOpen, setInvitesOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
+
+  return (
+    <>
+      <header className="flex shrink-0 items-center gap-2 px-1 py-1">
+        <WorkspaceAvatar
+          name={workspace.name}
+          iconUrl={workspace.iconUrl}
+          colorKey={workspace.id}
+          size="sm"
+          decorative
+        />
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{workspace.name}</h2>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton label="Меню сервера" size="sm">
+              <ChevronDownIcon />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {canInvite && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setInvitesOpen(true)
+                }}
+              >
+                <LinkIcon className="size-4 text-fg-muted" />
+                Пригласить людей
+              </DropdownMenuItem>
+            )}
+            {canCreateChannels && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setCreateOpen(true)
+                }}
+              >
+                <PlusIcon className="size-4 text-fg-muted" />
+                Создать канал
+              </DropdownMenuItem>
+            )}
+            {canManage && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setMembersOpen(true)
+                }}
+              >
+                <UsersIcon className="size-4 text-fg-muted" />
+                Участники и баны
+              </DropdownMenuItem>
+            )}
+            {canManage && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => {
+                    void navigate(`/s/${workspace.id}/settings`)
+                  }}
+                >
+                  <SettingsIcon className="size-4 text-fg-muted" />
+                  Настройки сервера
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </header>
+
+      <ManageInvites
+        workspaceId={workspace.id}
+        canInvite={canInvite}
+        canManage={canManage}
+        open={invitesOpen}
+        onOpenChange={setInvitesOpen}
+      />
+      <CreateChannel workspaceId={workspace.id} open={createOpen} onOpenChange={setCreateOpen} />
+      <ManageMembers
+        workspaceId={workspace.id}
+        role={role}
+        open={membersOpen}
+        onOpenChange={setMembersOpen}
+      />
+    </>
+  )
+}

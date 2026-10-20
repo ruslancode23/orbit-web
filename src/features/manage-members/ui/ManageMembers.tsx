@@ -1,27 +1,30 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import { useSession } from '@/entities/session'
-import { atLeast, type WorkspaceRole } from '@/entities/workspace'
-import {
-  banWorkspaceMemberMutation,
-  isApiError,
-  listWorkspaceMembersOptions,
-  listWorkspaceMembersQueryKey,
-  removeWorkspaceMemberMutation,
-  setWorkspaceMemberRoleMutation,
-} from '@/shared/api'
+import type { WorkspaceRole } from '@/entities/workspace'
+import { listWorkspaceMembersOptions } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/shared/ui/dialog'
+import { XIcon } from '@/shared/ui/icon'
+
+import {
+  describeMemberActionError,
+  mayModerate,
+  ROLE_NAME,
+  useMemberModeration,
+} from '../model/moderation'
 
 interface ManageMembersProps {
   workspaceId: string
   role: WorkspaceRole
-}
-
-const ROLE_NAME: Record<WorkspaceRole, string> = {
-  owner: 'владелец',
-  admin: 'админ',
-  member: 'участник',
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 /**
@@ -29,138 +32,120 @@ const ROLE_NAME: Record<WorkspaceRole, string> = {
  * between roles; an admin may remove and ban those below them. The buttons
  * follow the same rules the server enforces — and the server enforces them again.
  */
-export const ManageMembers = ({ workspaceId, role }: ManageMembersProps) => {
-  const [open, setOpen] = useState(false)
+export const ManageMembers = ({ workspaceId, role, open, onOpenChange }: ManageMembersProps) => {
   const { user } = useSession()
-  const queryClient = useQueryClient()
-  const { data: members } = useQuery({
+  const { data: members, isPending } = useQuery({
     ...listWorkspaceMembersOptions({ path: { workspaceId } }),
     enabled: open,
   })
-
-  const refresh = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: listWorkspaceMembersQueryKey({ path: { workspaceId } }),
-    })
-  }
-
-  const setRole = useMutation({ ...setWorkspaceMemberRoleMutation(), onSuccess: refresh })
-  const remove = useMutation({ ...removeWorkspaceMemberMutation(), onSuccess: refresh })
-  const ban = useMutation({ ...banWorkspaceMemberMutation(), onSuccess: refresh })
-  const error = setRole.error ?? remove.error ?? ban.error
-
-  if (!open) {
-    return (
-      <Button
-        variant="ghost"
-        onClick={() => {
-          setOpen(true)
-        }}
-      >
-        Участники
-      </Button>
-    )
-  }
+  const moderation = useMemberModeration(workspaceId)
 
   return (
-    <section aria-label="Участники сервера" className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">Участники</h3>
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {describeError(error)}
-        </p>
-      )}
-      <ul className="flex flex-col gap-2">
-        {members?.map((member) => {
-          const isMe = member.user.id === user?.id
-          // Moderation goes downwards only, as on the server.
-          const mayModerate = !isMe && atLeast(role, 'admin') && !atLeast(member.role, role)
-          return (
-            <li key={member.user.id} className="flex flex-col gap-1 text-sm">
-              <span className="truncate">
-                {member.user.nickname}{' '}
-                <span className="text-fg-muted">({ROLE_NAME[member.role]})</span>
-              </span>
-              <div className="flex flex-wrap gap-1">
-                {role === 'owner' && !isMe && member.role !== 'admin' && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setRole.mutate({
-                        path: { workspaceId, userId: member.user.id },
-                        body: { role: 'admin' },
-                      })
-                    }}
-                  >
-                    Сделать админом
-                  </Button>
-                )}
-                {role === 'owner' && !isMe && member.role === 'admin' && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setRole.mutate({
-                        path: { workspaceId, userId: member.user.id },
-                        body: { role: 'member' },
-                      })
-                    }}
-                  >
-                    Снять админа
-                  </Button>
-                )}
-                {mayModerate && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        remove.mutate({ path: { workspaceId, userId: member.user.id } })
-                      }}
-                    >
-                      Убрать
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => {
-                        ban.mutate({ path: { workspaceId, userId: member.user.id }, body: {} })
-                      }}
-                    >
-                      Забанить
-                    </Button>
-                  </>
-                )}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-      <Button
-        variant="ghost"
-        onClick={() => {
-          setOpen(false)
-        }}
-      >
-        Свернуть
-      </Button>
-    </section>
-  )
-}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <div className="flex items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <DialogTitle>Участники и баны</DialogTitle>
+            <DialogDescription>Кто есть на сервере и что можно с ними сделать.</DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <button
+              type="button"
+              aria-label="Закрыть"
+              title="Закрыть"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+            >
+              <XIcon />
+            </button>
+          </DialogClose>
+        </div>
 
-const describeError = (error: unknown): string => {
-  if (!isApiError(error)) {
-    return 'Не получилось изменить участника.'
-  }
-  if (error.isNetworkError) {
-    return 'Нет соединения с сервером.'
-  }
-  if (error.status === 403) {
-    return 'Для этого не хватает прав.'
-  }
-  if (error.status === 400) {
-    return 'Сервер всегда должен остаться с владельцем.'
-  }
-  return 'Не получилось изменить участника.'
+        {moderation.error && (
+          <p role="alert" className="text-sm text-danger">
+            {describeMemberActionError(moderation.error)}
+          </p>
+        )}
+
+        <div aria-label="Участники сервера" role="group" className="min-h-0 overflow-y-auto">
+          {isPending ? (
+            <p role="status" className="text-sm text-fg-muted">
+              Загружаем…
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {members?.map((member) => {
+                const isMe = member.user.id === user?.id
+                const moderates = mayModerate(role, member, user?.id)
+                return (
+                  <li key={member.user.id} className="flex flex-col gap-1 text-sm">
+                    <span className="truncate">
+                      {member.user.nickname}{' '}
+                      <span className="text-fg-muted">({ROLE_NAME[member.role]})</span>
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {role === 'owner' && !isMe && member.role !== 'admin' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            moderation.setRole.mutate({
+                              path: { workspaceId, userId: member.user.id },
+                              body: { role: 'admin' },
+                            })
+                          }}
+                        >
+                          Сделать админом
+                        </Button>
+                      )}
+                      {role === 'owner' && !isMe && member.role === 'admin' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            moderation.setRole.mutate({
+                              path: { workspaceId, userId: member.user.id },
+                              body: { role: 'member' },
+                            })
+                          }}
+                        >
+                          Снять админа
+                        </Button>
+                      )}
+                      {moderates && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              moderation.remove.mutate({
+                                path: { workspaceId, userId: member.user.id },
+                              })
+                            }}
+                          >
+                            Убрать
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => {
+                              moderation.ban.mutate({
+                                path: { workspaceId, userId: member.user.id },
+                                body: {},
+                              })
+                            }}
+                          >
+                            Забанить
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
 }

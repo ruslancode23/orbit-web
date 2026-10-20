@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, type RenderOptions } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 
+import { ToastProvider } from '@/shared/ui/toast'
+
 import type { ReactElement, ReactNode } from 'react'
 
 interface Options extends RenderOptions {
@@ -13,7 +15,7 @@ interface Options extends RenderOptions {
   queryClient?: QueryClient
 }
 
-/** Renders with the providers the app has: a QueryClient without retries and a router. */
+/** Renders with the providers the app has: a QueryClient, toasts and a router. */
 export const renderWithProviders = (
   ui: ReactElement,
   { route, queryClient, ...options }: Options = {},
@@ -31,7 +33,11 @@ export const renderWithProviders = (
       ) : (
         <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
       )
-    return <QueryClientProvider client={client}>{content}</QueryClientProvider>
+    return (
+      <QueryClientProvider client={client}>
+        <ToastProvider>{content}</ToastProvider>
+      </QueryClientProvider>
+    )
   }
   return { queryClient: client, ...render(ui, { wrapper: Providers, ...options }) }
 }

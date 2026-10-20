@@ -65,6 +65,10 @@ export interface VoiceRoomValue {
   room: Room | null
   /** Null until the first channel is joined; kept while the room reconnects. */
   activeChannel: ActiveVoiceChannel | null
+  /** True before joining too: the choice is remembered on this device. */
+  isMicrophoneMuted: boolean
+  /** True before joining too; deafen also mutes the microphone. */
+  isDeafened: boolean
   join: (params: JoinParams) => Promise<void>
   leave: () => Promise<void>
   /** Unmuting while deafened also brings the sound back. */

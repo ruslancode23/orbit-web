@@ -19,6 +19,7 @@ export type {
   AttachmentLink,
   Channel,
   ChannelUnread,
+  ChannelUpdateRequest,
   ErrorDetail,
   GuestJoin,
   GuestJoinRequest,
