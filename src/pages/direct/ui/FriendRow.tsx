@@ -1,6 +1,6 @@
 import { customStatusText, type Friend } from '@/entities/friend'
 import { UserAvatar, userDisplayName } from '@/entities/user'
-import { WriteToUser } from '@/features/start-direct-chat'
+import { UserCard, WriteToUser } from '@/features/user-card'
 import type { UserProfile } from '@/shared/api'
 import {
   DropdownMenu,
@@ -27,23 +27,34 @@ const FriendRow = ({ friend, profile, onRemove, onBlock, pending }: FriendRowPro
 
   return (
     <li className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-hover">
-      <UserAvatar
-        profile={{
-          nickname: friend.nickname,
-          displayName: profile?.displayName ?? friend.nickname,
-          avatarUrl: profile?.avatarUrl,
-          accentColor: profile?.accentColor,
-        }}
+      <UserCard
+        userId={friend.id}
+        label={name}
         status={friend.presence}
-        size={32}
-        decorative
-      />
+        triggerClassName="inline-flex shrink-0"
+      >
+        <UserAvatar
+          profile={{
+            nickname: friend.nickname,
+            displayName: profile?.displayName ?? friend.nickname,
+            avatarUrl: profile?.avatarUrl,
+            accentColor: profile?.accentColor,
+          }}
+          status={friend.presence}
+          size={32}
+          decorative
+        />
+      </UserCard>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-w-0 items-baseline gap-1.5">
+        <UserCard
+          userId={friend.id}
+          status={friend.presence}
+          triggerClassName="flex min-w-0 items-baseline gap-1.5 text-left"
+        >
           <span className="truncate text-sm font-medium text-fg">{name}</span>
           <span className="truncate text-xs text-fg-muted">@{friend.nickname}</span>
-        </div>
+        </UserCard>
         {status !== '' && <p className="truncate text-xs text-fg-muted">{status}</p>}
       </div>
 

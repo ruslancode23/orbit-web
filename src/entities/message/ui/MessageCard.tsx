@@ -36,6 +36,11 @@ interface MessageCardProps {
   actions?: ReactNode
   /** Reactions, laid out under the text. */
   children?: ReactNode
+  /**
+   * Wraps the author's avatar and name, e.g. with the user card. The entity
+   * cannot import a feature, so the widget above it supplies the surface.
+   */
+  renderAuthorPart?: (part: 'avatar' | 'name', content: ReactNode) => ReactNode
 }
 
 export const MessageCard = ({
@@ -50,11 +55,17 @@ export const MessageCard = ({
   attachments,
   actions,
   children,
+  renderAuthorPart,
 }: MessageCardProps) => {
   const deleted = message.deletedAt !== undefined
   // A message of files alone has no text to print.
   const hasText = deleted || message.content !== '' || message.editedAt !== undefined
   const fullTime = formatFullTime(message.createdAt)
+  const authorPart = (part: 'avatar' | 'name', content: ReactNode) => {
+    return message.author !== undefined && renderAuthorPart !== undefined
+      ? renderAuthorPart(part, content)
+      : content
+  }
 
   return (
     <article
@@ -71,14 +82,17 @@ export const MessageCard = ({
 
       <div className="flex gap-3">
         {startsGroup ? (
-          <Avatar
-            name={authorName(message)}
-            src={message.author?.avatarUrl}
-            accent={message.author?.accentColor}
-            size={40}
-            decorative
-            className="mt-0.5"
-          />
+          authorPart(
+            'avatar',
+            <Avatar
+              name={authorName(message)}
+              src={message.author?.avatarUrl}
+              accent={message.author?.accentColor}
+              size={40}
+              decorative
+              className="mt-0.5"
+            />,
+          )
         ) : (
           <span
             aria-hidden="true"
@@ -91,7 +105,10 @@ export const MessageCard = ({
         <div className="min-w-0 flex-1">
           {startsGroup && (
             <header className="flex items-baseline gap-2">
-              <span className="text-sm font-semibold">{authorName(message)}</span>
+              {authorPart(
+                'name',
+                <span className="text-sm font-semibold">{authorName(message)}</span>,
+              )}
               <time
                 dateTime={message.createdAt.toISOString()}
                 title={fullTime}

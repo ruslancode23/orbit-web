@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useParams } from 'react-router'
 
 import { useLive } from '@/entities/live'
 import { useSession } from '@/entities/session'
 import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { DeviceMenu } from '@/features/select-device'
+import { UserCard } from '@/features/user-card'
 import { Avatar } from '@/shared/ui/avatar'
 import {
   HeadphonesIcon,
@@ -32,6 +34,7 @@ const CONNECTION = {
  */
 export const UserPanel = () => {
   const { user } = useSession()
+  const { workspaceId } = useParams()
   const { status } = useLive()
   const { isMicrophoneMuted, isDeafened, setMicrophoneMuted, setDeafened } = useVoiceRoom()
   const toast = useToast()
@@ -63,22 +66,51 @@ export const UserPanel = () => {
         className="flex flex-col gap-1.5 rounded-md bg-surface p-2"
       >
         <div className="flex min-w-0 items-center gap-2">
-          <span className="relative shrink-0">
-            {user ? (
-              <UserAvatar profile={user} size={32} decorative />
-            ) : (
+          {user ? (
+            <UserCard
+              userId={user.id}
+              {...(workspaceId === undefined ? {} : { workspaceId })}
+              label={name}
+              side="top"
+              align="start"
+              triggerClassName="inline-flex shrink-0"
+            >
+              <span className="relative shrink-0">
+                <UserAvatar profile={user} size={32} decorative />
+                <span
+                  aria-hidden="true"
+                  title={connection.text}
+                  className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-surface ${connection.className}`}
+                />
+                <span className="sr-only">{connection.text}</span>
+              </span>
+            </UserCard>
+          ) : (
+            <span className="relative shrink-0">
               <Avatar name="…" size={32} decorative />
-            )}
-            <span
-              aria-hidden="true"
-              title={connection.text}
-              className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-surface ${connection.className}`}
-            />
-            <span className="sr-only">{connection.text}</span>
-          </span>
+              <span
+                aria-hidden="true"
+                title={connection.text}
+                className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-surface ${connection.className}`}
+              />
+              <span className="sr-only">{connection.text}</span>
+            </span>
+          )}
 
           <div className="flex min-w-0 flex-1 flex-col">
-            <p className="truncate text-sm font-medium">{name}</p>
+            {user ? (
+              <UserCard
+                userId={user.id}
+                {...(workspaceId === undefined ? {} : { workspaceId })}
+                side="top"
+                align="start"
+                triggerClassName="block max-w-full text-left"
+              >
+                <span className="block truncate text-sm font-medium">{name}</span>
+              </UserCard>
+            ) : (
+              <p className="truncate text-sm font-medium">{name}</p>
+            )}
             {user?.isGuest === true && (
               <span className="w-fit rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
                 гость
