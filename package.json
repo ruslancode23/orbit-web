@@ -18,7 +18,8 @@
     "test:e2e": "pnpm api:generate && playwright test",
     "api:generate": "openapi-ts",
     "api:pull": "node scripts/pull-openapi.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm lint:fsd && pnpm format:check && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm lint:fsd && pnpm format:check && pnpm test",
+    "test:e2e:pwa": "pnpm api:generate && playwright test --config playwright.pwa.config.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.2",

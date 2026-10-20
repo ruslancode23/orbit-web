@@ -1,5 +1,6 @@
 import type {
   PlatformAutostart,
+  PlatformInstall,
   PlatformMediaDevices,
   PlatformNotifications,
   PlatformScreenCapture,
@@ -33,6 +34,13 @@ export function createFakePlatform() {
       isSupported: vi.fn<PlatformAutostart['isSupported']>(() => false),
       isEnabled: vi.fn<PlatformAutostart['isEnabled']>(() => Promise.resolve(false)),
       setEnabled: vi.fn<PlatformAutostart['setEnabled']>(() => Promise.resolve()),
+    },
+    install: {
+      isSupported: vi.fn<PlatformInstall['isSupported']>(() => true),
+      canPrompt: vi.fn<PlatformInstall['canPrompt']>(() => false),
+      isInstalled: vi.fn<PlatformInstall['isInstalled']>(() => false),
+      prompt: vi.fn<PlatformInstall['prompt']>(() => Promise.resolve('accepted')),
+      onChange: vi.fn<PlatformInstall['onChange']>(() => () => undefined),
     },
   }
 }

@@ -1,3 +1,5 @@
+import { createWebInstall } from './web-install'
+
 import type { NotificationPermissionState, PlatformAdapter } from './platform-adapter'
 
 // Same cap livekit-client applies to its own screen capture (ScreenSharePresets.h1080fps30):
@@ -65,6 +67,8 @@ export function createWebPlatform(): PlatformAdapter {
         return { video, audio: stream.getAudioTracks()[0] ?? null }
       },
     },
+
+    install: createWebInstall(),
 
     autostart: {
       isSupported: () => false,

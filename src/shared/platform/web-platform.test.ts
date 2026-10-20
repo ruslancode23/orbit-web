@@ -176,3 +176,52 @@ describe('web platform: autostart', () => {
     await expect(autostart.setEnabled(true)).rejects.toMatchObject({ name: 'NotSupportedError' })
   })
 })
+
+describe('web platform: install', () => {
+  it('refuses to prompt without an offer', async () => {
+    const platform = createWebPlatform()
+
+    await expect(platform.install.prompt()).rejects.toMatchObject({ name: 'NotSupportedError' })
+  })
+
+  const installEvent = (outcome: 'accepted' | 'dismissed') => {
+    const prompt = vi.fn(() => Promise.resolve())
+    const event = Object.assign(new Event('beforeinstallprompt'), {
+      prompt,
+      userChoice: Promise.resolve({ outcome, platform: 'web' }),
+    })
+    window.dispatchEvent(event)
+    return prompt
+  }
+
+  it('keeps the prompt the browser offered and spends it once', async () => {
+    const prompt = installEvent('accepted')
+    const platform = createWebPlatform()
+
+    expect(platform.install.canPrompt()).toBe(true)
+    await expect(platform.install.prompt()).resolves.toBe('accepted')
+    expect(prompt).toHaveBeenCalled()
+    expect(platform.install.canPrompt()).toBe(false)
+  })
+
+  it('tells subscribers when the prompt appears', () => {
+    const platform = createWebPlatform()
+    const listener = vi.fn()
+    const unsubscribe = platform.install.onChange(listener)
+
+    installEvent('dismissed')
+
+    expect(listener).toHaveBeenCalled()
+    unsubscribe()
+  })
+
+  it('reports the installed app from the display mode', () => {
+    const matchMedia = vi.fn(() => ({ matches: true }))
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: matchMedia })
+
+    expect(createWebPlatform().install.isInstalled()).toBe(true)
+    expect(matchMedia).toHaveBeenCalledWith('(display-mode: standalone)')
+
+    Reflect.deleteProperty(window, 'matchMedia')
+  })
+})
