@@ -59,6 +59,15 @@ const stubApi = ({
       if (url.pathname.endsWith('/auth/me')) {
         return json(anna)
       }
+      if (url.pathname === '/api/v1/friends') {
+        return json([])
+      }
+      if (url.pathname === '/api/v1/friends/requests') {
+        return json([])
+      }
+      if (url.pathname === '/api/v1/users/me/blocks') {
+        return json([])
+      }
       if (url.pathname === '/api/v1/conversations') {
         return json(conversations)
       }
@@ -98,6 +107,7 @@ const renderPage = (route = '/me') =>
     <MemoryRouter initialEntries={[route]}>
       <Routes>
         <Route path="/me" element={<DirectPage />} />
+        <Route path="/me/friends" element={<DirectPage />} />
         <Route path="/me/:conversationId" element={<DirectPage />} />
       </Routes>
     </MemoryRouter>,
@@ -107,21 +117,21 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-it('offers to write when there are no dialogues yet', async () => {
-  stubApi({ conversations: [] })
-  renderPage('/me')
-
-  expect(
-    await screen.findByRole('heading', { name: 'Здесь будут ваши личные сообщения' }),
-  ).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Написать' })).toBeInTheDocument()
-})
-
-it('asks to pick a dialogue when some exist', async () => {
+it('opens the friends section by default at /me', async () => {
   stubApi()
   renderPage('/me')
 
-  expect(await screen.findByRole('heading', { name: 'Выберите диалог' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Друзья', level: 1 })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Добавить в друзья' })).toBeInTheDocument()
+})
+
+it('opens the friends section at the explicit /me/friends route', async () => {
+  stubApi()
+  renderPage('/me/friends')
+
+  expect(await screen.findByRole('heading', { name: 'Друзья', level: 1 })).toBeInTheDocument()
+  // The static segment is not read as a dialogue id.
+  expect(screen.queryByRole('region', { name: 'Чат' })).not.toBeInTheDocument()
 })
 
 it('opens a pair dialogue with the peer and the usual composer', async () => {
