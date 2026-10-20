@@ -1,28 +1,14 @@
 import { useEffect } from 'react'
 
 import { useChannels } from '@/entities/channel'
-import { useSession } from '@/entities/session'
-import { UserAvatar, UserName, userDisplayName } from '@/entities/user'
+import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoicePresence } from '@/entities/voice-presence'
 import { useVoiceRoom } from '@/entities/voice-room'
-import {
-  useWorkspace,
-  useWorkspaceMembers,
-  type WorkspaceMember,
-  type WorkspaceRole,
-} from '@/entities/workspace'
+import { useWorkspaceMembers, type WorkspaceMember, type WorkspaceRole } from '@/entities/workspace'
 import { membersFromPresence, membersFromRoom } from '@/features/join-voice-channel'
-import {
-  describeMemberActionError,
-  mayChangeRole,
-  mayModerate,
-  ROLE_NAME,
-  useMemberModeration,
-} from '@/features/manage-members'
-import { StartDirectChat } from '@/features/start-direct-chat'
+import { UserCard } from '@/features/user-card'
 import { cn } from '@/shared/lib/cn'
 import { Avatar } from '@/shared/ui/avatar'
-import { Button } from '@/shared/ui/button'
 import {
   HeadphonesOffIcon,
   MicOffIcon,
@@ -32,7 +18,6 @@ import {
   XIcon,
 } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Slider } from '@/shared/ui/slider'
 
@@ -56,8 +41,6 @@ const ROLE_GROUPS: { role: WorkspaceRole; title: string }[] = [
   { role: 'member', title: 'Участники' },
 ]
 
-type Moderation = ReturnType<typeof useMemberModeration>
-
 /**
  * The people of the server, on the right where Discord keeps them: who is in
  * voice, then everyone by role. A click opens a card with the person's voice
@@ -65,13 +48,10 @@ type Moderation = ReturnType<typeof useMemberModeration>
  */
 export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
   const open = useMemberPanelOpen()
-  const { user } = useSession()
-  const { membership } = useWorkspace(workspaceId)
   const { data: members } = useWorkspaceMembers(workspaceId)
   const { data: channels } = useChannels(workspaceId)
   const { data: presence } = useVoicePresence(workspaceId)
   const { activeChannel, participants, screenShares, setParticipantVolume } = useVoiceRoom()
-  const moderation = useMemberModeration(workspaceId)
 
   // On a narrow screen the column is a drawer over the chat: Esc or the X closes it.
   useEffect(() => {
@@ -156,8 +136,6 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
     }
   }
 
-  const role = membership?.role
-  const myId = user?.id
   const remote = new Map(
     participants.filter((participant) => !participant.isLocal).map((p) => [p.identity, p]),
   )
@@ -222,11 +200,9 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
                             member={member}
                             name={member ? userDisplayName(member.user) : state.name}
                             voice={state}
+                            userId={state.identity}
                             workspaceId={workspaceId}
-                            memberRole={role}
-                            myId={myId}
                             {...volumeProps(state.identity)}
-                            moderation={moderation}
                           />
                         </li>
                       )
@@ -270,11 +246,9 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
                         member={member}
                         name={userDisplayName(member.user)}
                         voice={voiceStates.get(member.user.id)}
+                        userId={member.user.id}
                         workspaceId={workspaceId}
-                        memberRole={role}
-                        myId={myId}
                         {...volumeProps(member.user.id)}
-                        moderation={moderation}
                       />
                     </li>
                   ))}
@@ -289,176 +263,91 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
 }
 
 interface MemberRowProps {
+  userId: string
   member: WorkspaceMember | undefined
   name: string
   voice: VoiceState | undefined
   workspaceId: string
-  memberRole: WorkspaceRole | undefined
-  myId: string | undefined
   /** Set for someone in the room this client is in: their volume is local. */
   volume: number | undefined
   onVolume: ((volume: number) => void) | undefined
-  moderation: Moderation
 }
 
+/**
+ * One row of the member column. The whole row opens the same user card as the
+ * rest of the app; the voice state and this device's volume are passed into it,
+ * because they belong to this room rather than to the profile.
+ */
 const MemberRow = ({
+  userId,
   member,
   name,
   voice,
   workspaceId,
-  memberRole,
-  myId,
   volume,
   onVolume,
-  moderation,
 }: MemberRowProps) => {
-  const isMe = myId !== undefined && member?.user.id === myId
-  const canChangeRole = member !== undefined && mayChangeRole(memberRole, member, myId)
-  const canModerate = member !== undefined && mayModerate(memberRole, member, myId)
-  const showActions = canChangeRole || canModerate
+  const extra =
+    voice === undefined && (volume === undefined || onVolume === undefined) ? undefined : (
+      <div className="flex flex-col gap-2 border-t border-border pt-2">
+        {voice && (
+          <p className="flex items-center gap-1 text-xs text-fg-muted">
+            <SpeakerIcon className="size-3.5" />В голосе: {voice.channelName}
+          </p>
+        )}
+        {volume !== undefined && onVolume !== undefined && (
+          <div className="flex items-center gap-2 text-fg-muted">
+            <VolumeIcon className="size-4 shrink-0" />
+            <Slider
+              aria-label={`Громкость: ${name}`}
+              value={[Math.round(volume * 100)]}
+              max={100}
+              step={5}
+              getValueText={(percent) => `${String(percent)} %`}
+              onValueChange={([percent]) => {
+                if (percent !== undefined) {
+                  onVolume(percent / 100)
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
+    )
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
-        >
-          {member ? (
-            <UserAvatar
-              profile={member.user}
-              size={20}
-              status={member.presence}
-              decorative
-              className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
-            />
-          ) : (
-            <Avatar
-              name={name}
-              size={20}
-              decorative
-              className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
-            />
-          )}
-          <span className="min-w-0 flex-1 truncate">{name}</span>
-          {member?.user.isGuest === true && (
-            <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
-              гость
-            </span>
-          )}
-          <VoiceMarks voice={voice} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side="left" align="start" className="w-72">
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-0.5">
-            <p className="truncate font-semibold">
-              {member ? <UserName profile={member.user} /> : name}
-            </p>
-            <p className="text-xs text-fg-muted">
-              {member === undefined ? 'участник' : ROLE_NAME[member.role]}
-              {isMe && ' · это вы'}
-            </p>
-          </div>
-
-          {member && !isMe && (
-            <div className="flex flex-wrap gap-1 border-t border-border pt-2">
-              <StartDirectChat userId={member.user.id} size="sm" variant="ghost" />
-            </div>
-          )}
-
-          {voice && (
-            <p className="flex items-center gap-1 text-xs text-fg-muted">
-              <SpeakerIcon className="size-3.5" />В голосе: {voice.channelName}
-            </p>
-          )}
-
-          {volume !== undefined && onVolume !== undefined && (
-            <div className="flex items-center gap-2 text-fg-muted">
-              <VolumeIcon className="size-4 shrink-0" />
-              <Slider
-                aria-label={`Громкость: ${name}`}
-                value={[Math.round(volume * 100)]}
-                max={100}
-                step={5}
-                getValueText={(percent) => `${String(percent)} %`}
-                onValueChange={([percent]) => {
-                  if (percent !== undefined) {
-                    onVolume(percent / 100)
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {showActions && (
-            <div className="flex flex-wrap gap-1 border-t border-border pt-2">
-              {memberRole === 'owner' && member.role !== 'admin' && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    moderation.setRole.mutate({
-                      path: { workspaceId, userId: member.user.id },
-                      body: { role: 'admin' },
-                    })
-                  }}
-                >
-                  Сделать админом
-                </Button>
-              )}
-              {memberRole === 'owner' && member.role === 'admin' && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    moderation.setRole.mutate({
-                      path: { workspaceId: workspaceId, userId: member.user.id },
-                      body: { role: 'member' },
-                    })
-                  }}
-                >
-                  Снять админа
-                </Button>
-              )}
-              {canModerate && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      moderation.remove.mutate({
-                        path: { workspaceId: workspaceId, userId: member.user.id },
-                      })
-                    }}
-                  >
-                    Убрать
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => {
-                      moderation.ban.mutate({
-                        path: { workspaceId: workspaceId, userId: member.user.id },
-                        body: {},
-                      })
-                    }}
-                  >
-                    Забанить
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-
-          {moderation.error && (
-            <p role="alert" className="text-xs text-danger">
-              {describeMemberActionError(moderation.error)}
-            </p>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <UserCard
+      userId={userId}
+      workspaceId={workspaceId}
+      side="left"
+      align="start"
+      {...(extra === undefined ? {} : { extra })}
+      triggerClassName="flex w-full items-center gap-2 px-1.5 py-1 text-left text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
+    >
+      {member ? (
+        <UserAvatar
+          profile={member.user}
+          size={20}
+          status={member.presence}
+          decorative
+          className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
+        />
+      ) : (
+        <Avatar
+          name={name}
+          size={20}
+          decorative
+          className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
+        />
+      )}
+      <span className="min-w-0 flex-1 truncate">{name}</span>
+      {member?.user.isGuest === true && (
+        <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
+          гость
+        </span>
+      )}
+      <VoiceMarks voice={voice} />
+    </UserCard>
   )
 }
 

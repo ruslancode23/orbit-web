@@ -9,6 +9,7 @@ import {
 import { useSession } from '@/entities/session'
 import { UserAvatar, UserAvatarStack, UserName, userDisplayName } from '@/entities/user'
 import { SecretChatMenuItem } from '@/features/start-secret-chat'
+import { UserCard } from '@/features/user-card'
 import { isApiError } from '@/shared/api'
 import { pluralRu } from '@/shared/lib/plural'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
@@ -87,7 +88,9 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
     <section aria-label="Диалог" className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 max-lg:pl-14">
         {peer ? (
-          <UserAvatar profile={peer} size={32} decorative />
+          <UserCard userId={peer.id} label={title} triggerClassName="inline-flex shrink-0">
+            <UserAvatar profile={peer} size={32} decorative />
+          </UserCard>
         ) : others.length > 0 ? (
           <UserAvatarStack profiles={others} size={32} />
         ) : (
@@ -100,7 +103,13 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
         )}
         <div className="flex min-w-0 flex-col">
           <h1 className="truncate text-sm font-semibold">
-            {peer ? <UserName profile={peer} /> : name || 'Диалог'}
+            {peer ? (
+              <UserCard userId={peer.id} triggerClassName="inline-flex max-w-full text-left">
+                <UserName profile={peer} />
+              </UserCard>
+            ) : (
+              name || 'Диалог'
+            )}
           </h1>
           {isGroup && (
             <p className="truncate text-xs text-fg-muted">

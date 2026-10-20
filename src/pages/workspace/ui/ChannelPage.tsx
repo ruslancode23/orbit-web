@@ -8,6 +8,7 @@ import { atLeast, can, useWorkspace } from '@/entities/workspace'
 import { useVoiceChannel } from '@/features/join-voice-channel'
 import { ManageInvites } from '@/features/manage-invites'
 import { ScreenShares } from '@/features/share-screen'
+import { UserCard } from '@/features/user-card'
 import { Button } from '@/shared/ui/button'
 import { HashIcon, LinkIcon, SpeakerIcon, UsersIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -156,6 +157,18 @@ const VoiceChannelPage = ({
                     <ParticipantTile
                       participant={participant}
                       screenSharing={screenSharers.has(participant.identity)}
+                      renderTrigger={(part, content) => (
+                        <UserCard
+                          userId={participant.identity}
+                          workspaceId={workspaceId}
+                          {...(part === 'avatar' ? { label: participant.name } : {})}
+                          triggerClassName={
+                            part === 'name' ? 'inline-flex max-w-full' : 'inline-flex shrink-0'
+                          }
+                        >
+                          {content}
+                        </UserCard>
+                      )}
                     />
                   </div>
                 ))}

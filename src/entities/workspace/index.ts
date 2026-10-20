@@ -14,6 +14,13 @@ export {
 } from './model/form'
 export { useWorkspaceMembers, type WorkspaceMember } from './model/members'
 export {
+  describeMemberActionError,
+  mayChangeRole,
+  mayModerate,
+  ROLE_NAME,
+  useMemberModeration,
+} from './model/moderation'
+export {
   atLeast,
   can,
   useCreateWorkspace,

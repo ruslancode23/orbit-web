@@ -244,6 +244,7 @@ export const ChannelChat = ({
                   {message.id === firstUnreadId && <NewMessagesDivider />}
                   <MessageRow
                     message={message}
+                    workspaceId={workspaceId}
                     previous={messages[row.index - 1]}
                     mentionsMe={user ? message.mentions.includes(user.id) : false}
                     myNickname={user?.nickname}
