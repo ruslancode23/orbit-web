@@ -13,7 +13,7 @@ export {
 // Query and mutation option factories: useQuery(getReadinessOptions()), useMutation(createVoiceTokenMutation()).
 export * from './generated/@tanstack/react-query.gen'
 // Plain SDK functions for code outside React Query.
-export { createVoiceToken, getLiveness, getReadiness } from './generated/sdk.gen'
+export { createChannelVoiceToken, getLiveness, getReadiness } from './generated/sdk.gen'
 export type {
   Attachment,
   AttachmentLink,
@@ -32,6 +32,8 @@ export type {
   Readiness,
   RegisterRequest,
   User,
+  VoiceParticipant,
+  VoicePresence,
   VoiceToken,
   Workspace,
   WorkspaceMember,
@@ -39,5 +41,4 @@ export type {
   WorkspacePermissions,
   WorkspaceRole,
   WorkspaceUpdateRequest,
-  VoiceTokenRequest,
 } from './generated/types.gen'

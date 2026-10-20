@@ -1,9 +1,10 @@
 export {
   useVoiceRoom,
+  type ActiveVoiceChannel,
   type ConnectionLoss,
   type RemoteScreenShare,
   type VoiceParticipant,
   type VoiceRoomStatus,
 } from './model/context'
-export { VoiceRoomProvider } from './model/VoiceRoomProvider'
+export { VoiceRoomProvider } from './ui/LazyProvider'
 export { VideoTrack } from './ui/VideoTrack'

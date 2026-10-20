@@ -1,9 +1,10 @@
-import { Track, type Room } from 'livekit-client'
 import { useState } from 'react'
 
 import { useVoiceRoom } from '@/entities/voice-room'
 import { getPlatform, type ScreenCapture } from '@/shared/platform'
 import { Button } from '@/shared/ui/button'
+
+import type { Room } from 'livekit-client'
 
 /** Starts or stops showing a window or the whole screen, with system audio where the browser allows it. */
 export const ShareScreenButton = () => {
@@ -56,6 +57,9 @@ export const ShareScreenButton = () => {
  * so the OS "Stop sharing" button keeps working for tracks the adapter captured.
  */
 const publishScreen = async (room: Room, { video, audio }: ScreenCapture) => {
+  // LiveKit is already loaded by the time a room exists; importing it here keeps
+  // the initial text-only bundle free of it.
+  const { Track } = await import('livekit-client')
   try {
     await room.localParticipant.publishTrack(video, { source: Track.Source.ScreenShare })
     if (audio) {

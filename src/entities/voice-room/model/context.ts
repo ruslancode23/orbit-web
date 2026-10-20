@@ -38,10 +38,19 @@ export interface ConnectionLoss {
   displayName: string
 }
 
+/** The voice channel this client is connected (or trying to connect) to. */
+export interface ActiveVoiceChannel {
+  id: string
+  workspaceId: string
+  name: string
+}
+
 export interface JoinParams {
   /** LiveKit URL returned by orbit-server together with the token. */
   url: string
   token: string
+  /** The channel the token was issued for, so the panel can name it. */
+  channel?: ActiveVoiceChannel
 }
 
 export interface VoiceRoomValue {
@@ -54,6 +63,8 @@ export interface VoiceRoomValue {
   connectionLoss: ConnectionLoss | null
   /** The connected room, for features that act on it (screen share, devices). */
   room: Room | null
+  /** Null until the first channel is joined; kept while the room reconnects. */
+  activeChannel: ActiveVoiceChannel | null
   join: (params: JoinParams) => Promise<void>
   leave: () => Promise<void>
   /** Unmuting while deafened also brings the sound back. */

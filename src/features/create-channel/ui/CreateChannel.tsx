@@ -14,28 +14,36 @@ interface CreateChannelProps {
 
 interface ChannelValues {
   name: string
+  kind: 'text' | 'voice'
 }
 
 /** Creates a channel in this server and opens it. Admins and the owner only. */
 export const CreateChannel = ({ workspaceId }: CreateChannelProps) => {
   const nameId = useId()
+  const kindId = useId()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const create = useCreateChannel(workspaceId)
   const { register, handleSubmit, reset, formState } = useForm<ChannelValues>({
-    defaultValues: { name: '' },
+    defaultValues: { name: '', kind: 'text' },
   })
 
   const submit = handleSubmit(async (values) => {
     const channel = await create
-      .mutateAsync({ path: { workspaceId }, body: { name: values.name.trim() } })
+      .mutateAsync({
+        path: { workspaceId },
+        body: { name: values.name.trim(), kind: values.kind },
+      })
       .catch(() => null)
     if (!channel) {
       return
     }
     reset()
     setOpen(false)
-    await navigate(`/s/${workspaceId}/${channel.id}`)
+    // A voice channel has no page of its own: a click in the sidebar joins it.
+    if (channel.kind === 'text') {
+      await navigate(`/s/${workspaceId}/${channel.id}`)
+    }
   })
 
   if (!open) {
@@ -58,6 +66,15 @@ export const CreateChannel = ({ workspaceId }: CreateChannelProps) => {
         void submit(event)
       }}
     >
+      <Label htmlFor={kindId}>Тип канала</Label>
+      <select
+        id={kindId}
+        className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+        {...register('kind')}
+      >
+        <option value="text">Текстовый</option>
+        <option value="voice">Голосовой</option>
+      </select>
       <Label htmlFor={nameId}>Название канала</Label>
       <Input
         id={nameId}

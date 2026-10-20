@@ -1,5 +1,6 @@
 import {
   getWorkspaceQueryKey,
+  type VoicePresence,
   listMessagesInfiniteQueryKey,
   listMessagesQueryKey,
   listUnreadQueryKey,
@@ -25,6 +26,24 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       queryKey: listUnreadQueryKey({ path: { workspaceId: event.workspaceId } }),
     })
   }
+  // Who is in a voice channel. The payload is the whole channel presence, so it
+  // goes into the cached server; a refetch would only repeat it.
+  if (event.type === 'voice.presence' && event.workspaceId) {
+    const presence = parsePresence(event.payload)
+    const key = getWorkspaceQueryKey({ path: { workspaceId: event.workspaceId } })
+    if (presence) {
+      queryClient.setQueryData(key, (current: { voice?: VoicePresence[] } | undefined) => {
+        if (!current) {
+          return current
+        }
+        const voice = current.voice ?? []
+        const others = voice.filter((item) => item.channelId !== presence.channelId)
+        return { ...current, voice: [...others, presence] }
+      })
+    } else {
+      void queryClient.invalidateQueries({ queryKey: key })
+    }
+  }
   // A new name, description, icon or member permissions. The server list is
   // what the rail, the header and the buttons read; the payload is not put in
   // the cache, the icon link in it is short-lived anyway.
@@ -41,4 +60,42 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
   if (event.type === 'member.changed') {
     void queryClient.invalidateQueries()
   }
+}
+
+const parsePresence = (payload: unknown): VoicePresence | null => {
+  if (typeof payload !== 'object' || payload === null) {
+    return null
+  }
+  if (!('channelId' in payload) || typeof payload.channelId !== 'string') {
+    return null
+  }
+  if (!('participants' in payload) || !Array.isArray(payload.participants)) {
+    return null
+  }
+  const participants: VoicePresence['participants'] = []
+  for (const item of payload.participants) {
+    if (!isParticipant(item)) {
+      continue
+    }
+    participants.push(item)
+  }
+  return { channelId: payload.channelId, participants }
+}
+
+const isParticipant = (value: unknown): value is VoicePresence['participants'][number] => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  return (
+    'userId' in value &&
+    typeof value.userId === 'string' &&
+    'name' in value &&
+    typeof value.name === 'string' &&
+    'muted' in value &&
+    typeof value.muted === 'boolean' &&
+    'deafened' in value &&
+    typeof value.deafened === 'boolean' &&
+    'screenSharing' in value &&
+    typeof value.screenSharing === 'boolean'
+  )
 }

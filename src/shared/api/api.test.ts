@@ -3,8 +3,8 @@ import { QueryClient } from '@tanstack/react-query'
 import {
   ApiError,
   CLIENT_ERROR_CODES,
-  createVoiceToken,
-  createVoiceTokenMutation,
+  createChannelVoiceToken,
+  createChannelVoiceTokenMutation,
   getReadinessOptions,
   markChannelReadMutation,
 } from './index'
@@ -37,8 +37,6 @@ async function rejection(promise: Promise<unknown>): Promise<unknown> {
   throw new Error('expected the request to fail')
 }
 
-const body = { room: 'dev-room', displayName: 'Anna' }
-
 describe('generated client', () => {
   it('sends the request to the configured server and turns expiresAt into a Date', async () => {
     fetchMock.mockResolvedValue(
@@ -50,7 +48,7 @@ describe('generated client', () => {
       }),
     )
 
-    const { data } = await createVoiceToken({ body })
+    const { data } = await createChannelVoiceToken({ path: { channelId: 'c-1' } })
 
     expect(data).toEqual({
       token: 'jwt',
@@ -59,10 +57,9 @@ describe('generated client', () => {
       expiresAt: new Date('2026-10-16T12:10:00Z'),
     })
     const request = fetchMock.mock.calls[0]?.[0] as Request
-    expect(request.url).toBe('http://localhost:8080/api/v1/voice/token')
+    expect(request.url).toBe('http://localhost:8080/api/v1/channels/c-1/voice-token')
     expect(request.method).toBe('POST')
-    expect(request.headers.get('Content-Type')).toBe('application/json')
-    expect(await request.text()).toBe(JSON.stringify(body))
+    expect(await request.text()).toBe('')
   })
 
   it('rejects with ApiError carrying the server error', async () => {
@@ -70,7 +67,7 @@ describe('generated client', () => {
       json(400, { error: { code: 'invalid_request', message: 'room must be…' } }),
     )
 
-    const error = await rejection(createVoiceToken({ body }))
+    const error = await rejection(createChannelVoiceToken({ path: { channelId: 'c-1' } }))
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error).toMatchObject({
@@ -85,7 +82,7 @@ describe('generated client', () => {
   it('maps a non-JSON error page to http_error', async () => {
     fetchMock.mockResolvedValue(new Response('<html>Bad Gateway</html>', { status: 502 }))
 
-    expect(await rejection(createVoiceToken({ body }))).toMatchObject({
+    expect(await rejection(createChannelVoiceToken({ path: { channelId: 'c-1' } }))).toMatchObject({
       status: 502,
       code: CLIENT_ERROR_CODES.http,
     })
@@ -94,7 +91,7 @@ describe('generated client', () => {
   it('maps a failed fetch to network_error', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
 
-    expect(await rejection(createVoiceToken({ body }))).toMatchObject({
+    expect(await rejection(createChannelVoiceToken({ path: { channelId: 'c-1' } }))).toMatchObject({
       status: 0,
       code: CLIENT_ERROR_CODES.network,
       isNetworkError: true,
@@ -106,7 +103,7 @@ describe('generated client', () => {
       new Response('{"token":', { status: 201, headers: { 'Content-Type': 'application/json' } }),
     )
 
-    expect(await rejection(createVoiceToken({ body }))).toMatchObject({
+    expect(await rejection(createChannelVoiceToken({ path: { channelId: 'c-1' } }))).toMatchObject({
       status: 201,
       code: CLIENT_ERROR_CODES.invalidResponse,
     })
@@ -118,7 +115,11 @@ describe('generated client', () => {
     const abortError = new DOMException('Aborted', 'AbortError')
     fetchMock.mockRejectedValue(abortError)
 
-    expect(await rejection(createVoiceToken({ body, signal: controller.signal }))).toBe(abortError)
+    expect(
+      await rejection(
+        createChannelVoiceToken({ path: { channelId: 'c-1' }, signal: controller.signal }),
+      ),
+    ).toBe(abortError)
   })
 })
 
@@ -142,13 +143,13 @@ describe('request bodies', () => {
 })
 
 describe('TanStack Query functions', () => {
-  it('runs a mutation through createVoiceTokenMutation', async () => {
+  it('runs a mutation through createChannelVoiceTokenMutation', async () => {
     fetchMock.mockResolvedValue(
       json(201, { token: 'jwt', url: 'ws://lk', identity: 'g', expiresAt: '2026-10-16T12:10:00Z' }),
     )
-    const { mutationFn } = createVoiceTokenMutation()
+    const { mutationFn } = createChannelVoiceTokenMutation()
 
-    const data = await mutationFn?.({ body }, {} as never)
+    const data = await mutationFn?.({ path: { channelId: 'c-1' } }, {} as never)
 
     expect(data?.expiresAt).toBeInstanceOf(Date)
   })
