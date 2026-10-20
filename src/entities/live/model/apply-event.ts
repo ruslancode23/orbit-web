@@ -32,7 +32,7 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       predicate: (query) => query.queryKey[0] === 'listSecretChats',
     })
   }
-  if (event.type === 'message.' && event.channelId) {
+  if (event.type.startsWith('message.') && event.channelId) {
     const path = { channelId: event.channelId }
     // Both shapes of the same history: the chat reads it page by page.
     void queryClient.invalidateQueries({ queryKey: listMessagesQueryKey({ path }) })

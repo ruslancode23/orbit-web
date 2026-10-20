@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation, useParams } from 'react-router'
 
 import { useLive } from '@/entities/live'
+import { describeUnread, UnreadBadge, useConversationUnreadTotal } from '@/entities/unread'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
@@ -14,6 +15,7 @@ import { Tooltip } from '@/shared/ui/tooltip'
 
 import { ChannelList } from './ChannelList'
 import { ConnectionStatus } from './ConnectionStatus'
+import { DirectResume } from './DirectResume'
 import { DirectSidebar } from './DirectSidebar'
 import { ServerLink } from './ServerLink'
 import { UserPanel } from './UserPanel'
@@ -25,6 +27,7 @@ import {
   toggleChannelSidebar,
   useChannelSidebarOpen,
 } from '../model/channel-sidebar'
+import { usePersonalUnread } from '../model/use-personal-unread'
 import { useVoiceShortcuts } from '../model/use-voice-shortcuts'
 
 /**
@@ -50,12 +53,15 @@ const Shell = () => {
   const { workspaceId, channelId } = useParams()
   const location = useLocation()
   // The personal-messages section replaces the channel column, not the shell.
-  const inDirect = location.pathname === '/dm' || location.pathname.startsWith('/dm/')
+  const inDirect = location.pathname === '/me' || location.pathname.startsWith('/me/')
   const { data: memberships, isPending } = useWorkspaces()
   const { membership } = useWorkspace(workspaceId)
   const { watch } = useLive()
   const { activeChannel } = useVoiceRoom()
   const channelSidebarOpen = useChannelSidebarOpen()
+  const directUnread = useConversationUnreadTotal()
+  const directUnreadDescription = describeUnread(directUnread)
+  usePersonalUnread()
 
   // One socket for the app; changing servers only changes what it watches.
   if (workspaceId) {
@@ -98,11 +104,16 @@ const Shell = () => {
       >
         <Tooltip content="Личные сообщения" side="right">
           <NavLink
-            to="/dm"
-            aria-label="Личные сообщения"
-            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-fg-muted transition-colors hover:rounded-xl hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
+            to="/me"
+            aria-label={
+              directUnreadDescription
+                ? `Личные сообщения, ${directUnreadDescription}`
+                : 'Личные сообщения'
+            }
+            className="relative flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-fg-muted transition-colors hover:rounded-xl hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
           >
             <MessageIcon />
+            <UnreadBadge {...directUnread} compact count className="absolute top-0 right-0" />
           </NavLink>
         </Tooltip>
         <span aria-hidden="true" className="h-px w-8 shrink-0 bg-border" />
@@ -144,7 +155,10 @@ const Shell = () => {
         )}
       >
         {inDirect ? (
-          <DirectSidebar className="w-full border-r-0" />
+          <>
+            <DirectResume />
+            <DirectSidebar className="w-full border-r-0" />
+          </>
         ) : isPending ? (
           <div role="status" aria-label="Загружаем сервер" className="flex flex-col gap-2 p-3">
             <Skeleton className="h-8 w-full" />

@@ -7,6 +7,8 @@ import {
   listChannelsQueryKey,
   listConversationsQueryKey,
   listMessagesInfiniteQueryKey,
+  listMessagesQueryKey,
+  listUnreadQueryKey,
   listWorkspaceMembersQueryKey,
   listWorkspacesQueryKey,
   type Conversation,
@@ -195,4 +197,45 @@ it('writes user.updated into the profile, the feed, the members and the session'
   const me = queryClient.getQueryData<SelfProfile>(getCurrentUserQueryKey())
   expect(me?.email).toBe('anna@example.com')
   expect(me?.displayName).toBe('Анна')
+})
+
+// A dialogue is a channel without a server: its events arrive on the personal
+// stream, so the query keys have no workspace in them.
+it('marks the dialogue list stale when a conversation appears', () => {
+  const queryClient = new QueryClient()
+  const conversations = listConversationsQueryKey()
+  queryClient.setQueryData(conversations, [])
+
+  applyEvent(queryClient, { type: 'conversation.created', channelId: 'c-new', payload: {} })
+
+  expect(queryClient.getQueryState(conversations)?.isInvalidated).toBe(true)
+})
+
+it('refreshes both shapes of a dialogue history on a personal message', () => {
+  const queryClient = new QueryClient()
+  const channelId = 'c-direct'
+  const page = listMessagesQueryKey({ path: { channelId } })
+  const history = listMessagesInfiniteQueryKey({ path: { channelId } })
+  queryClient.setQueryData(page, { messages: [] })
+  queryClient.setQueryData(history, { pages: [], pageParams: [] })
+
+  applyEvent(queryClient, { type: 'message.created', channelId, seq: 2, payload: {} })
+
+  expect(queryClient.getQueryState(page)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(history)?.isInvalidated).toBe(true)
+})
+
+it('refreshes the unread counters of a server on read.changed', () => {
+  const queryClient = new QueryClient()
+  const unread = listUnreadQueryKey({ path: { workspaceId } })
+  queryClient.setQueryData(unread, [])
+
+  applyEvent(queryClient, {
+    type: 'read.changed',
+    workspaceId,
+    channelId: '22222222-2222-4222-8222-222222222222',
+    payload: {},
+  })
+
+  expect(queryClient.getQueryState(unread)?.isInvalidated).toBe(true)
 })

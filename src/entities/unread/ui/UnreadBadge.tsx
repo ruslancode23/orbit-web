@@ -5,6 +5,8 @@ import type { UnreadTotal } from '../model/unread'
 interface UnreadBadgeProps extends UnreadTotal {
   /** A dot instead of the number, for the narrow server rail. */
   compact?: boolean
+  /** In the compact shape, print the number rather than a dot. */
+  count?: boolean
   className?: string
 }
 
@@ -13,7 +15,13 @@ interface UnreadBadgeProps extends UnreadTotal {
  * reader, an ordinary message does not. It is only a picture: the link it
  * sits in says the same in words (`describeUnread`) in its accessible name.
  */
-export const UnreadBadge = ({ unread, mentions, compact = false, className }: UnreadBadgeProps) => {
+export const UnreadBadge = ({
+  unread,
+  mentions,
+  compact = false,
+  count = false,
+  className,
+}: UnreadBadgeProps) => {
   if (unread === 0 && mentions === 0) {
     return null
   }
@@ -24,11 +32,19 @@ export const UnreadBadge = ({ unread, mentions, compact = false, className }: Un
     </span>
   )
 
-  // The rail has room for one mark: a mention outranks a plain dot.
+  // The rail has room for one mark: a mention outranks a plain dot or number.
   if (compact) {
     return (
       <span aria-hidden="true" className={cn('flex items-center', className)}>
-        {mentionPill || <span className="size-2 rounded-full bg-fg" />}
+        {mentionPill ||
+          (unread > 0 &&
+            (count ? (
+              <span className="min-w-4 rounded-full bg-danger px-1 text-center text-[10px] leading-4 font-semibold text-accent-fg">
+                {unread}
+              </span>
+            ) : (
+              <span className="size-2 rounded-full bg-fg" />
+            )))}
       </span>
     )
   }

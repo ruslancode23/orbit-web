@@ -8,6 +8,7 @@ import {
   conversationName,
   conversationPeer,
   useConversation,
+  useConversationSummaries,
   useConversations,
   useStartConversation,
 } from './queries'
@@ -66,15 +67,34 @@ const json = (body: unknown, status = 200) =>
 
 interface ApiState {
   conversations: Conversation[]
+  lastMessages: Record<string, unknown[]>
   posted: string[]
   listReads: number
   detailReads: number
 }
 
+const latestMessage = (id: string, channelId: string, createdAt: string) => {
+  return {
+    id,
+    channelId,
+    seq: 1,
+    content: 'привет',
+    mentions: [],
+    reactions: [],
+    createdAt: new Date(createdAt),
+  }
+}
+
 /** Answers the conversation endpoints and records what was asked for. */
-const stubApi = (
-  state: ApiState = { conversations: [direct, group], posted: [], listReads: 0, detailReads: 0 },
-) => {
+const stubApi = (overrides: Partial<ApiState> = {}): ApiState => {
+  const state: ApiState = {
+    conversations: [direct, group],
+    lastMessages: {},
+    posted: [],
+    listReads: 0,
+    detailReads: 0,
+    ...overrides,
+  }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: unknown) => {
@@ -93,6 +113,10 @@ const stubApi = (
         const id = url.pathname.slice(url.pathname.lastIndexOf('/') + 1)
         const found = state.conversations.find((item) => item.id === id)
         return found ? json(found) : json({ error: { code: 'not_found', message: 'gone' } }, 404)
+      }
+      const channel = /^\/api\/v1\/channels\/([^/]+)\/messages$/u.exec(url.pathname)?.[1]
+      if (channel !== undefined) {
+        return json({ messages: state.lastMessages[channel] ?? [] })
       }
       return json({})
     }),
@@ -161,6 +185,43 @@ describe('useConversations', () => {
       ])
     })
     expect(result.current.data?.[0]?.createdAt).toBeInstanceOf(Date)
+  })
+})
+
+describe('useConversationSummaries', () => {
+  it('reads the latest message of every dialogue and orders by it', async () => {
+    stubApi({
+      conversations: [group, direct],
+      lastMessages: {
+        'c-direct': [latestMessage('m-direct', 'c-direct', '2026-10-20T13:00:00Z')],
+        'c-group': [latestMessage('m-group', 'c-group', '2026-10-20T12:00:00Z')],
+      },
+    })
+    const { result } = renderQuery(() => useConversationSummaries())
+
+    await waitFor(() => {
+      expect(result.current.summaries.map((item) => item.conversation.id)).toEqual([
+        'c-direct',
+        'c-group',
+      ])
+    })
+    expect(result.current.summaries[0]?.lastMessage?.content).toBe('привет')
+    expect(result.current.isPending).toBe(false)
+  })
+
+  it('falls back to the creation moment for a dialogue without messages', async () => {
+    stubApi({ conversations: [group, direct], lastMessages: {} })
+    const { result } = renderQuery(() => useConversationSummaries())
+
+    await waitFor(() => {
+      expect(result.current.summaries).toHaveLength(2)
+    })
+    // The group was created later, so it stands first while both are empty.
+    expect(result.current.summaries.map((item) => item.conversation.id)).toEqual([
+      'c-group',
+      'c-direct',
+    ])
+    expect(result.current.summaries[0]?.lastMessage).toBeUndefined()
   })
 })
 
