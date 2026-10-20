@@ -56,6 +56,13 @@ class FakeNetwork {
           ),
         ),
       sendSecretEnvelope: (deviceId, chatId, input) => this.send(deviceId, chatId, input),
+      leaveSecretChat: (_deviceId, chatId) => {
+        const chat = this.chats.get(chatId)
+        if (chat) {
+          this.chats.delete(chatId)
+        }
+        return Promise.resolve()
+      },
       acknowledgeSecretEnvelope: (_deviceId, envelopeId) => {
         const index = this.envelopes.findIndex((envelope) => envelope.id === envelopeId)
         if (index >= 0) {
@@ -332,4 +339,15 @@ describe('encrypted attachments', () => {
       decryptFile(await encrypted.blob.arrayBuffer(), { ...encrypted.meta, key: other.meta.key }),
     ).rejects.toBeTruthy()
   })
+})
+
+it('deleting a chat removes it on the server and wipes this device', async () => {
+  const { annaSession, annaChat, annaStore } = await twoDevices()
+  await annaSession.openChat(annaChat)
+  await annaSession.sendText(annaChat, 'удалить меня')
+
+  await annaSession.deleteChat(annaChat.id)
+
+  expect(await annaStore.get('secret-chat', annaChat.id, null)).toBeNull()
+  expect(await annaStore.get('secret-messages', annaChat.id, null)).toBeNull()
 })

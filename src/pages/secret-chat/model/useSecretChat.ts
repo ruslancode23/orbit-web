@@ -24,6 +24,7 @@ export interface SecretChatSession {
   sendFile: (chat: SecretChat, file: File) => Promise<SecretMessage>
   setTimer: (chat: SecretChat, seconds: SecretTimer) => Promise<void>
   setVerified: (chat: SecretChat, verified: boolean) => Promise<SecretChatView>
+  deleteChat: (chatId: string) => Promise<void>
 }
 
 /**
@@ -46,12 +47,15 @@ export interface SecretChatActions {
   sendFile: (file: File) => Promise<boolean>
   setTimer: (seconds: SecretTimer) => Promise<boolean>
   setVerified: (verified: boolean) => Promise<boolean>
+  deleteChat: () => Promise<boolean>
 }
 
 export interface SecretChatResult {
   view: SecretChatView | null
   loading: boolean
   error: string | null
+  /** The chat is gone on the server: the page should leave it. */
+  deleted: boolean
   session: SecretChatSession | null
   chat: SecretChat | undefined
   sending: boolean
@@ -83,6 +87,7 @@ export const useSecretChat = (deps: SecretChatPageDeps): SecretChatResult => {
   const [opened, setOpened] = useState<Positioned<SecretChatSession> | null>(null)
   const [current, setCurrent] = useState<Positioned<SecretChatView> | null>(null)
   const [failure, setFailure] = useState<Positioned<string> | null>(null)
+  const [deletedChatId, setDeletedChatId] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
   const session = chat && opened?.chatId === chat.id ? opened.value : null
@@ -133,6 +138,10 @@ export const useSecretChat = (deps: SecretChatPageDeps): SecretChatResult => {
     // asynchronous and the Olm session is not re-entrant: handle them in order.
     let queue: Promise<void> = Promise.resolve()
     const unsubscribe = listen((event) => {
+      if (event.type === 'secret.chat.deleted' && event.channelId === chat.id) {
+        setDeletedChatId(chat.id)
+        return
+      }
       if (event.type !== 'secret.envelope') {
         return
       }
@@ -264,13 +273,34 @@ export const useSecretChat = (deps: SecretChatPageDeps): SecretChatResult => {
     }
   }
 
+  const deleteChat = async (): Promise<boolean> => {
+    if (!session || !chat) {
+      return false
+    }
+    setSending(true)
+    try {
+      await session.deleteChat(chat.id)
+      setDeletedChatId(chat.id)
+      return true
+    } catch (cause) {
+      setFailure({
+        chatId: chat.id,
+        value: describeSecretError(cause, 'Не удалось удалить секретный чат.'),
+      })
+      return false
+    } finally {
+      setSending(false)
+    }
+  }
+
   return {
     view,
     loading,
     error,
+    deleted: deletedChatId !== null && deletedChatId === chat?.id,
     session,
     chat,
     sending,
-    actions: { sendText, sendFile, setTimer, setVerified },
+    actions: { sendText, sendFile, setTimer, setVerified, deleteChat },
   }
 }

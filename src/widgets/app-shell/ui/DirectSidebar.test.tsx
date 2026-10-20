@@ -143,8 +143,8 @@ it('shows the secret chats of the device with their own links', async () => {
   const calls = stubApi({ secretChats: [secret] })
   renderSidebar()
 
-  const section = await screen.findByRole('region', { name: 'Секретные чаты' })
-  const link = await within(section).findByRole('link', { name: 'Боб' })
+  const section = await screen.findByRole('list', { name: 'Секретные чаты с Боб' })
+  const link = await within(section).findByRole('link', { name: 'Секретный чат' })
   expect(link).toHaveAttribute('href', '/dm/s/s-1')
   expect(link).toHaveClass('text-success')
   expect(calls).toContain('/api/v1/secret-chats')
@@ -156,7 +156,8 @@ it('says when there is nothing yet', async () => {
   renderSidebar()
 
   expect(await screen.findByText('Пока нет личных сообщений')).toBeInTheDocument()
-  expect(await screen.findByText('Секретных чатов пока нет')).toBeInTheDocument()
+  // Empty secret chats are not a section of their own: they live under dialogues.
+  expect(screen.queryByRole('heading', { name: 'Секретные чаты' })).not.toBeInTheDocument()
 })
 
 it('shows a skeleton while the dialogues are loading', async () => {

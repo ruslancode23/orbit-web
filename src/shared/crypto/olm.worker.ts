@@ -25,6 +25,7 @@ type Request =
   | { id: number; op: 'decrypt'; chatId: string; type: 0 | 1; body: string }
   | { id: number; op: 'pickleSession'; chatId: string }
   | { id: number; op: 'unpickleSession'; chatId: string; pickle: string }
+  | { id: number; op: 'forgetSession'; chatId: string }
 
 type Response = { id: number; ok: true; value: unknown } | { id: number; ok: false; error: string }
 
@@ -97,6 +98,12 @@ const run = async (request: Request): Promise<unknown> => {
       const session = await createSession()
       session.unpickle('orbit-olm-session', request.pickle)
       sessions.set(request.chatId, session)
+      return undefined
+    }
+    case 'forgetSession': {
+      const session = sessions.get(request.chatId)
+      session?.free()
+      sessions.delete(request.chatId)
       return undefined
     }
   }

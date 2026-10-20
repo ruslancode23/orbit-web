@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 
 import type {
   SecretChatView,
@@ -117,6 +118,7 @@ const createFakeSession = (options: FakeOptions = {}): SecretChatSession => {
       timerSeconds = seconds
       return Promise.resolve()
     }),
+    deleteChat: vi.fn(() => Promise.resolve()),
     setVerified: vi.fn((_target: SecretChat, next: boolean) => {
       verified = next
       verifiedDigits = next ? digits : undefined
@@ -144,7 +146,11 @@ const makeDeps = (
 })
 
 const renderPage = (session: SecretChatSession, overrides: Partial<SecretChatPageDeps> = {}) => {
-  return renderWithProviders(<SecretChatPage deps={makeDeps(session, overrides)} />)
+  return renderWithProviders(
+    <MemoryRouter>
+      <SecretChatPage deps={makeDeps(session, overrides)} />
+    </MemoryRouter>,
+  )
 }
 
 const message = (overrides: Partial<SecretMessage> = {}): SecretMessage => ({
@@ -268,4 +274,18 @@ it('drops expired messages when the sweep runs', async () => {
   )
   expect(session.sweep).toHaveBeenCalledWith(chat.id)
   expect(screen.getByText('Останется')).toBeInTheDocument()
+})
+
+it('deletes the chat from its menu after confirmation', async () => {
+  const session = createFakeSession()
+  renderPage(session)
+  await screen.findByText(/Сообщения зашифрованы/)
+
+  await userEvent.click(screen.getByRole('button', { name: 'Действия с чатом' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Удалить секретный чат' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Удалить' }))
+
+  await waitFor(() => {
+    expect(session.deleteChat).toHaveBeenCalledWith(chat.id)
+  })
 })

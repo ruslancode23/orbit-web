@@ -1,10 +1,13 @@
 import { Link, useParams } from 'react-router'
 
-import { conversationName, useConversation } from '@/entities/conversation'
+import { conversationName, conversationPeer, useConversation } from '@/entities/conversation'
 import { useSession } from '@/entities/session'
+import { SecretChatMenuItem } from '@/features/start-secret-chat'
 import { isApiError } from '@/shared/api'
 import { initials } from '@/shared/lib/initials'
-import { UsersIcon } from '@/shared/ui/icon'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
+import { MoreIcon, UsersIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { ChannelChat } from '@/widgets/channel-chat'
 
@@ -87,6 +90,7 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
 
   const isGroup = conversation.kind === 'group'
   const name = conversationName(conversation, user.id)
+  const peer = conversationPeer(conversation, user.id)
 
   return (
     <section aria-label="Диалог" className="flex min-h-0 flex-1 flex-col">
@@ -101,6 +105,18 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
           <h1 className="truncate text-sm font-semibold">{name || 'Диалог'}</h1>
           {isGroup && <p className="truncate text-xs text-fg-muted">Групповой чат</p>}
         </div>
+        {peer && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton label="Действия с диалогом" className="ml-auto">
+                <MoreIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <SecretChatMenuItem userId={peer.id} nickname={peer.nickname} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </header>
 
       <ChannelChat channelId={conversationId} channelName={name} canWrite canAttach />

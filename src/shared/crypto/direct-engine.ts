@@ -67,5 +67,11 @@ export const createDirectEngine = (): OlmEngine => {
       session.unpickle('orbit-olm-session', pickle)
       sessions.set(chatId, session)
     },
+    forgetSession: (chatId) => {
+      const session = sessions.get(chatId)
+      session?.free()
+      sessions.delete(chatId)
+      return Promise.resolve()
+    },
   }
 }

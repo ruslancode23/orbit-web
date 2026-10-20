@@ -20,7 +20,6 @@ import {
   useMemberModeration,
 } from '@/features/manage-members'
 import { StartDirectChat } from '@/features/start-direct-chat'
-import { StartSecretChat } from '@/features/start-secret-chat'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/button'
 import {
@@ -355,9 +354,6 @@ const MemberRow = ({
           {member && !isMe && (
             <div className="flex flex-wrap gap-1 border-t border-border pt-2">
               <StartDirectChat userId={member.user.id} size="sm" variant="ghost" />
-              {!member.user.isGuest && (
-                <StartSecretChat userId={member.user.id} nickname={member.user.nickname} />
-              )}
             </div>
           )}
 

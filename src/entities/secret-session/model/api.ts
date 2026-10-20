@@ -3,6 +3,7 @@ import {
   countOneTimeKeys,
   getAttachmentLink,
   getKeyBundle,
+  leaveSecretChat,
   listSecretChats,
   listSecretEnvelopes,
   registerDevice,
@@ -42,6 +43,7 @@ export interface SecretApi {
     input: SecretEnvelopeCreate,
   ) => Promise<SecretEnvelope>
   acknowledgeSecretEnvelope: (deviceId: string, envelopeId: string) => Promise<void>
+  leaveSecretChat: (deviceId: string, chatId: string) => Promise<void>
   uploadFile: (chatId: string, blob: Blob, expiresAt: Date) => Promise<Attachment>
   attachmentLink: (attachmentId: string) => Promise<string>
 }
@@ -93,6 +95,9 @@ export const serverSecretApi: SecretApi = {
   },
   async acknowledgeSecretEnvelope(deviceId, envelopeId) {
     await acknowledgeSecretEnvelope({ path: { envelopeId }, headers: header(deviceId) })
+  },
+  async leaveSecretChat(deviceId, chatId) {
+    await leaveSecretChat({ path: { secretChatId: chatId }, headers: header(deviceId) })
   },
   async uploadFile(chatId, blob, expiresAt) {
     const file = new File([blob], 'encrypted.bin', { type: 'application/octet-stream' })
