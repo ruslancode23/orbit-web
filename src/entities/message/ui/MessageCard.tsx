@@ -1,5 +1,5 @@
 import { cn } from '@/shared/lib/cn'
-import { initials } from '@/shared/lib/initials'
+import { Avatar } from '@/shared/ui/avatar'
 import { ReplyIcon } from '@/shared/ui/icon'
 
 import { MessageText } from './MessageText'
@@ -71,12 +71,14 @@ export const MessageCard = ({
 
       <div className="flex gap-3">
         {startsGroup ? (
-          <span
-            aria-hidden="true"
-            className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs font-semibold text-fg"
-          >
-            {initials(authorName(message))}
-          </span>
+          <Avatar
+            name={authorName(message)}
+            src={message.author?.avatarUrl}
+            accent={message.author?.accentColor}
+            size={40}
+            decorative
+            className="mt-0.5"
+          />
         ) : (
           <span
             aria-hidden="true"

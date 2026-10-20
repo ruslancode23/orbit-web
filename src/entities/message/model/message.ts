@@ -61,9 +61,22 @@ export function formatRelativeTime(moment: Date, now: Date = new Date()): string
   return moment.toLocaleDateString('ru', { day: 'numeric', month: 'short' })
 }
 
+/** A string property of a payload that may predate the current contract. */
+const stringProperty = (value: object, key: string): string | undefined => {
+  const field: unknown = Object.getOwnPropertyDescriptor(value, key)?.value
+  return typeof field === 'string' ? field : undefined
+}
+
 /** Who wrote it, or a placeholder for an account that is gone. */
 export function authorName(message: Message): string {
-  return message.author?.nickname ?? 'Удалённый аккаунт'
+  const author = message.author
+  if (!author) {
+    return 'Удалённый аккаунт'
+  }
+  // The generated type always has a display name, but a message cached before
+  // profiles — or an older server — can still send only the nickname.
+  const name = (stringProperty(author, 'displayName') ?? '').trim()
+  return name === '' ? author.nickname : name
 }
 
 /** A one-line version of a message for a reply preview. */

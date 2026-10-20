@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 
 import { useChannels } from '@/entities/channel'
-import { initials } from '@/entities/participant'
 import { useSession } from '@/entities/session'
+import { UserAvatar, UserName, userDisplayName } from '@/entities/user'
 import { useVoicePresence } from '@/entities/voice-presence'
 import { useVoiceRoom } from '@/entities/voice-room'
 import {
@@ -21,6 +21,7 @@ import {
 } from '@/features/manage-members'
 import { StartDirectChat } from '@/features/start-direct-chat'
 import { cn } from '@/shared/lib/cn'
+import { Avatar } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
 import {
   HeadphonesOffIcon,
@@ -219,7 +220,7 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
                         <li key={state.identity}>
                           <MemberRow
                             member={member}
-                            name={member?.user.nickname ?? state.name}
+                            name={member ? userDisplayName(member.user) : state.name}
                             voice={state}
                             workspaceId={workspaceId}
                             memberRole={role}
@@ -249,7 +250,7 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
           ROLE_GROUPS.map((group) => {
             const rows = members
               .filter((member) => member.role === group.role)
-              .sort((a, b) => a.user.nickname.localeCompare(b.user.nickname, 'ru'))
+              .sort((a, b) => userDisplayName(a.user).localeCompare(userDisplayName(b.user), 'ru'))
             if (rows.length === 0) {
               return null
             }
@@ -267,7 +268,7 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
                     <li key={member.user.id}>
                       <MemberRow
                         member={member}
-                        name={member.user.nickname}
+                        name={userDisplayName(member.user)}
                         voice={voiceStates.get(member.user.id)}
                         workspaceId={workspaceId}
                         memberRole={role}
@@ -323,15 +324,22 @@ const MemberRow = ({
           type="button"
           className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
         >
-          <span
-            aria-hidden="true"
-            className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold text-fg ring-2 ring-transparent',
-              voice?.speaking && 'ring-success',
-            )}
-          >
-            {initials(name)}
-          </span>
+          {member ? (
+            <UserAvatar
+              profile={member.user}
+              size={20}
+              status={member.presence}
+              decorative
+              className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
+            />
+          ) : (
+            <Avatar
+              name={name}
+              size={20}
+              decorative
+              className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
+            />
+          )}
           <span className="min-w-0 flex-1 truncate">{name}</span>
           {member?.user.isGuest === true && (
             <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
@@ -344,7 +352,9 @@ const MemberRow = ({
       <PopoverContent side="left" align="start" className="w-72">
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-0.5">
-            <p className="truncate font-semibold">{name}</p>
+            <p className="truncate font-semibold">
+              {member ? <UserName profile={member.user} /> : name}
+            </p>
             <p className="text-xs text-fg-muted">
               {member === undefined ? 'участник' : ROLE_NAME[member.role]}
               {isMe && ' · это вы'}

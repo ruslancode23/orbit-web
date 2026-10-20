@@ -4,10 +4,11 @@ import { conversationName, conversationPeer, useConversations } from '@/entities
 import { secretChatName, useSecretChats, useSecretDevice } from '@/entities/secret-chat'
 import type { SecretChat } from '@/entities/secret-chat'
 import { useSession } from '@/entities/session'
+import { UserAvatar, userDisplayName } from '@/entities/user'
 import { SetupSecretChats } from '@/features/start-secret-chat'
 import { cn } from '@/shared/lib/cn'
-import { initials } from '@/shared/lib/initials'
-import { LockIcon } from '@/shared/ui/icon'
+import { Avatar } from '@/shared/ui/avatar'
+import { LockIcon, UsersIcon } from '@/shared/ui/icon'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 interface DirectSidebarProps {
@@ -86,6 +87,7 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
               {conversations.data.map((conversation) => {
                 const name = conversationName(conversation, userId)
                 const peer = conversationPeer(conversation, userId)
+                const label = peer ? userDisplayName(peer) : name
                 const secrets = peer ? (secretsByPeer.get(peer.id) ?? []) : []
                 for (const secret of secrets) {
                   nested.add(secret.id)
@@ -93,13 +95,14 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
                 return (
                   <li key={conversation.id} className="flex flex-col gap-0.5">
                     <NavLink to={`/dm/${conversation.id}`} className={rowClass}>
-                      <span
-                        aria-hidden="true"
-                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold"
-                      >
-                        {initials(name)}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{name}</span>
+                      {peer ? (
+                        <UserAvatar profile={peer} size={20} decorative />
+                      ) : (
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-hover text-fg-muted">
+                          <UsersIcon className="size-3" />
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
                     </NavLink>
                     {secrets.length > 0 && (
                       <ul
@@ -148,12 +151,12 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
                   .map((chat) => (
                     <li key={chat.id}>
                       <NavLink to={`/dm/s/${chat.id}`} className={secretRowClass}>
-                        <span
-                          aria-hidden="true"
-                          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-success/15 text-[10px] font-semibold"
-                        >
-                          {initials(secretChatName(chat))}
-                        </span>
+                        <Avatar
+                          name={secretChatName(chat)}
+                          size={20}
+                          decorative
+                          className="bg-success/15 text-success"
+                        />
                         <LockIcon className="size-3.5 shrink-0" />
                         <span className="min-w-0 flex-1 truncate">{secretChatName(chat)}</span>
                       </NavLink>

@@ -1,7 +1,3 @@
-import { initials } from '@/shared/lib/initials'
-
-export { initials }
-
 /** What the room UI shows about one participant. `VoiceParticipant` from the voice room fits it. */
 export interface Participant {
   identity: string
