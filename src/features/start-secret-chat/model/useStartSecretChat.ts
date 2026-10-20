@@ -52,7 +52,7 @@ export const useStartSecretChat = () => {
       await refreshLists()
       setDevices(null)
       setTarget(null)
-      void navigate(`/dm/s/${chat.id}`)
+      void navigate(`/me/s/${chat.id}`)
     } catch (error) {
       toast(isApiError(error) ? error.message : 'Не удалось начать секретный чат', 'danger')
     } finally {

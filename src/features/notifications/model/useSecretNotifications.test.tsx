@@ -41,7 +41,7 @@ describe('secret chat notifications', () => {
   it('shows a notification without any content', () => {
     const platform = createFakePlatform()
     setPlatform(platform)
-    renderAt('/dm')
+    renderAt('/me')
 
     act(() => {
       for (const listener of listeners) {
@@ -64,7 +64,7 @@ describe('secret chat notifications', () => {
   it('stays quiet while the chat is on screen', () => {
     const platform = createFakePlatform()
     setPlatform(platform)
-    renderAt('/dm/s/chat-1')
+    renderAt('/me/s/chat-1')
 
     act(() => {
       for (const listener of listeners) {

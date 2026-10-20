@@ -31,7 +31,7 @@ const openSecretSession = async (userId: string): Promise<SecretChatSession> => 
 }
 
 /**
- * The route `/dm/s/:secretChatId`: resolves the device and its chats with the
+ * The route `/me/s/:secretChatId`: resolves the device and its chats with the
  * shared queries, then hands them to the screen. A test can skip this wrapper
  * by passing `deps` directly, without mocking the crypto core.
  */
@@ -80,14 +80,14 @@ const SecretChatScreen = ({ deps }: { deps: SecretChatPageDeps }) => {
 
   useEffect(() => {
     if (deleted) {
-      void navigate('/dm', { replace: true })
+      void navigate('/me', { replace: true })
     }
   }, [deleted, navigate])
 
   const removeChat = async () => {
     const removed = await actions.deleteChat()
     if (removed) {
-      void navigate('/dm', { replace: true })
+      void navigate('/me', { replace: true })
     }
     return removed
   }
