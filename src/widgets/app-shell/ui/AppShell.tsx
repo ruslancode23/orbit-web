@@ -9,6 +9,7 @@ import { LogoutButton } from '@/features/auth'
 import { ClaimGuest } from '@/features/claim-guest'
 import { CreateChannel } from '@/features/create-channel'
 import { CreationNotice } from '@/features/create-workspace'
+import { InstallApp } from '@/features/install-app'
 import { ManageInvites } from '@/features/manage-invites'
 import { ManageMembers } from '@/features/manage-members'
 import { NotificationSettings, useMessageNotifications } from '@/features/notifications'
@@ -149,6 +150,7 @@ export const AppShell = () => {
         )}
 
         <div className="mt-auto flex flex-col gap-2">
+          <InstallApp />
           <ClaimGuest />
           <NotificationSettings />
           <ConnectionStatus />

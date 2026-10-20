@@ -6,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test'
 // Vite is started here; orbit-server is checked in global setup.
 export default defineConfig({
   testDir: './e2e',
+  // The offline shell needs a production build; it has its own config.
+  testIgnore: /pwa\.spec\.ts/,
   globalSetup: './e2e/global-setup.ts',
   timeout: 60_000,
   fullyParallel: false,

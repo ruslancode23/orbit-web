@@ -206,6 +206,11 @@ export default defineConfig([
     extends: [js.configs.recommended],
     languageOptions: { globals: globals.node },
   },
+  {
+    // The service worker runs in a worker, not in a page or in Node.
+    files: ['public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
   prettier,
   {
     // Every if, else and loop body goes in braces, even a one-liner: `if (x) return`

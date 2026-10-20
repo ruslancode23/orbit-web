@@ -15,6 +15,7 @@ pnpm check        # typecheck + lint + lint:fsd + format:check + test — зап
 pnpm lint:fix && pnpm format   # автоисправления
 pnpm test         # Vitest; один файл: pnpm vitest run src/shared/ui/button
 pnpm test:e2e     # Playwright против живых orbit-server + LiveKit (make up && make run в orbit-server)
+pnpm test:e2e:pwa # сборка + preview на 4173: манифест и офлайн-оболочка
 ```
 
 Node 22+, pnpm 11. Не используй npm или yarn — lockfile только `pnpm-lock.yaml`.
@@ -221,6 +222,28 @@ owner; member и чужой сервер уводятся редиректом, 
 единственный запрос, написанный руками. Лимит размера проверяется до отправки по
 `VITE_MAX_UPLOAD_BYTES`: API его не сообщает, держите равным `ORBIT_MAX_UPLOAD_BYTES` сервера;
 413 и 415 от сервера всё равно объясняются текстом.
+
+## PWA
+
+Манифест и иконки — `public/manifest.webmanifest` и `public/icons` (192/512, maskable, apple-touch).
+`index.html` ссылается на манифест и `theme-color`; цвета взяты из `@theme`, но в hex: манифест не понимает
+oklch.
+
+`public/sw.js` — оболочка для установленного приложения. Навигация — network-first с откатом на
+закэшированный `index.html`; хэшированные `/assets/*` и иконки — cache-first. При установке worker сам
+читает собранный `index.html` и кладёт в кэш текущие хэши, поэтому офлайн открывается именно эта сборка.
+API и WebSocket не кэшируются никогда. `Vary: Origin` у preview-сервера не должен ломать попадания:
+`cache.match` вызывается с `ignoreVary`. Меняется схема кэша — поднимай `VERSION`, старые кэши удалит
+`activate`.
+
+Регистрация — `shared/pwa`, только в `import.meta.env.PROD`: в dev Vite отдаёт исходники, и worker
+прятал бы изменения. Офлайн-проверка отдельная, потому что для неё нужен build и preview:
+`pnpm test:e2e:pwa` (`playwright.pwa.config.ts`, порт 4173).
+
+Установка — `features/install-app` через `PlatformAdapter.install`: браузерное событие
+`beforeinstallprompt` приходит один раз и может прийти до рендера, поэтому адаптер держит его на уровне
+модуля, а кнопка подписана через `useSyncExternalStore`. Без события (Safari, iOS) кнопки нет — там
+приложение ставят через меню браузера.
 
 ## Медиа (LiveKit)
 

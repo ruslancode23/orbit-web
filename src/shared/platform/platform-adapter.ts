@@ -11,6 +11,7 @@ export interface PlatformAdapter {
   mediaDevices: PlatformMediaDevices
   screenCapture: PlatformScreenCapture
   autostart: PlatformAutostart
+  install: PlatformInstall
 }
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported'
@@ -62,4 +63,18 @@ export interface PlatformAutostart {
   isSupported: () => boolean
   isEnabled: () => Promise<boolean>
   setEnabled: (enabled: boolean) => Promise<void>
+}
+
+/** Installing the web app to the home screen or desktop. */
+export interface PlatformInstall {
+  /** The browser can install web apps at all. */
+  isSupported: () => boolean
+  /** The browser offered an install prompt and nobody has used it yet. */
+  canPrompt: () => boolean
+  /** Runs the browser's prompt; resolves with what the person chose. */
+  prompt: () => Promise<'accepted' | 'dismissed'>
+  /** Already opened as an installed app. */
+  isInstalled: () => boolean
+  /** The prompt became available or was used, or the app was installed. */
+  onChange: (listener: () => void) => () => void
 }
