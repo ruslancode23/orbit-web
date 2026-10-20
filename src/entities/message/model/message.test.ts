@@ -2,7 +2,15 @@ import type { Message } from '@/shared/api'
 
 import { authorName, startsNewGroup } from './message'
 
-const anna = { id: 'u-anna', nickname: 'Anna', isGuest: false, createdAt: new Date() }
+const anna = {
+  id: 'u-anna',
+  nickname: 'Anna',
+  displayName: 'Anna',
+  accentColor: 'slate' as const,
+  bio: '',
+  isGuest: false,
+  createdAt: new Date(),
+}
 
 function message(fields: Partial<Message> = {}): Message {
   return {

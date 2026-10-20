@@ -7,7 +7,7 @@ import {
   claimGuestAccountMutation,
   getCurrentUserQueryKey,
   isApiError,
-  type User,
+  type SelfProfile,
 } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -42,7 +42,7 @@ export const ClaimGuest = () => {
   return <ClaimForm key={user.id} guest={user} />
 }
 
-const ClaimForm = ({ guest }: { guest: User }) => {
+const ClaimForm = ({ guest }: { guest: SelfProfile }) => {
   const [open, setOpen] = useState(false)
   const nicknameId = useId()
   const emailId = useId()
