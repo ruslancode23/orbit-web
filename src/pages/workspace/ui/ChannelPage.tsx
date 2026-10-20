@@ -37,6 +37,9 @@ const ChannelPage = () => {
         <ChannelChat
           workspaceId={workspaceId}
           channelId={channelId}
+          {...(channel === undefined
+            ? {}
+            : { channelName: channel.name, channelTopic: channel.topic })}
           canWrite={channel?.canWrite ?? false}
           canAttach={can(membership, 'canAttachFiles')}
         />

@@ -49,14 +49,16 @@ export const MessageRow = ({
           <AttachmentList attachments={message.attachments} />
         ) : undefined
       }
+      actions={
+        <MessageActions
+          message={message}
+          canWrite={canWrite}
+          onReply={onReply}
+          onEdit={onStartEdit}
+        />
+      }
     >
       <ReactionBar message={message} canWrite={canWrite} />
-      <MessageActions
-        message={message}
-        canWrite={canWrite}
-        onReply={onReply}
-        onEdit={onStartEdit}
-      />
     </MessageCard>
   )
 }

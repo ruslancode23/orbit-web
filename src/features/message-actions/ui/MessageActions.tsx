@@ -3,10 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 
 import { useSession } from '@/entities/session'
 import { deleteMessageMutation, type Message } from '@/shared/api'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/button'
+import { EditIcon, ReplyIcon, SmileIcon, TrashIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
 import { describeActionError } from '../model/describe-error'
 import { replaceMessageInHistory } from '../model/message-cache'
+import { REACTION_EMOJI, useReactionActions } from '../model/reactions'
 
 interface MessageActionsProps {
   message: Message
@@ -17,15 +21,18 @@ interface MessageActionsProps {
 }
 
 /**
- * What may be done with one message: answer it, rewrite or delete one's own.
- * The buttons follow the rules the server enforces — the server checks them
- * again, so hiding an action is a convenience, never the protection.
+ * What may be done with one message, as pictures in a panel that shows on hover
+ * or when the keyboard reaches the row: react, answer, rewrite or delete one's
+ * own. The buttons follow the rules the server enforces — the server checks
+ * them again, so hiding an action is a convenience, never the protection.
  */
 export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageActionsProps) => {
   const { user } = useSession()
   const queryClient = useQueryClient()
+  const [picking, setPicking] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const confirmRef = useRef<HTMLButtonElement | null>(null)
+  const reactions = useReactionActions(message)
 
   const remove = useMutation({
     ...deleteMessageMutation(),
@@ -50,31 +57,90 @@ export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageAc
     return null
   }
 
+  const panelOpen = picking || confirming
+  const error = reactions.error ?? remove.error
+
   return (
-    <div className="mt-1 flex min-h-7 flex-wrap items-center gap-1 opacity-100 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:opacity-0">
-      {canWrite && (
-        <Button size="sm" variant="ghost" onClick={onReply}>
-          Ответить
-        </Button>
-      )}
-      {own && (
-        <Button size="sm" variant="ghost" onClick={onEdit}>
-          Изменить
-        </Button>
-      )}
-      {own && !confirming && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setConfirming(true)
-          }}
+    <div className="flex flex-col items-end gap-1">
+      <div
+        role="group"
+        aria-label="Действия с сообщением"
+        className={cn(
+          'flex items-center gap-0.5 rounded-md border border-border bg-surface-raised p-0.5 shadow-popover transition-opacity',
+          panelOpen
+            ? 'opacity-100'
+            : 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
+        )}
+      >
+        {canWrite && (
+          <IconButton
+            label="Добавить реакцию"
+            size="sm"
+            pressed={picking}
+            aria-expanded={picking}
+            onClick={() => {
+              setPicking((current) => !current)
+              setConfirming(false)
+            }}
+          >
+            <SmileIcon />
+          </IconButton>
+        )}
+        {canWrite && (
+          <IconButton label="Ответить" size="sm" onClick={onReply}>
+            <ReplyIcon />
+          </IconButton>
+        )}
+        {own && (
+          <IconButton label="Изменить" size="sm" onClick={onEdit}>
+            <EditIcon />
+          </IconButton>
+        )}
+        {own && (
+          <IconButton
+            label="Удалить"
+            size="sm"
+            variant="danger"
+            onClick={() => {
+              setConfirming(true)
+              setPicking(false)
+            }}
+          >
+            <TrashIcon />
+          </IconButton>
+        )}
+      </div>
+
+      {picking && (
+        <div
+          role="group"
+          aria-label="Выберите реакцию"
+          className="flex flex-wrap justify-end gap-1 rounded-md border border-border bg-surface-raised p-1 shadow-popover"
         >
-          Удалить
-        </Button>
+          {REACTION_EMOJI.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              aria-label={`Поставить реакцию ${emoji}`}
+              disabled={reactions.pending}
+              className="rounded-md px-2 py-1 text-base hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:opacity-50"
+              onClick={() => {
+                setPicking(false)
+                reactions.react(emoji)
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
       )}
-      {own && confirming && (
-        <div role="group" aria-label="Подтверждение удаления" className="flex items-center gap-1">
+
+      {confirming && (
+        <div
+          role="group"
+          aria-label="Подтверждение удаления"
+          className="flex items-center gap-1 rounded-md border border-border bg-surface-raised p-1 shadow-popover"
+        >
           <span className="text-xs text-fg-muted">Удалить сообщение?</span>
           <Button
             size="sm"
@@ -98,9 +164,10 @@ export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageAc
           </Button>
         </div>
       )}
-      {remove.error && (
+
+      {error && (
         <p role="alert" className="text-xs text-danger">
-          {describeActionError(remove.error, 'Не получилось удалить сообщение.')}
+          {describeActionError(error, 'Не получилось выполнить действие.')}
         </p>
       )}
     </div>

@@ -13,7 +13,7 @@ import {
 import { SendMessage } from '@/features/send-message'
 import { isApiError } from '@/shared/api'
 import { usePageVisible } from '@/shared/lib/page-visibility'
-import { ChevronDownIcon } from '@/shared/ui/icon'
+import { ChevronDownIcon, HashIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 
 import { MessageRow } from './MessageRow'
@@ -22,6 +22,10 @@ import { useChannelHistory } from './useChannelHistory'
 interface ChannelChatProps {
   workspaceId: string
   channelId: string
+  /** The channel's name, for the placeholder and the first-screen title. */
+  channelName?: string
+  /** The channel's topic, shown while it is still empty. */
+  channelTopic?: string
   /** False in a read-only channel: the composer is then not offered. */
   canWrite: boolean
   /** False when the server does not let this member attach files. */
@@ -40,7 +44,14 @@ const HIGHLIGHT_MS = 2000
  * scrolls at the same speed as a short one; older pages load as the reader
  * goes up, and new messages stick to the bottom only while the reader is there.
  */
-export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: ChannelChatProps) => {
+export const ChannelChat = ({
+  workspaceId,
+  channelId,
+  channelName,
+  channelTopic,
+  canWrite,
+  canAttach,
+}: ChannelChatProps) => {
   const { user } = useSession()
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useChannelHistory(channelId)
@@ -182,7 +193,17 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: Cha
             </p>
           )}
           {!isPending && !error && messages.length === 0 && (
-            <p className="p-4 text-sm text-fg-muted">Здесь пока ничего не написано.</p>
+            <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+              <span
+                aria-hidden="true"
+                className="flex size-16 items-center justify-center rounded-full bg-surface-hover"
+              >
+                <HashIcon className="size-8 text-fg-muted" />
+              </span>
+              <p className="text-lg font-semibold">Это начало #{channelName ?? 'канала'}</p>
+              {channelTopic && <p className="max-w-md text-sm text-fg-muted">{channelTopic}</p>}
+              <p className="text-sm text-fg-muted">Здесь пока ничего не написано.</p>
+            </div>
           )}
 
           <div
@@ -253,6 +274,7 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: Cha
         <SendMessage
           workspaceId={workspaceId}
           channelId={channelId}
+          {...(channelName === undefined ? {} : { channelName })}
           {...(activeReply === undefined ? {} : { replyTo: activeReply })}
           onCancelReply={() => {
             setReplyTo(undefined)
