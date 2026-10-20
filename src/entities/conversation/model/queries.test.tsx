@@ -17,19 +17,31 @@ import type { ReactNode } from 'react'
 const anna = {
   id: 'u-anna',
   nickname: 'Анна',
+  displayName: 'Анна',
+  accentColor: 'slate' as const,
+  bio: '',
   isGuest: false,
+  createdAt: new Date('2026-01-01T10:00:00Z'),
   joinedAt: new Date('2026-10-20T10:00:00Z'),
 }
 const bob = {
   id: 'u-bob',
   nickname: 'Боб',
+  displayName: 'Боб',
+  accentColor: 'slate' as const,
+  bio: '',
   isGuest: false,
+  createdAt: new Date('2026-01-01T10:00:00Z'),
   joinedAt: new Date('2026-10-20T10:00:00Z'),
 }
 const carol = {
   id: 'u-carol',
   nickname: 'Кэрол',
+  displayName: 'Кэрол',
+  accentColor: 'slate' as const,
+  bio: '',
   isGuest: false,
+  createdAt: new Date('2026-01-01T10:00:00Z'),
   joinedAt: new Date('2026-10-20T10:00:00Z'),
 }
 

@@ -1,10 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { getCurrentUserOptions, getCurrentUserQueryKey, isApiError, type User } from '@/shared/api'
+import {
+  getCurrentUserOptions,
+  getCurrentUserQueryKey,
+  isApiError,
+  type SelfProfile,
+} from '@/shared/api'
 
 /** What the app knows about who is signed in. */
 export interface Session {
-  user: User | undefined
+  user: SelfProfile | undefined
   /** True until the first answer about the session arrives. */
   isLoading: boolean
   isSignedIn: boolean

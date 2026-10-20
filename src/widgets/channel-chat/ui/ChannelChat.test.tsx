@@ -12,12 +12,18 @@ const channelId = '11111111-1111-4111-8111-111111111111'
 const anna = {
   id: 'u-anna',
   nickname: 'Anna',
+  displayName: 'Anna',
+  accentColor: 'slate' as const,
+  bio: '',
   isGuest: false,
   createdAt: new Date('2026-10-18T10:00:00Z'),
 }
 const boris = {
   id: 'u-boris',
   nickname: 'Boris',
+  displayName: 'Boris',
+  accentColor: 'slate' as const,
+  bio: '',
   isGuest: false,
   createdAt: new Date('2026-10-18T10:00:00Z'),
 }
