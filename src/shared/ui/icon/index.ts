@@ -1,4 +1,5 @@
 export {
+  BanIcon,
   BellIcon,
   CheckIcon,
   ClockIcon,
@@ -31,6 +32,7 @@ export {
   SmileIcon,
   SpeakerIcon,
   TrashIcon,
+  UserPlusIcon,
   UsersIcon,
   VolumeIcon,
   XIcon,

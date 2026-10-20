@@ -1,5 +1,5 @@
 import { useState, type UIEvent } from 'react'
-import { NavLink } from 'react-router'
+import { Link, NavLink, useLocation } from 'react-router'
 
 import {
   conversationMembersExcept,
@@ -206,6 +206,9 @@ const searchableName = (summary: ConversationSummary, userId: string): string =>
 export const DirectSidebar = ({ className }: DirectSidebarProps) => {
   const { user } = useSession()
   const userId = user?.id ?? ''
+  const location = useLocation()
+  // `/me` is the friends section itself, so the row is current there too.
+  const friendsOpen = location.pathname === '/me' || location.pathname === '/me/friends'
   const { summaries, isPending, error } = useConversationSummaries()
   const device = useSecretDevice()
   const secretChats = useSecretChats(device.data?.deviceId)
@@ -264,6 +267,22 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
       <header className="flex h-12 shrink-0 items-center border-b border-border px-3">
         <h2 className="truncate text-sm font-semibold">Личные сообщения</h2>
       </header>
+
+      <div className="shrink-0 px-2 pt-2">
+        <Link
+          to="/me/friends"
+          aria-current={friendsOpen ? 'page' : undefined}
+          className={cn(
+            'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+            friendsOpen
+              ? 'bg-surface-hover font-medium text-fg'
+              : 'text-fg-muted hover:bg-surface-hover hover:text-fg',
+          )}
+        >
+          <UsersIcon className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">Друзья</span>
+        </Link>
+      </div>
 
       <div className="shrink-0 px-2 pt-2">
         <div className="relative">

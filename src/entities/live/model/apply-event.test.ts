@@ -6,12 +6,16 @@ import {
   getWorkspaceQueryKey,
   listChannelsQueryKey,
   listConversationsQueryKey,
+  listFriendRequestsQueryKey,
+  listFriendsQueryKey,
   listMessagesInfiniteQueryKey,
   listMessagesQueryKey,
   listUnreadQueryKey,
+  listUserBlocksQueryKey,
   listWorkspaceMembersQueryKey,
   listWorkspacesQueryKey,
   type Conversation,
+  type Friend,
   type Message,
   type MessagePage,
   type SelfProfile,
@@ -238,4 +242,87 @@ it('refreshes the unread counters of a server on read.changed', () => {
   })
 
   expect(queryClient.getQueryState(unread)?.isInvalidated).toBe(true)
+})
+
+const friend = (id: string, nickname: string, presence: Friend['presence']): Friend => ({
+  id,
+  nickname,
+  presence,
+  since: new Date('2026-10-20T10:00:00Z'),
+})
+
+// The stream carries one account and its visible status, so the dot changes
+// in place: no list request is needed and the other friends stay as they were.
+it('patches one friend from presence.updated and keeps the others', () => {
+  const queryClient = new QueryClient()
+  const key = listFriendsQueryKey()
+  queryClient.setQueryData<Friend[]>(key, [
+    friend('u-anna', 'anna', 'online'),
+    friend('u-bob', 'bob', 'idle'),
+  ])
+
+  applyEvent(queryClient, {
+    type: 'presence.updated',
+    payload: { userId: 'u-anna', status: 'dnd', updatedAt: '2026-10-20T10:00:00Z' },
+  })
+
+  const friends = queryClient.getQueryData<Friend[]>(key)
+  expect(friends?.find((item) => item.id === 'u-anna')?.presence).toBe('dnd')
+  expect(friends?.find((item) => item.id === 'u-bob')?.presence).toBe('idle')
+  expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
+})
+
+it('leaves the friend list alone when the presence payload is unreadable', () => {
+  const queryClient = new QueryClient()
+  const key = listFriendsQueryKey()
+  queryClient.setQueryData<Friend[]>(key, [friend('u-anna', 'anna', 'online')])
+
+  applyEvent(queryClient, { type: 'presence.updated', payload: { userId: 'u-anna' } })
+
+  expect(queryClient.getQueryData<Friend[]>(key)?.[0]?.presence).toBe('online')
+})
+
+it('refreshes both sides of the pending lists when a request appears or goes', () => {
+  const queryClient = new QueryClient()
+  const incoming = listFriendRequestsQueryKey({ query: { direction: 'incoming' } })
+  const outgoing = listFriendRequestsQueryKey({ query: { direction: 'outgoing' } })
+  const friends = listFriendsQueryKey()
+  queryClient.setQueryData(incoming, [])
+  queryClient.setQueryData(outgoing, [])
+  queryClient.setQueryData(friends, [])
+
+  applyEvent(queryClient, { type: 'friend.request.created', payload: {} })
+
+  expect(queryClient.getQueryState(incoming)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(outgoing)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(friends)?.isInvalidated).toBe(false)
+})
+
+it('refreshes the friends and the pending list when a request is accepted', () => {
+  const queryClient = new QueryClient()
+  const friends = listFriendsQueryKey()
+  const requests = listFriendRequestsQueryKey({ query: { direction: 'incoming' } })
+  queryClient.setQueryData(friends, [])
+  queryClient.setQueryData(requests, [])
+
+  applyEvent(queryClient, { type: 'friend.added', payload: {} })
+
+  expect(queryClient.getQueryState(friends)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(requests)?.isInvalidated).toBe(true)
+})
+
+it('refreshes friends, requests and blocks when a friendship ends', () => {
+  const queryClient = new QueryClient()
+  const friends = listFriendsQueryKey()
+  const requests = listFriendRequestsQueryKey({ query: { direction: 'incoming' } })
+  const blocks = listUserBlocksQueryKey()
+  queryClient.setQueryData(friends, [])
+  queryClient.setQueryData(requests, [])
+  queryClient.setQueryData(blocks, [])
+
+  applyEvent(queryClient, { type: 'friend.removed', payload: {} })
+
+  expect(queryClient.getQueryState(friends)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(requests)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(blocks)?.isInvalidated).toBe(true)
 })

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, inviteLink, password, unique } from './helpers.ts'
+import { createChannel, inviteLink, memberCard, password, unique } from './helpers.ts'
 
 const plaintext = 'совершенно секретный текст'
 
@@ -53,8 +53,9 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   await expect(peer.getByRole('button', { name: 'Включить секретные чаты' })).toHaveCount(0)
 
   // The owner opens the dialogue with the peer and starts a secret one from its menu.
-  await expect(owner.getByRole('button', { name: peerName, exact: true })).toBeVisible()
-  await owner.getByRole('button', { name: peerName, exact: true }).click()
+  const peerCard = memberCard(owner, peerName)
+  await expect(peerCard).toBeVisible()
+  await peerCard.click()
   await owner.getByRole('button', { name: 'Написать' }).click()
   await expect(owner).toHaveURL(/\/me\/[0-9a-f-]+$/)
   await owner.getByRole('button', { name: 'Действия с диалогом' }).click()

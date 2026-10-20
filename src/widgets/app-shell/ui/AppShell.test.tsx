@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
 import { LiveProvider } from '@/entities/live'
+import { resetConversationUnread, setConversationUnread } from '@/entities/unread'
 import { createFakePlatform, renderWithProviders } from '@/shared/lib/test'
 import { setPlatform } from '@/shared/platform'
 
@@ -103,6 +104,7 @@ const stubApi = (
   role: Role,
   unread: { current: Counts } = { current: noUnread },
   memberPermissions = defaultPermissions,
+  friendRequests: unknown[] = [],
 ) => {
   vi.stubGlobal(
     'fetch',
@@ -110,13 +112,15 @@ const stubApi = (
       const url = input instanceof Request ? input.url : String(input)
       const body = url.includes('/auth/me')
         ? anna
-        : url.includes('/unread')
-          ? unread.current
-          : url.includes('/channels')
-            ? channels
-            : url.includes('/workspaces')
-              ? [membership(role, memberPermissions)]
-              : {}
+        : url.includes('/friends/requests')
+          ? friendRequests
+          : url.includes('/unread')
+            ? unread.current
+            : url.includes('/channels')
+              ? channels
+              : url.includes('/workspaces')
+                ? [membership(role, memberPermissions)]
+                : {}
       return Promise.resolve(
         new Response(JSON.stringify(body), {
           status: 200,
@@ -131,6 +135,9 @@ const stubApi = (
 
 afterEach(() => {
   sockets.length = 0
+  act(() => {
+    resetConversationUnread()
+  })
   setPlatform(null)
   vi.unstubAllGlobals()
 })
@@ -355,4 +362,32 @@ describe('notifications', () => {
 
     expect(platform.notifications.show).not.toHaveBeenCalled()
   })
+})
+
+// Unread messages and incoming friendship requests are different things: the
+// rail shows both numbers, separately, and says both in the link's name.
+it('keeps incoming friendship requests apart from unread messages in the rail', async () => {
+  stubApi('member', { current: noUnread }, defaultPermissions, [
+    {
+      userId: 'u-eva',
+      nickname: 'eva',
+      direction: 'incoming',
+      createdAt: '2026-10-18T10:00:00Z',
+    },
+  ])
+  renderShell()
+
+  const link = await screen.findByRole('link', { name: /Личные сообщения/ })
+  // The account effect clears the counters when the session arrives, so the
+  // unread number is put in after it, the way a live message would.
+  await screen.findByText('Anna')
+  act(() => {
+    setConversationUnread('c-direct', { unread: 3, mentions: 0 })
+  })
+
+  await waitFor(() => {
+    expect(link).toHaveAccessibleName('Личные сообщения, 3 непрочитанных, 1 входящая заявка')
+  })
+  expect(within(link).getByText('3')).toBeInTheDocument()
+  expect(within(link).getByText('1')).toBeInTheDocument()
 })

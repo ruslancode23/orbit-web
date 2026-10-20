@@ -1,6 +1,11 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation, useParams } from 'react-router'
 
+import {
+  describeIncomingRequests,
+  FriendRequestBadge,
+  useIncomingFriendRequestCount,
+} from '@/entities/friend'
 import { useLive } from '@/entities/live'
 import { describeUnread, UnreadBadge, useConversationUnreadTotal } from '@/entities/unread'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
@@ -61,6 +66,13 @@ const Shell = () => {
   const channelSidebarOpen = useChannelSidebarOpen()
   const directUnread = useConversationUnreadTotal()
   const directUnreadDescription = describeUnread(directUnread)
+  const incomingRequests = useIncomingFriendRequestCount()
+  const requestDescription = incomingRequests > 0 ? describeIncomingRequests(incomingRequests) : ''
+  // Requests are not messages: they get their own words and their own mark,
+  // so the unread number never counts a request as a message.
+  const directDescription = [directUnreadDescription, requestDescription]
+    .filter((part) => part !== '')
+    .join(', ')
   usePersonalUnread()
 
   // One socket for the app; changing servers only changes what it watches.
@@ -106,14 +118,15 @@ const Shell = () => {
           <NavLink
             to="/me"
             aria-label={
-              directUnreadDescription
-                ? `Личные сообщения, ${directUnreadDescription}`
+              directDescription !== ''
+                ? `Личные сообщения, ${directDescription}`
                 : 'Личные сообщения'
             }
             className="relative flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-hover text-fg-muted transition-colors hover:rounded-xl hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:rounded-xl aria-[current=page]:text-fg aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
           >
             <MessageIcon />
             <UnreadBadge {...directUnread} compact count className="absolute top-0 right-0" />
+            <FriendRequestBadge count={incomingRequests} className="absolute right-0 bottom-0" />
           </NavLink>
         </Tooltip>
         <span aria-hidden="true" className="h-px w-8 shrink-0 bg-border" />

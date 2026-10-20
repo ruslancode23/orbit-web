@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, inviteLink, password, unique } from './helpers.ts'
+import { createChannel, inviteLink, memberCard, password, unique } from './helpers.ts'
 
 async function register(page: Page, nickname: string): Promise<void> {
   await page.goto('/register')
@@ -46,7 +46,7 @@ test('two people talk in a direct dialogue, live and with the unread badge', asy
   await joinServer(peer, link)
 
   // The owner opens the pair dialogue from the member card and writes first.
-  await owner.getByRole('button', { name: peerName, exact: true }).click()
+  await memberCard(owner, peerName).click()
   await owner.getByRole('button', { name: 'Написать' }).click()
   await expect(owner).toHaveURL(/\/me\/[0-9a-f-]+$/)
 

@@ -279,3 +279,20 @@ it('shows a skeleton while the dialogues are loading', async () => {
   answer.resolve(json([direct]))
   expect(await screen.findByRole('link', { name: 'Боб' })).toBeInTheDocument()
 })
+
+it('puts «Друзья» above the dialogues and marks it current in the friends section', async () => {
+  stubApi({ conversations: [] })
+  renderSidebar('/me')
+
+  const friends = await screen.findByRole('link', { name: 'Друзья' })
+  expect(friends).toHaveAttribute('href', '/me/friends')
+  expect(friends).toHaveAttribute('aria-current', 'page')
+})
+
+it('does not mark «Друзья» current inside a dialogue', async () => {
+  stubApi()
+  renderSidebar('/me/c-direct')
+
+  await screen.findByRole('link', { name: 'Боб' })
+  expect(screen.getByRole('link', { name: 'Друзья' })).not.toHaveAttribute('aria-current')
+})

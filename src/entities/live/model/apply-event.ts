@@ -1,5 +1,7 @@
 import {
   getWorkspaceQueryKey,
+  type Friend,
+  type PresenceStatus,
   type VoicePresence,
   listMessagesInfiniteQueryKey,
   listConversationsQueryKey,
@@ -81,11 +83,93 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       applyUserProfile(queryClient, profile)
     }
   }
+  // A friend went online, idle, do-not-disturb or offline. The payload is
+  // small and names one account, so the cached friend is patched in place:
+  // the dot changes without refetching the whole list. The server already
+  // applies "do not disturb" and invisibility, so the value is shown as is.
+  if (event.type === 'presence.updated') {
+    const state = parseFriendPresence(event.payload)
+    if (state) {
+      queryClient.setQueriesData<Friend[]>(
+        { predicate: (query) => queryIdOf(query.queryKey) === 'listFriends' },
+        (friends) => {
+          if (!Array.isArray(friends)) {
+            return friends
+          }
+          return friends.map((friend) => {
+            if (friend.id !== state.userId || friend.presence === state.status) {
+              return friend
+            }
+            return { ...friend, presence: state.status }
+          })
+        },
+      )
+    }
+  }
+  // A request appeared or disappeared on either side. Both accounts hear it,
+  // each with the direction it sees, so both lists are refreshed: the payload
+  // carries no profile and the list is small.
+  if (event.type === 'friend.request.created' || event.type === 'friend.request.removed') {
+    invalidateQueriesById(queryClient, ['listFriendRequests'])
+  }
+  // A request became a friendship. The friend list gains a row and the
+  // pending list loses one.
+  if (event.type === 'friend.added') {
+    invalidateQueriesById(queryClient, ['listFriends', 'listFriendRequests'])
+  }
+  // A friendship ended, either because someone removed the friend or because
+  // one side blocked the other. A block also changes the blocked list, which
+  // the other side of the pair never sees.
+  if (event.type === 'friend.removed') {
+    invalidateQueriesById(queryClient, ['listFriends', 'listFriendRequests', 'listUserBlocks'])
+  }
   // Someone joined, left, was banned or changed role: the member list and the
   // servers we are on may both have changed.
   if (event.type === 'member.changed') {
     void queryClient.invalidateQueries()
   }
+}
+
+/** The name of a generated query, stored in the first part of its key. */
+const queryIdOf = (queryKey: readonly unknown[]): string | undefined => {
+  const params = queryKey[0]
+  if (typeof params !== 'object' || params === null || !('_id' in params)) {
+    return undefined
+  }
+  return typeof params._id === 'string' ? params._id : undefined
+}
+
+/** Refreshes every cached query with one of the generated names. */
+const invalidateQueriesById = (queryClient: QueryClient, ids: readonly string[]) => {
+  void queryClient.invalidateQueries({
+    predicate: (query) => {
+      const id = queryIdOf(query.queryKey)
+      return id !== undefined && ids.includes(id)
+    },
+  })
+}
+
+interface FriendPresenceState {
+  userId: string
+  status: PresenceStatus
+}
+
+const isPresenceStatus = (value: unknown): value is PresenceStatus => {
+  return value === 'online' || value === 'idle' || value === 'dnd' || value === 'offline'
+}
+
+/** `presence.updated` carries the account, its visible status and when it changed. */
+const parseFriendPresence = (payload: unknown): FriendPresenceState | null => {
+  if (typeof payload !== 'object' || payload === null) {
+    return null
+  }
+  if (!('userId' in payload) || typeof payload.userId !== 'string') {
+    return null
+  }
+  if (!('status' in payload) || !isPresenceStatus(payload.status)) {
+    return null
+  }
+  return { userId: payload.userId, status: payload.status }
 }
 
 const parsePresence = (payload: unknown): VoicePresence | null => {

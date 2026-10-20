@@ -4,7 +4,10 @@ import { Avatar, type AvatarSize, type AvatarStatus } from '@/shared/ui/avatar'
 import { userDisplayName, userLabel } from '../model/profile'
 
 export interface UserAvatarProps {
-  profile: Pick<UserProfile, 'nickname' | 'displayName' | 'avatarUrl' | 'accentColor'>
+  /** The public part of a profile; the accent is unknown until that profile has loaded. */
+  profile: Pick<UserProfile, 'nickname' | 'displayName' | 'avatarUrl'> & {
+    accentColor?: UserProfile['accentColor']
+  }
   size?: AvatarSize
   /** Online presence, when the place already knows it. */
   status?: AvatarStatus

@@ -5,11 +5,9 @@ import {
   conversationName,
   conversationPeer,
   useConversation,
-  useConversations,
 } from '@/entities/conversation'
 import { useSession } from '@/entities/session'
 import { UserAvatar, UserAvatarStack, UserName, userDisplayName } from '@/entities/user'
-import { StartConversation } from '@/features/start-direct-chat'
 import { SecretChatMenuItem } from '@/features/start-secret-chat'
 import { isApiError } from '@/shared/api'
 import { pluralRu } from '@/shared/lib/plural'
@@ -19,59 +17,7 @@ import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { ChannelChat } from '@/widgets/channel-chat'
 
-/** The main pane of the personal-messages section when no dialogue is open. */
-const DirectPlaceholder = () => {
-  const { data: conversations, isPending } = useConversations()
-  const empty = !isPending && conversations?.length === 0
-
-  if (empty) {
-    return (
-      <section
-        aria-labelledby="direct-empty-title"
-        className="flex min-h-0 flex-1 items-center justify-center p-6"
-      >
-        <div className="flex max-w-sm flex-col items-center gap-3 text-center">
-          <span
-            aria-hidden="true"
-            className="flex size-16 items-center justify-center rounded-full bg-surface-hover"
-          >
-            <UsersIcon className="size-8 text-fg-muted" />
-          </span>
-          <h1 id="direct-empty-title" className="text-lg font-semibold">
-            Здесь будут ваши личные сообщения
-          </h1>
-          <p className="text-sm text-fg-muted">
-            Начните переписку с человеком из ваших серверов. Диалог появится в списке слева.
-          </p>
-          <StartConversation label="Написать" />
-        </div>
-      </section>
-    )
-  }
-
-  return (
-    <section
-      aria-labelledby="direct-placeholder-title"
-      className="flex min-h-0 flex-1 items-center justify-center p-6"
-    >
-      <div className="flex max-w-sm flex-col items-center gap-3 text-center">
-        <span
-          aria-hidden="true"
-          className="flex size-16 items-center justify-center rounded-full bg-surface-hover"
-        >
-          <UsersIcon className="size-8 text-fg-muted" />
-        </span>
-        <h1 id="direct-placeholder-title" className="text-lg font-semibold">
-          Выберите диалог
-        </h1>
-        <p className="text-sm text-fg-muted">
-          Слева — личные сообщения и секретные чаты. Выберите человека, чтобы продолжить переписку.
-        </p>
-        <StartConversation label="Написать" variant="secondary" size="sm" />
-      </div>
-    </section>
-  )
-}
+import FriendsPane from './FriendsPane'
 
 const DirectLoading = () => {
   return (
@@ -214,16 +160,15 @@ const DirectError = ({ error }: { error: unknown }) => {
 }
 
 /**
- * The personal-messages page. Without an id it offers to pick or start a
- * dialogue; with one it shows the conversation in the same chat the channels
- * use, so messages, files, replies, reactions, editing and mentions work the
- * same way.
+ * The personal-messages page. Without an id it opens «Друзья» by default; with
+ * one it shows the conversation in the same chat the channels use, so messages,
+ * files, replies, reactions, editing and mentions work the same way.
  */
 const DirectPage = () => {
   const { conversationId } = useParams()
 
   if (conversationId === undefined || conversationId === '') {
-    return <DirectPlaceholder />
+    return <FriendsPane />
   }
   return <ConversationView conversationId={conversationId} />
 }
