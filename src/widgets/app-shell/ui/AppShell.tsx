@@ -77,8 +77,11 @@ const Shell = () => {
   const canInvite = can(membership, 'canInvite')
 
   return (
-    <div className="flex h-full">
-      <nav aria-label="Серверы" className="flex w-16 flex-col items-center gap-2 bg-surface p-2">
+    <div className="flex h-dvh overflow-hidden">
+      <nav
+        aria-label="Серверы"
+        className="flex min-h-0 w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto bg-surface p-2"
+      >
         {memberships?.map(({ workspace }) => (
           <ServerLink
             key={workspace.id}
@@ -99,7 +102,10 @@ const Shell = () => {
         </Tooltip>
       </nav>
 
-      <aside aria-label="Каналы" className="flex w-56 flex-col gap-2 border-r border-border p-3">
+      <aside
+        aria-label="Каналы"
+        className="flex min-h-0 w-56 shrink-0 flex-col gap-2 overflow-hidden border-r border-border p-3"
+      >
         {isPending ? (
           <p role="status" className="text-sm text-fg-muted">
             Загружаем…
@@ -210,7 +216,7 @@ const Shell = () => {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <CreationNotice />
         <VoiceStage />
         <Outlet />

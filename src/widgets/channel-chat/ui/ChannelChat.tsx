@@ -13,7 +13,8 @@ import {
 import { SendMessage } from '@/features/send-message'
 import { isApiError } from '@/shared/api'
 import { usePageVisible } from '@/shared/lib/page-visibility'
-import { Button } from '@/shared/ui/button'
+import { ChevronDownIcon } from '@/shared/ui/icon'
+import { IconButton } from '@/shared/ui/icon-button'
 
 import { MessageRow } from './MessageRow'
 import { useChannelHistory } from './useChannelHistory'
@@ -83,11 +84,16 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: Cha
   })
 
   // Someone reading older messages must not be yanked back down by a new one.
-  useEffect(() => {
-    if (atBottom) {
-      virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+  // The size only settles after rows are measured, and again when a picture
+  // arrives: following the bottom means following the height, not one call.
+  const totalSize = virtualizer.getTotalSize()
+  useLayoutEffect(() => {
+    const element = scrollRef.current
+    if (!atBottom || !element) {
+      return
     }
-  }, [messages.length, atBottom, virtualizer])
+    element.scrollTop = element.scrollHeight
+  }, [atBottom, totalSize, messages.length, channelId])
 
   // The mark on a jumped-to message is temporary.
   useEffect(() => {
@@ -149,94 +155,99 @@ export const ChannelChat = ({ workspaceId, channelId, canWrite, canAttach }: Cha
           Отпустите, чтобы прикрепить файлы
         </div>
       )}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto"
-        role="log"
-        aria-live="polite"
-        aria-label="Сообщения"
-      >
-        {isPending && (
-          <p role="status" className="p-4 text-sm text-fg-muted">
-            Загружаем сообщения…
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="p-4 text-sm text-danger">
-            {isApiError(error) && error.isNetworkError
-              ? 'Нет соединения с сервером.'
-              : 'Не получилось загрузить историю.'}
-          </p>
-        )}
-        {isFetchingNextPage && (
-          <p role="status" className="p-2 text-center text-xs text-fg-muted">
-            Загружаем старые сообщения…
-          </p>
-        )}
-        {!isPending && !error && messages.length === 0 && (
-          <p className="p-4 text-sm text-fg-muted">Здесь пока ничего не написано.</p>
-        )}
-
+      <div className="relative min-h-0 flex-1">
         <div
-          className="relative w-full"
-          style={{ height: `${String(virtualizer.getTotalSize())}px` }}
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="h-full overflow-y-auto"
+          role="log"
+          aria-live="polite"
+          aria-label="Сообщения"
         >
-          {virtualizer.getVirtualItems().map((row) => {
-            const message = messages[row.index]
-            if (!message) {
-              return null
-            }
-            const replyTarget =
-              message.replyToId === undefined
-                ? undefined
-                : messages.find((item) => item.id === message.replyToId)
-            return (
-              <div
-                key={row.key}
-                ref={virtualizer.measureElement}
-                data-index={row.index}
-                className="absolute top-0 left-0 w-full"
-                style={{ transform: `translateY(${String(row.start)}px)` }}
-              >
-                {message.id === firstUnreadId && <NewMessagesDivider />}
-                <MessageRow
-                  message={message}
-                  previous={messages[row.index - 1]}
-                  mentionsMe={user ? message.mentions.includes(user.id) : false}
-                  myNickname={user?.nickname}
-                  canWrite={canWrite}
-                  replyTo={replyTarget}
-                  editing={editingId === message.id}
-                  highlighted={highlightedId === message.id}
-                  onStartEdit={() => {
-                    setEditingId(message.id)
-                  }}
-                  onStopEdit={() => {
-                    setEditingId(undefined)
-                  }}
-                  onReply={() => {
-                    setReplyTo(message)
-                  }}
-                  onJumpTo={jumpTo}
-                />
-              </div>
-            )
-          })}
-        </div>
-      </div>
+          {isPending && (
+            <p role="status" className="p-4 text-sm text-fg-muted">
+              Загружаем сообщения…
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="p-4 text-sm text-danger">
+              {isApiError(error) && error.isNetworkError
+                ? 'Нет соединения с сервером.'
+                : 'Не получилось загрузить историю.'}
+            </p>
+          )}
+          {isFetchingNextPage && (
+            <p role="status" className="p-2 text-center text-xs text-fg-muted">
+              Загружаем старые сообщения…
+            </p>
+          )}
+          {!isPending && !error && messages.length === 0 && (
+            <p className="p-4 text-sm text-fg-muted">Здесь пока ничего не написано.</p>
+          )}
 
-      {!atBottom && (
-        <Button
-          variant="ghost"
-          className="mx-auto mb-1"
-          onClick={() => {
-            setAtBottom(true)
-          }}
-        >
-          К новым сообщениям
-        </Button>
-      )}
+          <div
+            className="relative w-full"
+            style={{ height: `${String(virtualizer.getTotalSize())}px` }}
+          >
+            {virtualizer.getVirtualItems().map((row) => {
+              const message = messages[row.index]
+              if (!message) {
+                return null
+              }
+              const replyTarget =
+                message.replyToId === undefined
+                  ? undefined
+                  : messages.find((item) => item.id === message.replyToId)
+              return (
+                <div
+                  key={row.key}
+                  ref={virtualizer.measureElement}
+                  data-index={row.index}
+                  className="absolute top-0 left-0 w-full"
+                  style={{ transform: `translateY(${String(row.start)}px)` }}
+                >
+                  {message.id === firstUnreadId && <NewMessagesDivider />}
+                  <MessageRow
+                    message={message}
+                    previous={messages[row.index - 1]}
+                    mentionsMe={user ? message.mentions.includes(user.id) : false}
+                    myNickname={user?.nickname}
+                    canWrite={canWrite}
+                    replyTo={replyTarget}
+                    editing={editingId === message.id}
+                    highlighted={highlightedId === message.id}
+                    onStartEdit={() => {
+                      setEditingId(message.id)
+                    }}
+                    onStopEdit={() => {
+                      setEditingId(undefined)
+                    }}
+                    onReply={() => {
+                      setReplyTo(message)
+                    }}
+                    onJumpTo={jumpTo}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {!atBottom && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+            <IconButton
+              label="К новым сообщениям"
+              variant="subtle"
+              className="pointer-events-auto size-9 rounded-full shadow-popover"
+              onClick={() => {
+                setAtBottom(true)
+              }}
+            >
+              <ChevronDownIcon />
+            </IconButton>
+          </div>
+        )}
+      </div>
 
       {canWrite ? (
         <SendMessage
