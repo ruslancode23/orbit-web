@@ -54,3 +54,13 @@ export async function openServerSettings(page: Page): Promise<void> {
 
 /** The user panel at the bottom of the channel column. */
 export const userPanel = (page: Page) => page.getByRole('region', { name: 'Пользователь' })
+
+/**
+ * The clickable person row in the member column. Its accessible name also
+ * carries the presence label («В сети …»), so match the person's name, not the
+ * whole string.
+ */
+export const memberCard = (page: Page, name: string) =>
+  page
+    .getByRole('complementary', { name: 'Участники' })
+    .getByRole('button', { name: new RegExp(name) })
