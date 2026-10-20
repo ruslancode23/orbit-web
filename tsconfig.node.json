@@ -25,6 +25,7 @@
     "steiger.config.js",
     "openapi-ts.config.ts",
     "playwright.config.ts",
+    "playwright.cross-browser.config.ts",
     "playwright.pwa.config.ts",
     "e2e"
   ]

@@ -15,6 +15,7 @@ pnpm check        # typecheck + lint + lint:fsd + format:check + test — зап
 pnpm lint:fix && pnpm format   # автоисправления
 pnpm test         # Vitest; один файл: pnpm vitest run src/shared/ui/button
 pnpm test:e2e     # Playwright против живых orbit-server + LiveKit (make up && make run в orbit-server)
+pnpm test:e2e:cross-browser  # тот же смоук в Chromium и WebKit (Safari); нужен `playwright install`
 pnpm test:e2e:pwa # сборка + preview на 4173: манифест и офлайн-оболочка
 ```
 
@@ -108,6 +109,9 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 `e2e/visual.spec.ts` держит визуальные снимки четырёх экранов и axe-проверку (`@axe-core/playwright`,
 только `serious`/`critical`). Базлайны сняты на macOS: на другой ОС снимки пропускаются — перезапиши их
 через `--update-snapshots` на своей платформе.
+`pnpm test:e2e:cross-browser` (`playwright.cross-browser.config.ts`) гоняет один смоук в Chromium и
+WebKit; проект `firefox` там есть, но Playwright Nightly 157 не стартует на macOS 27 (падает на
+профиле), поэтому Firefox проверяется отдельным запуском на машине, где он запускается.
 
 ## Аккаунты и сессии
 

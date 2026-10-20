@@ -16,6 +16,7 @@
     "test": "pnpm api:generate && vitest run",
     "test:watch": "pnpm api:generate && vitest",
     "test:e2e": "pnpm api:generate && playwright test",
+    "test:e2e:cross-browser": "pnpm api:generate && playwright test --config playwright.cross-browser.config.ts --project=chromium --project=webkit",
     "api:generate": "openapi-ts",
     "api:pull": "node scripts/pull-openapi.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm lint:fsd && pnpm format:check && pnpm test",

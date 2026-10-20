@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { XIcon } from '@/shared/ui/icon'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 import {
   describeMemberActionError,
@@ -68,9 +69,14 @@ export const ManageMembers = ({ workspaceId, role, open, onOpenChange }: ManageM
 
         <div aria-label="Участники сервера" role="group" className="min-h-0 overflow-y-auto">
           {isPending ? (
-            <p role="status" className="text-sm text-fg-muted">
-              Загружаем…
-            </p>
+            <div role="status" aria-label="Загружаем участников" className="flex flex-col gap-3">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="flex items-center gap-2">
+                  <Skeleton className="size-6 shrink-0 rounded-full" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ))}
+            </div>
           ) : (
             <ul className="flex flex-col gap-3">
               {members?.map((member) => {

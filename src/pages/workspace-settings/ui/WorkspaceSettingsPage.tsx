@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router'
 import { atLeast, useWorkspace } from '@/entities/workspace'
 import { DeleteWorkspace } from '@/features/delete-workspace'
 import { MemberPermissionsForm, WorkspaceOverviewForm } from '@/features/edit-workspace'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 import type { ReactNode } from 'react'
 
@@ -17,9 +18,14 @@ const WorkspaceSettingsPage = () => {
 
   if (isLoading) {
     return (
-      <p role="status" className="m-auto text-sm text-fg-muted">
-        Загружаем…
-      </p>
+      <div role="status" aria-label="Загружаем настройки" className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-8">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
     )
   }
   if (!membership) {
