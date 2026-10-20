@@ -2,6 +2,7 @@ import {
   getWorkspaceQueryKey,
   type VoicePresence,
   listMessagesInfiniteQueryKey,
+  listConversationsQueryKey,
   listMessagesQueryKey,
   listUnreadQueryKey,
   listWorkspacesQueryKey,
@@ -15,7 +16,16 @@ import type { QueryClient } from '@tanstack/react-query'
  * API, so there is one source of truth and no second copy to keep in step.
  */
 export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
-  if (event.type.startsWith('message.') && event.channelId) {
+  // A dialogue is a channel without a server: its messages and its own events
+  // arrive on the account stream, with no workspace to invalidate.
+  if (event.type === 'conversation.created' || event.type === 'conversation.updated') {
+    void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+    // The secret chat list key carries the device header; match it by name.
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] === 'listSecretChats',
+    })
+  }
+  if (event.type === 'message.' && event.channelId) {
     const path = { channelId: event.channelId }
     // Both shapes of the same history: the chat reads it page by page.
     void queryClient.invalidateQueries({ queryKey: listMessagesQueryKey({ path }) })

@@ -67,7 +67,14 @@ const LIVEKIT_CAPTURE_IMPORTS = {
 }
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage', 'src/shared/api/generated', '.playwright-browsers']),
+  globalIgnores([
+    'dist',
+    'coverage',
+    'src/shared/api/generated',
+    '.playwright-browsers',
+    // Ambient declarations for a package whose typings expose only globals.
+    '**/*.d.ts',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

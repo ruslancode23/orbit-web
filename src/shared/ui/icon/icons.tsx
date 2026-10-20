@@ -23,6 +23,34 @@ const Icon = ({ children, ...props }: IconProps & { children: ReactNode }) => {
   )
 }
 
+export const MessageIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" />
+    <path d="M8 10h8M8 14h5" />
+  </Icon>
+)
+
+export const LockIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </Icon>
+)
+
+export const ShieldIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 3 5 6v6c0 4 3 7.2 7 9 4-1.8 7-5 7-9V6z" />
+    <path d="m9 12 2 2 4-4" />
+  </Icon>
+)
+
+export const ClockIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Icon>
+)
+
 export const MicIcon = (props: IconProps) => {
   return (
     <Icon {...props}>

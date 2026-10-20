@@ -21,6 +21,7 @@
   },
   "include": [
     "vite.config.ts",
+    "scripts",
     "eslint.config.js",
     "steiger.config.js",
     "openapi-ts.config.ts",

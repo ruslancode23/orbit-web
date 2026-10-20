@@ -62,6 +62,9 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
         watchedRef.current = workspaceId
         connectionRef.current?.subscribe(workspaceId)
       },
+      resume: (conversations: Record<string, number>) => {
+        connectionRef.current?.resume(conversations)
+      },
       listen: (listener: LiveListener) => {
         const listeners = listenersRef.current
         listeners.add(listener)

@@ -1,0 +1,136 @@
+import { NavLink } from 'react-router'
+
+import { conversationName, useConversations } from '@/entities/conversation'
+import { secretChatName, useSecretChats, useSecretDevice } from '@/entities/secret-chat'
+import { useSession } from '@/entities/session'
+import { SetupSecretChats } from '@/features/start-secret-chat'
+import { cn } from '@/shared/lib/cn'
+import { initials } from '@/shared/lib/initials'
+import { LockIcon } from '@/shared/ui/icon'
+import { Skeleton } from '@/shared/ui/skeleton'
+
+interface DirectSidebarProps {
+  className?: string
+}
+
+const rowClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+    isActive
+      ? 'bg-surface-hover font-medium text-fg'
+      : 'text-fg-muted hover:bg-surface-hover hover:text-fg',
+  )
+
+const secretRowClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+    isActive ? 'bg-surface-hover font-medium text-success' : 'text-success hover:bg-surface-hover',
+  )
+
+/** A column of its own: the list is the only thing here, no channels or people. */
+const ListSkeleton = ({ label }: { label: string }) => {
+  return (
+    <div role="status" aria-label={label} className="flex flex-col gap-2 p-1">
+      <Skeleton className="h-7 w-full" />
+      <Skeleton className="h-7 w-5/6" />
+      <Skeleton className="h-7 w-4/5" />
+    </div>
+  )
+}
+
+/**
+ * The left column in the personal-messages section. It replaces the channel
+ * list: the dialogues of this account in the order the server keeps them, and
+ * below them the secret chats of this browser, which exist only when a secret
+ * device was created here.
+ */
+export const DirectSidebar = ({ className }: DirectSidebarProps) => {
+  const { user } = useSession()
+  const userId = user?.id ?? ''
+  const conversations = useConversations()
+  const device = useSecretDevice()
+  const secretChats = useSecretChats(device.data?.deviceId)
+
+  return (
+    <aside
+      aria-label="Личные сообщения"
+      className={cn('flex min-h-0 w-64 shrink-0 flex-col border-r border-border bg-bg', className)}
+    >
+      <header className="flex h-12 shrink-0 items-center border-b border-border px-3">
+        <h2 className="truncate text-sm font-semibold">Личные сообщения</h2>
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2">
+        <section aria-label="Диалоги" className="flex flex-col gap-1">
+          {conversations.isPending ? (
+            <ListSkeleton label="Загружаем диалоги" />
+          ) : conversations.error ? (
+            <p role="alert" className="px-2 text-xs text-danger">
+              Не удалось загрузить диалоги.
+            </p>
+          ) : conversations.data.length === 0 ? (
+            <p className="px-2 text-xs text-fg-muted">Пока нет личных сообщений</p>
+          ) : (
+            <ul className="flex flex-col gap-0.5">
+              {conversations.data.map((conversation) => {
+                const name = conversationName(conversation, userId)
+                return (
+                  <li key={conversation.id}>
+                    <NavLink to={`/dm/${conversation.id}`} className={rowClass}>
+                      <span
+                        aria-hidden="true"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold"
+                      >
+                        {initials(name)}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{name}</span>
+                    </NavLink>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+
+        {device.data === null && <SetupSecretChats />}
+
+        {device.data && (
+          <section aria-labelledby="secret-chats-title" className="flex flex-col gap-1">
+            <h3
+              id="secret-chats-title"
+              className="px-2 text-xs font-semibold tracking-wide text-fg-muted uppercase"
+            >
+              Секретные чаты
+            </h3>
+            {secretChats.isPending ? (
+              <ListSkeleton label="Загружаем секретные чаты" />
+            ) : secretChats.error ? (
+              <p role="alert" className="px-2 text-xs text-danger">
+                Не удалось загрузить секретные чаты.
+              </p>
+            ) : secretChats.data.length === 0 ? (
+              <p className="px-2 text-xs text-fg-muted">Секретных чатов пока нет</p>
+            ) : (
+              <ul className="flex flex-col gap-0.5">
+                {secretChats.data.map((chat) => (
+                  <li key={chat.id}>
+                    <NavLink to={`/dm/s/${chat.id}`} className={secretRowClass}>
+                      <span
+                        aria-hidden="true"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-success/15 text-[10px] font-semibold"
+                      >
+                        {initials(secretChatName(chat))}
+                      </span>
+                      <LockIcon className="size-3.5 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{secretChatName(chat)}</span>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+      </div>
+    </aside>
+  )
+}

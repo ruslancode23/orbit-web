@@ -12,6 +12,25 @@ export interface PlatformAdapter {
   screenCapture: PlatformScreenCapture
   autostart: PlatformAutostart
   install: PlatformInstall
+  /** Where secret chat keys and decrypted history live; never leaves the device. */
+  secretStore: PlatformSecretStore
+}
+
+/**
+ * Device-local storage for secret chats. The browser build uses IndexedDB; the
+ * desktop build will put the keys in the OS keychain (`docs/adr/0005`).
+ *
+ * Values are structured-cloned, so a `CryptoKey` survives a round trip on the
+ * browser implementation and the decrypted text never leaves this store.
+ */
+export interface PlatformSecretStore {
+  /** `fallback` is returned when nothing was stored yet. */
+  get: <T>(scope: string, key: string, fallback: T | null) => Promise<T | null>
+  /** Resolves with what was stored, so a caller can chain a write. */
+  set: <T>(scope: string, key: string, value: T) => Promise<T>
+  remove: (scope: string, key: string) => Promise<void>
+  keys: (scope: string) => Promise<string[]>
+  clear: (scope: string) => Promise<void>
 }
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported'

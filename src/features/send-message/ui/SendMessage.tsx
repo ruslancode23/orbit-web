@@ -24,7 +24,8 @@ import { SendIcon, XIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 
 interface SendMessageProps {
-  workspaceId: string
+  /** Absent in a dialogue: mentioning people of a server is not a thing there. */
+  workspaceId?: string
   channelId: string
   /** The text after the hash in the placeholder: «Написать в #общий». */
   channelName?: string
