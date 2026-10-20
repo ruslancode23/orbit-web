@@ -21,6 +21,7 @@ import {
 import { XIcon } from '@/shared/ui/icon'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 import { describeInviteExpiry, describeInviteUses, formatInviteDate } from '../lib/invites'
 
@@ -216,9 +217,11 @@ export const ManageInvites = ({
           <div className="flex max-h-64 flex-col gap-1 overflow-y-auto border-t border-border pt-3">
             <h4 className="text-xs font-semibold text-fg-muted">Все ссылки</h4>
             {invites.isPending ? (
-              <p role="status" className="text-xs text-fg-muted">
-                Загружаем…
-              </p>
+              <div role="status" aria-label="Загружаем ссылки" className="flex flex-col gap-2">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-3 w-44" />
+                <Skeleton className="h-3 w-24" />
+              </div>
             ) : invites.data?.filter((invite) => !revoked.includes(invite.id)).length ? (
               <ul className="flex flex-col gap-2">
                 {invites.data

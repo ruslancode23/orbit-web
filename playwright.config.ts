@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   // The offline shell needs a production build; it has its own config.
-  testIgnore: /pwa\.spec\.ts/,
+  testIgnore: [/pwa\.spec\.ts/, /cross-browser\.spec\.ts/],
   globalSetup: './e2e/global-setup.ts',
   timeout: 60_000,
   fullyParallel: false,

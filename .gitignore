@@ -33,3 +33,6 @@ src/shared/api/generated/
 # Playwright
 test-results/
 playwright-report/
+
+# Browsers installed into the workspace for the cross-browser run.
+.playwright-browsers

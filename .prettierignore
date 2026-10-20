@@ -4,3 +4,6 @@ pnpm-lock.yaml
 src/shared/api/generated
 # Spec snapshot must stay byte-identical to orbit-server (pnpm api:pull)
 /api/
+
+# Browsers for the cross-browser run are not source.
+.playwright-browsers
