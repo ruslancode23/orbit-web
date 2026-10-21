@@ -27,9 +27,32 @@ it('falls back to the sentence of the action', () => {
 })
 
 it('explains a refused start without calling it a missing account or a network failure', () => {
-  expect(describeConversationStartError(failure(404))).toContain('ограничил личные сообщения')
+  expect(describeConversationStartError(failure(404))).toBe('Этому человеку нельзя написать.')
   expect(describeConversationStartError(failure(0))).toBe('Нет соединения с сервером.')
   expect(describeConversationStartError(new Error('boom'))).toBe(
     'Не удалось начать диалог. Попробуйте ещё раз.',
   )
+})
+
+it('shows the wait of a 429 and explains a full group', () => {
+  expect(
+    describeConversationStartError(
+      new ApiError({
+        status: 429,
+        code: 'too_many_requests',
+        message: 'too many',
+        retryAfterSeconds: 12,
+      }),
+    ),
+  ).toBe('Слишком часто, попробуйте через 12 с.')
+  expect(describeConversationStartError(failure(429))).toBe('Слишком часто, попробуйте позже.')
+  expect(
+    describeConversationStartError(
+      new ApiError({
+        status: 400,
+        code: 'invalid_request',
+        message: 'conversations: too many people for one group',
+      }),
+    ),
+  ).toBe('В группе уже слишком много участников. Выберите меньше людей.')
 })

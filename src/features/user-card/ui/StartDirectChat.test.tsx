@@ -97,16 +97,12 @@ it('is disabled while the conversation is being opened', async () => {
 })
 
 it('shows the refusal of the server and stays on the page', async () => {
-  stubApi(() =>
-    Promise.resolve(
-      json({ error: { code: 'forbidden', message: 'Этому человеку нельзя писать' } }, 403),
-    ),
-  )
+  stubApi(() => Promise.resolve(json({ error: { code: 'not_found', message: 'not found' } }, 404)))
   renderFeature()
 
   await userEvent.click(screen.getByRole('button', { name: 'Написать' }))
 
-  expect(await screen.findByText('Этому человеку нельзя писать')).toBeInTheDocument()
+  expect(await screen.findByText('Этому человеку нельзя написать.')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Написать' })).toBeEnabled()
   expect(screen.queryByText(/^Диалог /)).not.toBeInTheDocument()
 })
