@@ -152,7 +152,9 @@ export const UserCardDetails = ({
                 Открыть профиль
               </Button>
             )}
-            {!isMe && <FriendActionSlot userId={profile.id} />}
+            {!isMe && (
+              <FriendActionSlot userId={profile.id} {...(onDone === undefined ? {} : { onDone })} />
+            )}
           </div>
         )}
 

@@ -179,10 +179,13 @@ export const useFriendActions = () => {
         },
       )
     },
-    blockUser: (userId: string) => {
+    blockUser: (userId: string, onBlocked?: () => void) => {
       block.mutate(
         { path: { userId } },
         {
+          onSuccess: () => {
+            onBlocked?.()
+          },
           onError: (error) => {
             toast(failureMessage(error, 'Не удалось заблокировать. Попробуйте ещё раз.'), 'danger')
           },

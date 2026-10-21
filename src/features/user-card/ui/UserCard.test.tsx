@@ -327,3 +327,27 @@ it('shows no shared lists on your own full profile', async () => {
 
   expect(within(profile).queryByRole('tab')).not.toBeInTheDocument()
 })
+
+it("offers blocking on someone else's card, even without friendship", async () => {
+  stubApi()
+  renderCard({ userId: bob.id })
+
+  const card = await openCard('Боб')
+  await userEvent.click(within(card).getByRole('button', { name: 'Ещё: Боб' }))
+
+  expect(await screen.findByRole('menuitem', { name: 'Заблокировать' })).toBeInTheDocument()
+})
+
+it('offers no block on your own card', async () => {
+  stubApi({ profile: me })
+  renderCard({ userId: me.id })
+
+  const card = await openCard('Анна')
+  expect(within(card).queryByRole('button', { name: /Заблокировать/ })).not.toBeInTheDocument()
+  expect(within(card).queryByRole('button', { name: /Ещё/ })).not.toBeInTheDocument()
+
+  await userEvent.click(within(card).getByRole('button', { name: 'Открыть профиль' }))
+  const profile = await screen.findByRole('dialog', { name: 'Профиль Анна' })
+  expect(within(profile).queryByRole('button', { name: /Заблокировать/ })).not.toBeInTheDocument()
+  expect(within(profile).queryByRole('button', { name: /Ещё/ })).not.toBeInTheDocument()
+})
