@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useSession } from '@/entities/session'
 import { userDisplayName, useUserProfile } from '@/entities/user'
@@ -49,7 +49,9 @@ const CardSkeleton = () => {
 /**
  * One person's card, wherever a person is shown: a popover with the profile,
  * its actions and — for the current server — the moderation an admin may do.
- * "Открыть профиль" leads to the same content as a dialog. Every trigger is a
+ * "Открыть профиль" leads to the same content as a dialog. The full profile
+ * also follows a person from «Общие друзья»: the dialog shows that profile
+ * next, without opening a second window over the first. Every trigger is a
  * real button, so Enter and Space open it; Radix closes it on Esc and returns
  * the focus to that trigger.
  */
@@ -66,19 +68,41 @@ export const UserCard = ({
   children,
 }: UserCardProps) => {
   const [open, setOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
+  // The id of the profile the dialog shows. It can differ from `userId` after
+  // a click in «Общие друзья»; undefined means the dialog is closed.
+  const [viewedProfileId, setViewedProfileId] = useState<string | undefined>(undefined)
   const [editOpen, setEditOpen] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const { user } = useSession()
   // Nothing is asked for until the card is opened: a feed must not fetch every
   // author just because the avatars are clickable.
   const { data: profile, isPending, error } = useUserProfile(open ? userId : undefined)
+  const { data: dialogProfile } = useUserProfile(viewedProfileId)
   const { data: members } = useWorkspaceMembers(open ? workspaceId : undefined)
 
   const member = members?.find((item) => item.user.id === userId)
+  const dialogMember = members?.find((item) => item.user.id === dialogProfile?.id)
   const isMe = user?.id === userId
+  const dialogIsMe = user?.id === dialogProfile?.id
+  const showsOriginal = viewedProfileId === userId
   const name = profile ? userDisplayName(profile) : (label ?? 'Профиль')
+  const dialogName = dialogProfile ? userDisplayName(dialogProfile) : (label ?? 'Профиль')
+  const editableProfile = dialogProfile ?? profile
+
+  // A new person in the same window starts at the top: the scroll position of
+  // the previous profile would hide the avatar and leave the actions at hand.
+  useEffect(() => {
+    if (dialogRef.current) {
+      dialogRef.current.scrollTop = 0
+    }
+  }, [viewedProfileId])
 
   const closeCard = () => {
+    setOpen(false)
+  }
+
+  const closeProfile = () => {
+    setViewedProfileId(undefined)
     setOpen(false)
   }
 
@@ -89,7 +113,7 @@ export const UserCard = ({
         onOpenChange={(next) => {
           // A dialog opened from the card portals outside the popover; moving
           // into it must not close the card and lose the focus it returns to.
-          if (!next && (profileOpen || editOpen)) {
+          if (!next && (viewedProfileId !== undefined || editOpen)) {
             return
           }
           setOpen(next)
@@ -130,7 +154,7 @@ export const UserCard = ({
                 setEditOpen(true)
               }}
               onOpenProfile={() => {
-                setProfileOpen(true)
+                setViewedProfileId(userId)
               }}
               onDone={closeCard}
             />
@@ -149,42 +173,53 @@ export const UserCard = ({
         </PopoverContent>
       </Popover>
 
-      {profile && (
+      {dialogProfile && (
         <>
-          <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-            <DialogContent className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0">
-              <DialogTitle className="sr-only">Профиль {name}</DialogTitle>
+          <Dialog
+            open
+            onOpenChange={(next) => {
+              if (!next) {
+                setViewedProfileId(undefined)
+              }
+            }}
+          >
+            <DialogContent
+              ref={dialogRef}
+              className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0"
+            >
+              <DialogTitle className="sr-only">Профиль {dialogName}</DialogTitle>
               <DialogDescription className="sr-only">
-                Полный профиль {name}: о себе, роль на сервере и дата регистрации.
+                Полный профиль {dialogName}: о себе, роль на сервере и дата регистрации.
               </DialogDescription>
               <UserCardDetails
-                profile={profile}
-                {...(member === undefined ? {} : { member })}
-                {...(status === undefined ? {} : { status })}
-                isMe={isMe}
+                profile={dialogProfile}
+                {...(dialogMember === undefined ? {} : { member: dialogMember })}
+                {...(showsOriginal && status !== undefined ? { status } : {})}
+                isMe={dialogIsMe}
                 {...(workspaceId === undefined ? {} : { workspaceId })}
-                {...(extra === undefined ? {} : { extra })}
-                {...(guestAction === undefined ? {} : { guestAction })}
+                {...(showsOriginal && extra !== undefined ? { extra } : {})}
+                {...(showsOriginal && guestAction !== undefined ? { guestAction } : {})}
                 mode="dialog"
                 onEdit={() => {
                   setEditOpen(true)
                 }}
-                onDone={() => {
-                  setProfileOpen(false)
+                onOpenPerson={(nextUserId) => {
+                  setViewedProfileId(nextUserId)
                 }}
+                onDone={closeProfile}
               />
             </DialogContent>
           </Dialog>
-
-          {editOpen && (
-            <EditProfileDialog
-              profile={profile}
-              onClose={() => {
-                setEditOpen(false)
-              }}
-            />
-          )}
         </>
+      )}
+
+      {editOpen && editableProfile && (
+        <EditProfileDialog
+          profile={editableProfile}
+          onClose={() => {
+            setEditOpen(false)
+          }}
+        />
       )}
     </>
   )

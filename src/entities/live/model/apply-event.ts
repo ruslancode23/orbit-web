@@ -115,13 +115,18 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
   // A request became a friendship. The friend list gains a row and the
   // pending list loses one.
   if (event.type === 'friend.added') {
-    invalidateQueriesById(queryClient, ['listFriends', 'listFriendRequests'])
+    invalidateQueriesById(queryClient, ['listFriends', 'listFriendRequests', 'getMutual'])
   }
   // A friendship ended, either because someone removed the friend or because
   // one side blocked the other. A block also changes the blocked list, which
   // the other side of the pair never sees.
   if (event.type === 'friend.removed') {
-    invalidateQueriesById(queryClient, ['listFriends', 'listFriendRequests', 'listUserBlocks'])
+    invalidateQueriesById(queryClient, [
+      'listFriends',
+      'listFriendRequests',
+      'listUserBlocks',
+      'getMutual',
+    ])
   }
   // Someone joined, left, was banned or changed role: the member list and the
   // servers we are on may both have changed.

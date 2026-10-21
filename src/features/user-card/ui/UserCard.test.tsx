@@ -24,6 +24,15 @@ const bob: UserProfile = {
   isGuest: false,
   createdAt: new Date('2026-09-02T10:00:00Z'),
 }
+const vika: UserProfile = {
+  id: 'u-vika',
+  nickname: 'vika',
+  displayName: 'Влад',
+  accentColor: 'violet',
+  bio: '',
+  isGuest: false,
+  createdAt: new Date('2026-09-03T10:00:00Z'),
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -36,6 +45,11 @@ interface StubOptions {
   session?: UserProfile
   missing?: boolean
   members?: Record<string, WorkspaceMember[]>
+  /** The answer of the shared lists; an empty pair by default, so no tabs. */
+  mutual?: unknown
+  mutualStatus?: number
+  /** Other accounts the profile endpoint may be asked about. */
+  profiles?: Record<string, UserProfile>
 }
 
 /** Answers the session, a profile and the member lists of the given servers. */
@@ -44,6 +58,9 @@ const stubApi = ({
   session = me,
   missing = false,
   members = {},
+  mutual = { servers: [], friends: [] },
+  mutualStatus = 200,
+  profiles = {},
 }: StubOptions = {}) => {
   vi.stubGlobal(
     'fetch',
@@ -53,10 +70,20 @@ const stubApi = ({
       if (url.pathname.endsWith('/auth/me')) {
         return Promise.resolve(json(session))
       }
+      const mutualPath = /^\/api\/v1\/users\/([^/]+)\/mutual$/u.exec(url.pathname)
+      if (mutualPath !== null) {
+        return Promise.resolve(
+          json(
+            mutualStatus === 200 ? mutual : { error: { code: 'not_found', message: 'no' } },
+            mutualStatus,
+          ),
+        )
+      }
       const profilePath = /^\/api\/v1\/users\/([^/]+)\/profile$/u.exec(url.pathname)
       if (profilePath !== null) {
+        const asked = profiles[profilePath[1] ?? ''] ?? profile
         return Promise.resolve(
-          missing ? json({ error: { code: 'not_found', message: 'no' } }, 404) : json(profile),
+          missing ? json({ error: { code: 'not_found', message: 'no' } }, 404) : json(asked),
         )
       }
       const membersPath = /^\/api\/v1\/workspaces\/([^/]+)\/members$/u.exec(url.pathname)
@@ -252,4 +279,51 @@ it('opens the full profile with the same details', async () => {
   const profile = await screen.findByRole('dialog', { name: 'Профиль Боб' })
   expect(within(profile).getByText('На Orbit с')).toBeInTheDocument()
   expect(within(profile).getByText('2 сентября 2026 г.')).toBeInTheDocument()
+})
+
+it('shows the shared lists in the full profile and moves to a common friend', async () => {
+  stubApi({
+    mutual: {
+      servers: [{ id: 'w-orbit', name: 'Orbit', iconUrl: null, role: 'admin' }],
+      friends: [vika],
+    },
+    profiles: { [vika.id]: vika },
+  })
+  renderCard({ userId: bob.id })
+
+  const card = await openCard('Боб')
+  await userEvent.click(within(card).getByRole('button', { name: 'Открыть профиль' }))
+  const profile = await screen.findByRole('dialog', { name: 'Профиль Боб' })
+
+  await userEvent.click(within(profile).getByRole('tab', { name: 'Общие друзья' }))
+  await userEvent.click(within(profile).getByRole('button', { name: /Влад/ }))
+
+  const next = await screen.findByRole('dialog', { name: 'Профиль Влад' })
+  expect(within(next).getByText('@vika')).toBeInTheDocument()
+})
+
+it('keeps the full profile open when the shared lists are not visible', async () => {
+  stubApi({ mutualStatus: 404 })
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  renderCard({ userId: bob.id })
+
+  const card = await openCard('Боб')
+  await userEvent.click(within(card).getByRole('button', { name: 'Открыть профиль' }))
+  const profile = await screen.findByRole('dialog', { name: 'Профиль Боб' })
+
+  expect(within(profile).getByText('На Orbit с')).toBeInTheDocument()
+  expect(within(profile).queryByRole('tab')).not.toBeInTheDocument()
+  expect(consoleError).not.toHaveBeenCalled()
+  consoleError.mockRestore()
+})
+
+it('shows no shared lists on your own full profile', async () => {
+  stubApi({ profile: me })
+  renderCard({ userId: me.id })
+
+  const card = await openCard('Анна')
+  await userEvent.click(within(card).getByRole('button', { name: 'Открыть профиль' }))
+  const profile = await screen.findByRole('dialog', { name: 'Профиль Анна' })
+
+  expect(within(profile).queryByRole('tab')).not.toBeInTheDocument()
 })

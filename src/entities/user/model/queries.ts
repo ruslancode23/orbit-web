@@ -1,12 +1,21 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { getUserProfile, getUserProfileQueryKey, isApiError, type UserProfile } from '@/shared/api'
+import {
+  getMutual,
+  getMutualQueryKey,
+  getUserProfile,
+  getUserProfileQueryKey,
+  isApiError,
+  type MutualOverview,
+  type UserProfile,
+} from '@/shared/api'
 
 import type { QueryClient } from '@tanstack/react-query'
 
 /** Cache entries that already carry someone's profile, so it need not be asked for again. */
 const PROFILE_SOURCE_QUERY_IDS = new Set([
   'getCurrentUser',
+  'getMutual',
   'getUserProfile',
   'getConversation',
   'listConversations',
@@ -115,6 +124,35 @@ export function useUserProfile(userId: string | undefined) {
     enabled: id !== '',
     initialData: () => (id === '' ? undefined : findCachedProfile(queryClient, id)),
     // Until `user.updated` says otherwise, the cached copy is the same profile.
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * What two accounts share: the servers both are on and the friends both have.
+ * A 404 means the person is not visible to the reader — a stranger, an unknown
+ * id or a blocked pair all answer the same — and a 400 means the reader asked
+ * about themselves. Both are "nothing to show", not a failure, so the profile
+ * slot can stay quiet instead of drawing an error. The lists are not cached
+ * forever: `friend.*` events and friendship actions invalidate this query.
+ */
+export function useMutual(userId: string | undefined) {
+  const id = userId ?? ''
+
+  return useQuery({
+    queryKey: getMutualQueryKey({ path: { userId: id } }),
+    queryFn: async ({ signal }): Promise<MutualOverview | null> => {
+      try {
+        const { data } = await getMutual({ path: { userId: id }, signal, throwOnError: true })
+        return data
+      } catch (error) {
+        if (isApiError(error) && (error.status === 400 || error.status === 404)) {
+          return null
+        }
+        throw error
+      }
+    },
+    enabled: id !== '',
     staleTime: 5 * 60 * 1000,
   })
 }
