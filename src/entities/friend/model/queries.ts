@@ -101,7 +101,7 @@ export const useFriendActions = () => {
   const accept = useMutation({
     ...acceptFriendRequestMutation(),
     onSuccess: () => {
-      invalidate(['listFriends', 'listFriendRequests'])
+      invalidate(['listFriends', 'listFriendRequests', 'getMutual'])
     },
   })
   const decline = useMutation({
@@ -113,13 +113,13 @@ export const useFriendActions = () => {
   const remove = useMutation({
     ...removeFriendMutation(),
     onSuccess: () => {
-      invalidate(['listFriends', 'listFriendRequests'])
+      invalidate(['listFriends', 'listFriendRequests', 'getMutual'])
     },
   })
   const block = useMutation({
     ...blockUserMutation(),
     onSuccess: () => {
-      invalidate(['listFriends', 'listFriendRequests', 'listUserBlocks'])
+      invalidate(['listFriends', 'listFriendRequests', 'listUserBlocks', 'getMutual'])
     },
   })
   const unblock = useMutation({
@@ -179,10 +179,13 @@ export const useFriendActions = () => {
         },
       )
     },
-    blockUser: (userId: string) => {
+    blockUser: (userId: string, onBlocked?: () => void) => {
       block.mutate(
         { path: { userId } },
         {
+          onSuccess: () => {
+            onBlocked?.()
+          },
           onError: (error) => {
             toast(failureMessage(error, 'Не удалось заблокировать. Попробуйте ещё раз.'), 'danger')
           },

@@ -36,6 +36,8 @@ interface UserCardDetailsProps {
   mode: 'popover' | 'dialog' | 'preview'
   onEdit: () => void
   onOpenProfile?: () => void
+  /** Opens someone from the shared lists; the dialog shows that profile next. */
+  onOpenPerson?: (userId: string) => void
   onDone?: () => void
 }
 
@@ -56,6 +58,7 @@ export const UserCardDetails = ({
   mode,
   onEdit,
   onOpenProfile,
+  onOpenPerson,
   onDone,
 }: UserCardDetailsProps) => {
   const bioId = useId()
@@ -119,7 +122,15 @@ export const UserCardDetails = ({
 
         {extra}
 
-        {mode === 'dialog' && <ProfileTabsSlot profile={profile} workspaceId={workspaceId} />}
+        {mode === 'dialog' && (
+          <ProfileTabsSlot
+            profile={profile}
+            isMe={isMe}
+            {...(workspaceId === undefined ? {} : { workspaceId })}
+            {...(onOpenPerson === undefined ? {} : { onOpenPerson })}
+            {...(onDone === undefined ? {} : { onLeave: onDone })}
+          />
+        )}
 
         {mode !== 'preview' && (
           <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
@@ -141,7 +152,9 @@ export const UserCardDetails = ({
                 Открыть профиль
               </Button>
             )}
-            {!isMe && <FriendActionSlot userId={profile.id} />}
+            {!isMe && (
+              <FriendActionSlot userId={profile.id} {...(onDone === undefined ? {} : { onDone })} />
+            )}
           </div>
         )}
 

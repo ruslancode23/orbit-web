@@ -9,7 +9,7 @@ import {
   type WorkspaceMember,
 } from '@/shared/api'
 
-import { useUserProfile } from './queries'
+import { useMutual, useUserProfile } from './queries'
 
 import type { ReactNode } from 'react'
 
@@ -116,4 +116,42 @@ it('treats a 404 as having no profile', async () => {
   expect(result.current.data).toBeNull()
   expect(result.current.error).toBeNull()
   expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it('reads the shared servers and friends of another account', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const overview = {
+    servers: [{ id: 'w-orbit', name: 'Orbit', iconUrl: null, role: 'member' }],
+    friends: [],
+  }
+  const { calls } = stubFetch(() => json(overview))
+
+  const { result } = renderHook(() => useMutual(anna.id), {
+    wrapper: wrapperFor(queryClient),
+  })
+
+  await waitFor(() => {
+    expect(result.current.data).toEqual(overview)
+  })
+  expect(calls).toEqual([`/api/v1/users/${anna.id}/mutual`])
+})
+
+// 400 is the reader's own account; 404 is a stranger, an unknown id or a
+// blocked pair. Both mean "nothing to show", not a failure of the profile.
+it('treats 400 and 404 as nothing shared', async () => {
+  for (const status of [400, 404]) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    stubFetch(() => json({ error: { code: 'not_found', message: 'no' } }, status))
+
+    const { result, unmount } = renderHook(() => useMutual(anna.id), {
+      wrapper: wrapperFor(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+    expect(result.current.data).toBeNull()
+    expect(result.current.error).toBeNull()
+    unmount()
+  }
 })

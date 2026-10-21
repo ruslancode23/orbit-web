@@ -7,6 +7,8 @@ import {
   getUserProfileQueryKey,
   listFriendRequestsQueryKey,
   listFriendsQueryKey,
+  listUserBlocksQueryKey,
+  type BlockedUser,
   type Friend,
   type FriendRequest,
   type UserProfile,
@@ -91,6 +93,7 @@ interface ServerState {
   friends: Friend[]
   incoming: FriendRequest[]
   outgoing: FriendRequest[]
+  blocks: BlockedUser[]
 }
 
 /** Answers the lists from mutable state, so a mutation can change what is true. */
@@ -100,6 +103,16 @@ const stubApi = (state: ServerState) => {
     vi.fn((input: unknown) => {
       const request = input as Request
       const url = new URL(request.url)
+      if (url.pathname === '/api/v1/users/me/blocks') {
+        return json(state.blocks)
+      }
+      if (url.pathname.startsWith('/api/v1/users/me/blocks/')) {
+        state.blocks = [
+          { id: bob.id, nickname: bob.nickname, createdAt: new Date('2026-10-21T10:00:00Z') },
+        ]
+        state.friends = []
+        return noContent()
+      }
       if (url.pathname === '/api/v1/friends') {
         return json(state.friends)
       }
@@ -145,6 +158,7 @@ const createClient = (state: ServerState) => {
     listFriendRequestsQueryKey({ query: { direction: 'outgoing' } }),
     state.outgoing,
   )
+  client.setQueryData(listUserBlocksQueryKey(), state.blocks)
   return client
 }
 
@@ -159,14 +173,17 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-it('offers to add a stranger', () => {
-  renderSlot({ friends: [], incoming: [], outgoing: [] })
+it('offers to add a stranger and keeps blocking one menu away', async () => {
+  renderSlot({ friends: [], incoming: [], outgoing: [], blocks: [] })
 
   expect(screen.getByRole('button', { name: 'Добавить в друзья' })).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Ещё: Боб' }))
+
+  expect(await screen.findByRole('menuitem', { name: 'Заблокировать' })).toBeInTheDocument()
 })
 
 it('shows a sent request with a way to cancel it', async () => {
-  const state = { friends: [], incoming: [], outgoing: [outgoingRequest] }
+  const state = { friends: [], incoming: [], outgoing: [outgoingRequest], blocks: [] }
   renderSlot(state)
 
   expect(screen.getByText('Заявка отправлена')).toBeInTheDocument()
@@ -176,7 +193,7 @@ it('shows a sent request with a way to cancel it', async () => {
 })
 
 it('answers an incoming request', async () => {
-  const state = { friends: [], incoming: [incomingRequest], outgoing: [] }
+  const state = { friends: [], incoming: [incomingRequest], outgoing: [], blocks: [] }
   renderSlot(state)
 
   await userEvent.click(screen.getByRole('button', { name: 'Принять заявку' }))
@@ -184,18 +201,35 @@ it('answers an incoming request', async () => {
   expect(await screen.findByRole('button', { name: 'Друзья' })).toBeInTheDocument()
 })
 
-it('shows friendship and removes it from the menu', async () => {
-  const state = { friends: [friendship], incoming: [], outgoing: [] }
+it('shows friendship, removal and blocking in the same menu', async () => {
+  const state = { friends: [friendship], incoming: [], outgoing: [], blocks: [] }
   renderSlot(state)
 
   await userEvent.click(screen.getByRole('button', { name: 'Друзья' }))
-  await userEvent.click(screen.getByRole('menuitem', { name: 'Удалить из друзей' }))
 
-  expect(await screen.findByRole('button', { name: 'Добавить в друзья' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Удалить из друзей' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Заблокировать' })).toBeInTheDocument()
+})
+
+it('blocks a former friend and redraws the state from the cache', async () => {
+  const state: ServerState = { friends: [friendship], incoming: [], outgoing: [], blocks: [] }
+  const onDone = vi.fn()
+  stubApi(state)
+  const queryClient = createClient(state)
+  renderWithProviders(<FriendActionSlot userId={bob.id} onDone={onDone} />, { queryClient })
+
+  await userEvent.click(screen.getByRole('button', { name: 'Друзья' }))
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Заблокировать' }))
+
+  expect(await screen.findByText('Заблокирован')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Добавить в друзья' })).not.toBeInTheDocument()
+  expect(onDone).toHaveBeenCalledTimes(1)
+  expect(state.friends).toEqual([])
+  expect(state.blocks.map((user) => user.id)).toEqual([bob.id])
 })
 
 it('follows a friend.added event without a local flag', async () => {
-  const state: ServerState = { friends: [], incoming: [], outgoing: [outgoingRequest] }
+  const state: ServerState = { friends: [], incoming: [], outgoing: [outgoingRequest], blocks: [] }
   stubApi(state)
   vi.stubGlobal('WebSocket', FakeSocket)
   const queryClient = createClient(state)
@@ -226,7 +260,7 @@ it('follows a friend.added event without a local flag', async () => {
 })
 
 it('sends the neutral answer and waits for the list before claiming a request', async () => {
-  const state = { friends: [], incoming: [], outgoing: [] }
+  const state = { friends: [], incoming: [], outgoing: [], blocks: [] }
   renderSlot(state)
 
   await userEvent.click(screen.getByRole('button', { name: 'Добавить в друзья' }))
@@ -238,7 +272,7 @@ it('sends the neutral answer and waits for the list before claiming a request', 
 })
 
 it('reports a failed request instead of leaving it looking sent', async () => {
-  const state = { friends: [], incoming: [], outgoing: [] }
+  const state = { friends: [], incoming: [], outgoing: [], blocks: [] }
   vi.stubGlobal(
     'fetch',
     vi.fn(() => Promise.resolve(json({ error: { code: 'server_error', message: 'нет' } }, 500))),
