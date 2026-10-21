@@ -18,6 +18,12 @@ export type LiveStatus = 'connecting' | 'open' | 'reconnecting' | 'offline'
 interface ConnectionHandlers {
   onEvent: (event: LiveEvent) => void
   onStatus: (status: LiveStatus) => void
+  /**
+   * The socket is back after a drop. Whatever happened meanwhile — an edit, a
+   * new channel, someone coming online — never arrived, and the catch-up by
+   * cursor replays new messages only, so the caller refreshes what it shows.
+   */
+  onReconnect?: () => void
 }
 
 /** How long to wait before trying again, growing with each failure. */
@@ -43,6 +49,8 @@ export class LiveConnection {
   private retry = 0
   private timer: ReturnType<typeof setTimeout> | undefined
   private closed = false
+  /** Whether a socket has been up before: the next `open` is then a reconnect. */
+  private wasOpen = false
   private subscription: { workspaceId: string; cursors: Record<string, number> } | undefined
   /** Per-conversation cursors of the account stream: a dialogue has no server. */
   private conversations: Record<string, number> | undefined
@@ -77,6 +85,10 @@ export class LiveConnection {
     socket.addEventListener('open', () => {
       this.retry = 0
       this.handlers.onStatus('open')
+      if (this.wasOpen) {
+        this.handlers.onReconnect?.()
+      }
+      this.wasOpen = true
       // Whatever we were watching, we watch again.
       if (this.subscription) {
         this.sendSubscribe(this.subscription)
@@ -96,9 +108,17 @@ export class LiveConnection {
 
     socket.addEventListener('message', (message: MessageEvent<string>) => {
       const event = parseEvent(message.data)
-      if (event) {
-        this.handlers.onEvent(event)
+      if (!event) {
+        return
       }
+      // The server stopped this stream because the client fell behind; the
+      // socket stays up but nothing more comes. Starting over is the cure:
+      // the reconnect re-subscribes and refreshes what was missed.
+      if (event.type === 'error' && event.code === 'behind') {
+        socket.close()
+        return
+      }
+      this.handlers.onEvent(event)
     })
 
     socket.addEventListener('close', () => {

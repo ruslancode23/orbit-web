@@ -27,7 +27,7 @@ import {
   type WorkspaceMember,
 } from '@/shared/api'
 
-import { applyEvent } from './apply-event'
+import { applyEvent, refreshAfterGap } from './apply-event'
 
 const workspaceId = '11111111-1111-4111-8111-111111111111'
 
@@ -501,4 +501,33 @@ it('patches the member of every loaded server from presence.updated', () => {
       ?.presence,
   ).toBe('online')
   expect(queryClient.getQueryState(first)?.isInvalidated).toBe(false)
+})
+
+// After a gap in the stream, whatever the stream keeps fresh is asked again;
+// what no event ever refreshed — attachment links, the session — is left alone.
+it('marks the live data stale after a gap and leaves the rest', () => {
+  const { queryClient, keys, isStale } = seed()
+  const history = listMessagesInfiniteQueryKey({ path: { channelId: 'c-general' } })
+  const members = listWorkspaceMembersQueryKey({ path: { workspaceId } })
+  const dialogues = listConversationsInfiniteQueryKey()
+  const session = getCurrentUserQueryKey()
+  const secretChats = ['listSecretChats', 'device-1']
+  for (const key of [history, members, dialogues, session, secretChats]) {
+    queryClient.setQueryData(key, {})
+  }
+
+  refreshAfterGap(queryClient)
+
+  for (const key of [
+    keys.workspaces,
+    keys.workspace,
+    keys.channels,
+    history,
+    members,
+    dialogues,
+    secretChats,
+  ]) {
+    expect(isStale(key)).toBe(true)
+  }
+  expect(isStale(session)).toBe(false)
 })

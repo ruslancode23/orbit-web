@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { isPageVisible } from '@/shared/lib/page-visibility'
 
-import { applyEvent } from './apply-event'
+import { applyEvent, refreshAfterGap } from './apply-event'
 import { LiveConnection, type LiveStatus } from './connection'
 import { LiveContext, type LiveListener, type LiveValue } from './context'
 import { getPresenceChoice, type PresenceActivity, type PresenceChoice } from './presence'
@@ -41,6 +41,9 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
         for (const listener of listenersRef.current) {
           listener(event)
         }
+      },
+      onReconnect: () => {
+        refreshAfterGap(queryClient)
       },
     })
     connectionRef.current = connection

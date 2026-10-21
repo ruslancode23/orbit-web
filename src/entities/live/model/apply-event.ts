@@ -208,6 +208,49 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
   }
 }
 
+/**
+ * Everything the live stream keeps fresh. After a gap in the stream these may
+ * have missed an event, so they are marked stale: the ones on screen are asked
+ * again at once, the rest when they are shown next. Attachment links, the
+ * session and static data are not here — no event ever refreshed them.
+ */
+const LIVE_QUERIES = [
+  'listMessages',
+  'listChannels',
+  'listWorkspaces',
+  'getWorkspace',
+  'listWorkspaceMembers',
+  'listWorkspaceBans',
+  'listUnread',
+  'listConversations',
+  'getConversation',
+  'getConversationUnread',
+  'listFriends',
+  'listFriendRequests',
+  'listUserBlocks',
+  'getMutual',
+  'getUserProfile',
+  'getChannel',
+  'listInvites',
+  'listDevices',
+  'getDmPolicy',
+  'getFriendRequestPolicy',
+] as const
+
+/**
+ * The stream came back after a drop or after the server cut it for falling
+ * behind. The catch-up by cursor replays new messages only; edits, reactions,
+ * channels, members and statuses from the gap never arrive, so whatever the
+ * stream normally refreshes is refreshed once here.
+ */
+export const refreshAfterGap = (queryClient: QueryClient) => {
+  invalidateQueriesById(queryClient, LIVE_QUERIES)
+  // The secret chat list key carries the device header; match it by name.
+  void queryClient.invalidateQueries({
+    predicate: (query) => query.queryKey[0] === 'listSecretChats',
+  })
+}
+
 /** The name of a generated query, stored in the first part of its key. */
 const queryIdOf = (queryKey: readonly unknown[]): string | undefined => {
   const params = queryKey[0]
