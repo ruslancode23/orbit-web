@@ -162,6 +162,7 @@ it('writes user.updated into the profile, the feed, the members and the session'
   queryClient.setQueryData<SelfProfile>(getCurrentUserQueryKey(), {
     ...before,
     email: 'anna@example.com',
+    profileOnboardedAt: null,
   })
 
   applyEvent(queryClient, {
