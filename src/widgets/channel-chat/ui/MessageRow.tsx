@@ -1,5 +1,6 @@
 import { AttachmentList } from '@/entities/attachment'
 import { authorName, MessageCard, startsNewGroup, type Message } from '@/entities/message'
+import { ClaimGuest } from '@/features/claim-guest'
 import { EditMessageForm, MessageActions, ReactionBar } from '@/features/message-actions'
 import { UserCard } from '@/features/user-card'
 
@@ -55,6 +56,7 @@ export const MessageRow = ({
           <UserCard
             userId={message.author.id}
             {...(workspaceId === undefined ? {} : { workspaceId })}
+            guestAction={<ClaimGuest />}
             {...(part === 'avatar' ? { label: authorName(message) } : {})}
             triggerClassName={
               part === 'avatar'

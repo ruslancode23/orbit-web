@@ -23,6 +23,13 @@ interface UserCardDetailsProps {
   /** Card-only content, such as the voice state and volume in the member list. */
   extra?: ReactNode
   /**
+   * The way to a full account for a guest looking at their own card. It is
+   * passed in by the widget because two features must not import each other;
+   * without it the guest still gets the explanation instead of a form that
+   * would answer 403.
+   */
+  guestAction?: ReactNode
+  /**
    * The dialog has no «Открыть профиль» button: it is already the full profile.
    * `preview` is the same card without actions, for a live preview in settings.
    */
@@ -45,6 +52,7 @@ export const UserCardDetails = ({
   isMe,
   workspaceId,
   extra,
+  guestAction,
   mode,
   onEdit,
   onOpenProfile,
@@ -123,7 +131,7 @@ export const UserCardDetails = ({
                 {...(onDone ? { onDone } : {})}
               />
             )}
-            {isMe && (
+            {isMe && !profile.isGuest && (
               <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
                 Редактировать профиль
               </Button>
@@ -134,6 +142,13 @@ export const UserCardDetails = ({
               </Button>
             )}
             {!isMe && <FriendActionSlot userId={profile.id} />}
+          </div>
+        )}
+
+        {mode !== 'preview' && isMe && profile.isGuest && (
+          <div className="flex flex-col gap-2 rounded-md bg-surface p-2">
+            <p className="text-sm text-fg-muted">Зарегистрируйтесь, чтобы настроить профиль.</p>
+            {guestAction}
           </div>
         )}
 

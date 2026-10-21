@@ -33,19 +33,25 @@ const json = (body: unknown, status = 200) =>
 
 interface StubOptions {
   profile?: UserProfile
+  session?: UserProfile
   missing?: boolean
   members?: Record<string, WorkspaceMember[]>
 }
 
 /** Answers the session, a profile and the member lists of the given servers. */
-const stubApi = ({ profile = bob, missing = false, members = {} }: StubOptions = {}) => {
+const stubApi = ({
+  profile = bob,
+  session = me,
+  missing = false,
+  members = {},
+}: StubOptions = {}) => {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: unknown) => {
       const request = input as Request
       const url = new URL(request.url)
       if (url.pathname.endsWith('/auth/me')) {
-        return Promise.resolve(json(me))
+        return Promise.resolve(json(session))
       }
       const profilePath = /^\/api\/v1\/users\/([^/]+)\/profile$/u.exec(url.pathname)
       if (profilePath !== null) {
@@ -210,6 +216,30 @@ it('opens the profile editor from your own card', async () => {
   expect(within(editor).getByRole('textbox', { name: 'О себе' })).toHaveValue(
     'Пишу код и пью кофе.',
   )
+})
+
+it('sends a guest to a full account instead of offering a form that would answer 403', async () => {
+  const guest: UserProfile = { ...me, isGuest: true }
+  stubApi({ profile: guest, session: guest })
+  renderWithProviders(
+    <UserCard
+      userId={guest.id}
+      label="Анна"
+      guestAction={<button type="button">Создать аккаунт</button>}
+    >
+      <span>Анна</span>
+    </UserCard>,
+    { route: '/' },
+  )
+
+  await userEvent.click(screen.getByRole('button', { name: 'Анна' }))
+  const card = await screen.findByRole('dialog', { name: 'Карточка Анна' })
+
+  expect(within(card).getByText('Зарегистрируйтесь, чтобы настроить профиль.')).toBeInTheDocument()
+  expect(within(card).getByRole('button', { name: 'Создать аккаунт' })).toBeInTheDocument()
+  expect(
+    within(card).queryByRole('button', { name: 'Редактировать профиль' }),
+  ).not.toBeInTheDocument()
 })
 
 it('opens the full profile with the same details', async () => {

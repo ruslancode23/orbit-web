@@ -5,6 +5,7 @@ import { useChannels, type Channel } from '@/entities/channel'
 import { ParticipantTile } from '@/entities/participant'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace } from '@/entities/workspace'
+import { ClaimGuest } from '@/features/claim-guest'
 import { useVoiceChannel } from '@/features/join-voice-channel'
 import { ManageInvites } from '@/features/manage-invites'
 import { ScreenShares } from '@/features/share-screen'
@@ -161,6 +162,7 @@ const VoiceChannelPage = ({
                         <UserCard
                           userId={participant.identity}
                           workspaceId={workspaceId}
+                          guestAction={<ClaimGuest />}
                           {...(part === 'avatar' ? { label: participant.name } : {})}
                           triggerClassName={
                             part === 'name' ? 'inline-flex max-w-full' : 'inline-flex shrink-0'

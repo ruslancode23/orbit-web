@@ -39,8 +39,17 @@ export const UserPanel = () => {
   const { isMicrophoneMuted, isDeafened, setMicrophoneMuted, setDeafened } = useVoiceRoom()
   const toast = useToast()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState('profile')
   const [editOpen, setEditOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
+  // A guest cannot upload a picture before claiming the account, and a full
+  // account with a picture has nothing to be reminded about.
+  const needsPhoto = user !== undefined && !user.isGuest && user.avatarUrl === undefined
+
+  const openSettings = (tab: string) => {
+    setSettingsTab(tab)
+    setSettingsOpen(true)
+  }
 
   const connection = CONNECTION[status]
   const name = user ? userDisplayName(user) : '…'
@@ -96,19 +105,48 @@ export const UserPanel = () => {
       >
         <div className="flex min-w-0 items-center gap-2">
           {user ? (
-            <UserStatusMenu
-              status={presence}
-              onStatusChange={choose}
-              onEditProfile={() => {
-                setEditOpen(true)
-              }}
-              onSetStatus={() => {
-                setStatusOpen(true)
-              }}
-            >
-              {avatar}
-              {identity}
-            </UserStatusMenu>
+            <div className="relative flex min-w-0 flex-1 items-center">
+              <UserStatusMenu
+                status={presence}
+                onStatusChange={choose}
+                onSetStatus={() => {
+                  setStatusOpen(true)
+                }}
+                {...(user.isGuest
+                  ? {}
+                  : {
+                      onEditProfile: () => {
+                        setEditOpen(true)
+                      },
+                    })}
+                {...(needsPhoto
+                  ? {
+                      onAddPhoto: () => {
+                        openSettings('profile')
+                      },
+                    }
+                  : {})}
+              >
+                {avatar}
+                {identity}
+              </UserStatusMenu>
+              {needsPhoto && (
+                <button
+                  type="button"
+                  aria-label="Добавить фото профиля"
+                  title="Добавить фото профиля"
+                  className="absolute top-0 left-6 z-10 flex size-5 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+                  onClick={() => {
+                    openSettings('profile')
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="size-2.5 rounded-full bg-accent ring-2 ring-surface"
+                  />
+                </button>
+              )}
+            </div>
           ) : (
             <>
               {avatar}
@@ -153,7 +191,12 @@ export const UserPanel = () => {
         </div>
       </section>
 
-      <UserSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <UserSettings
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        tab={settingsTab}
+        onTabChange={setSettingsTab}
+      />
 
       {user && editOpen && (
         <EditProfileDialog

@@ -5,6 +5,7 @@ import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoicePresence } from '@/entities/voice-presence'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { useWorkspaceMembers, type WorkspaceMember, type WorkspaceRole } from '@/entities/workspace'
+import { ClaimGuest } from '@/features/claim-guest'
 import { membersFromPresence, membersFromRoom } from '@/features/join-voice-channel'
 import { UserCard } from '@/features/user-card'
 import { cn } from '@/shared/lib/cn'
@@ -323,6 +324,7 @@ const MemberRow = ({
       align="start"
       {...(extra === undefined ? {} : { extra })}
       triggerClassName="flex w-full items-center gap-2 px-1.5 py-1 text-left text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
+      guestAction={<ClaimGuest />}
     >
       {member ? (
         <UserAvatar

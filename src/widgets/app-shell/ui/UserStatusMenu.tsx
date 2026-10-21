@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { EditIcon, SmileIcon } from '@/shared/ui/icon'
+import { EditIcon, PlusIcon, SmileIcon } from '@/shared/ui/icon'
 
 type VisibleStatus = Exclude<PresenceChoice, 'auto'>
 
@@ -42,8 +42,11 @@ const isVisibleStatus = (value: string): value is VisibleStatus =>
 interface UserStatusMenuProps {
   status: PresenceChoice
   onStatusChange: (status: VisibleStatus) => void
-  onEditProfile: () => void
+  /** Absent for a guest, whose card explains how to get an editable profile. */
+  onEditProfile?: () => void
   onSetStatus: () => void
+  /** Opens the profile settings; only offered while the account has no picture. */
+  onAddPhoto?: () => void
   /** The avatar and the name; the whole block opens the menu. */
   children: ReactNode
 }
@@ -59,6 +62,7 @@ export const UserStatusMenu = ({
   onStatusChange,
   onEditProfile,
   onSetStatus,
+  onAddPhoto,
   children,
 }: UserStatusMenuProps) => {
   const activity = usePresenceActivityState()
@@ -101,10 +105,18 @@ export const UserStatusMenu = ({
             <SmileIcon className="size-4 text-fg-muted" />
             Задать статус
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onEditProfile}>
-            <EditIcon className="size-4 text-fg-muted" />
-            Редактировать профиль
-          </DropdownMenuItem>
+          {onAddPhoto !== undefined && (
+            <DropdownMenuItem onSelect={onAddPhoto}>
+              <PlusIcon className="size-4 text-fg-muted" />
+              Добавить фото
+            </DropdownMenuItem>
+          )}
+          {onEditProfile !== undefined && (
+            <DropdownMenuItem onSelect={onEditProfile}>
+              <EditIcon className="size-4 text-fg-muted" />
+              Редактировать профиль
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
