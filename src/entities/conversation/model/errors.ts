@@ -35,10 +35,16 @@ export const describeConversationError = (
   return fallback
 }
 
+/** Whether the server refused a group because its member limit is already reached. */
+export const isTooManyMembers = (error: unknown): boolean => {
+  return isApiError(error) && /too many people/iu.test(error.message)
+}
+
 /**
  * The sentence a refused «Написать» shows. Starting a dialogue with someone
  * whose privacy closes it answers 404, exactly like an unknown account: the
  * screen must neither claim the account is gone nor show a network failure.
+ * A 429 carries the wait the server asks for in `Retry-After`.
  */
 export const describeConversationStartError = (error: unknown): string => {
   if (!isApiError(error)) {
@@ -48,10 +54,18 @@ export const describeConversationStartError = (error: unknown): string => {
     return 'Нет соединения с сервером.'
   }
   if (error.status === 404) {
-    return 'Не удалось начать диалог: возможно, пользователь ограничил личные сообщения.'
+    return 'Этому человеку нельзя написать.'
   }
   if (error.status === 429) {
-    return 'Слишком много новых диалогов — попробуйте позже.'
+    return error.retryAfterSeconds === undefined
+      ? 'Слишком часто, попробуйте позже.'
+      : `Слишком часто, попробуйте через ${String(error.retryAfterSeconds)} с.`
+  }
+  if (isTooManyMembers(error)) {
+    return 'В группе уже слишком много участников. Выберите меньше людей.'
+  }
+  if (error.status === 409) {
+    return 'Это личный диалог, создайте группу.'
   }
   return error.message !== '' ? error.message : 'Не удалось начать диалог. Попробуйте ещё раз.'
 }

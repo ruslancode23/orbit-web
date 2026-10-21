@@ -19,6 +19,7 @@ import { useSession } from '@/entities/session'
 import { describeUnread, UnreadBadge } from '@/entities/unread'
 import { UserAvatar, UserAvatarStack, userDisplayName } from '@/entities/user'
 import { SetupSecretChats } from '@/features/start-secret-chat'
+import { StartConversation } from '@/features/user-card'
 import type { PresenceStatus } from '@/shared/api'
 import { cn } from '@/shared/lib/cn'
 import { Avatar } from '@/shared/ui/avatar'
@@ -345,8 +346,9 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
       aria-label="Личные сообщения"
       className={cn('flex min-h-0 w-64 shrink-0 flex-col border-r border-border bg-bg', className)}
     >
-      <header className="flex h-12 shrink-0 items-center border-b border-border px-3">
-        <h2 className="truncate text-sm font-semibold">Личные сообщения</h2>
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">Личные сообщения</h2>
+        <StartConversation iconOnly label="Новый диалог" />
       </header>
 
       <div className="shrink-0 px-2 pt-2">

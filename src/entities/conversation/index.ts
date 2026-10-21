@@ -1,4 +1,8 @@
-export { describeConversationError, describeConversationStartError } from './model/errors'
+export {
+  describeConversationError,
+  describeConversationStartError,
+  isTooManyMembers,
+} from './model/errors'
 export {
   conversationMembersExcept,
   conversationName,
@@ -10,7 +14,10 @@ export {
   useLeaveConversation,
   useRenameConversation,
   useStartConversation,
+  useStartGroupConversation,
   useUnhideConversation,
   type ConversationSummary,
+  type StartedGroup,
+  type StartGroupVariables,
 } from './model/queries'
 export type { Conversation, ConversationMember, ConversationStartRequest } from '@/shared/api'

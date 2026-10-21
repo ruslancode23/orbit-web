@@ -35,6 +35,7 @@ export {
   revokeDevice,
   sendSecretEnvelope,
   startSecretChat,
+  updateConversation,
   uploadOneTimeKeys,
 } from './generated/sdk.gen'
 export type {

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
 import { setConversationMuted } from '@/features/notifications'
+import { StartConversation } from '@/features/user-card'
 import { renderWithProviders } from '@/shared/lib/test'
 
 import DirectPage from './DirectPage'
@@ -43,8 +44,13 @@ interface StubOptions {
   friends?: unknown[]
   renameStatus?: number
   addStatus?: number
+  addMessage?: string
   blocks?: { id: string; nickname: string; createdAt: string }[]
   sendStatus?: number
+  startGroup?: unknown
+  messages?: unknown[]
+  workspaces?: unknown[]
+  members?: unknown[]
 }
 
 interface StubState {
@@ -64,8 +70,13 @@ const stubApi = ({
   friends = [],
   renameStatus = 200,
   addStatus = 200,
+  addMessage = 'not a group',
   blocks = [],
   sendStatus = 200,
+  startGroup = group,
+  messages = [],
+  workspaces = [],
+  members = [],
 }: StubOptions = {}): StubState => {
   const state: StubState = { calls: [], renameBodies: [], memberBodies: [], blocks: [...blocks] }
   vi.stubGlobal(
@@ -95,6 +106,9 @@ const stubApi = ({
         return json({ unread: 0, mentions: 0 })
       }
       if (url.pathname === '/api/v1/conversations') {
+        if (request.method === 'POST') {
+          return json(startGroup, 201)
+        }
         return json({ conversations: [] })
       }
       if (url.pathname === '/api/v1/conversations/c-direct') {
@@ -119,7 +133,7 @@ const stubApi = ({
         const body = (await request.clone().json()) as { userIds: string[] }
         state.memberBodies.push(body)
         if (addStatus !== 200) {
-          return json({ error: { code: 'conflict', message: 'not a group' } }, addStatus)
+          return json({ error: { code: 'conflict', message: addMessage } }, addStatus)
         }
         return json({ ...group, members: [...group.members, dave] })
       }
@@ -132,19 +146,19 @@ const stubApi = ({
           : json({ error: { code: 'not_found', message: 'no conversation' } }, detailStatus)
       }
       if (url.pathname === '/api/v1/workspaces') {
-        return json([])
+        return json(workspaces)
       }
       if (url.pathname.endsWith('/unread')) {
         return json([])
       }
       if (url.pathname.endsWith('/members')) {
-        return json([])
+        return json(members)
       }
       if (url.pathname.endsWith('/messages')) {
         if (request.method === 'POST' && sendStatus !== 200) {
           return json({ error: { code: 'not_found', message: 'not found' } }, sendStatus)
         }
-        return json({ messages: [] })
+        return json({ messages })
       }
       return json({})
     }),
@@ -166,6 +180,7 @@ const renderPage = (route = '/me', { withList = false } = {}) =>
 
 afterEach(() => {
   setConversationMuted('c-direct', false)
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 
@@ -312,6 +327,28 @@ it('adds a friend to a group', async () => {
   expect(await screen.findByText('4 участника: Боб, Кэрол, Дэйв')).toBeInTheDocument()
 })
 
+it('explains the member limit when the group cannot grow', async () => {
+  const state = stubApi({
+    detail: group,
+    friends: [{ id: dave.id, nickname: 'Дэйв', presence: 'online', since: '2026-10-20T10:00:00Z' }],
+    addStatus: 409,
+    addMessage: 'conversations: too many people for one group',
+  })
+  renderPage('/me/c-group')
+
+  await screen.findByRole('heading', { name: 'Планы', level: 1 })
+  await userEvent.click(screen.getByRole('button', { name: 'Добавить людей' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Добавить людей' })
+  await userEvent.click(await within(dialog).findByRole('checkbox', { name: 'Дэйв' }))
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Добавить' }))
+
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'В группе уже слишком много участников.',
+  )
+  expect(state.memberBodies).toEqual([{ userIds: [dave.id] }])
+})
+
 it('leaves a group and returns to the list', async () => {
   const state = stubApi({ detail: group })
   renderPage('/me/c-group', { withList: true })
@@ -371,4 +408,93 @@ it('has no secret chat for a group', async () => {
 
   await screen.findByRole('heading', { name: 'Планы', level: 1 })
   expect(screen.queryByRole('button', { name: 'Действия с диалогом' })).not.toBeInTheDocument()
+})
+
+it('shows the system line of a group right after it is created', async () => {
+  const workspace = {
+    workspace: {
+      id: 'w-1',
+      name: 'Команда',
+      description: null,
+      iconUrl: null,
+      memberPermissions: {
+        canInvite: false,
+        canCreateChannels: false,
+        canAttachFiles: true,
+      },
+      ownerId: anna.id,
+      createdAt: '2026-10-20T10:00:00Z',
+    },
+    role: 'member',
+  }
+  const member = (user: typeof anna) => ({
+    user: {
+      ...user,
+      displayName: user.nickname,
+      accentColor: 'slate',
+      bio: '',
+    },
+    role: 'member',
+    joinedAt: '2026-10-20T10:00:00Z',
+  })
+  const createdGroup = {
+    id: group.id,
+    kind: 'group',
+    members: group.members,
+    createdAt: group.createdAt,
+  }
+  const systemLine = {
+    id: 'm-system',
+    seq: 1,
+    kind: 'system',
+    author: member(anna).user,
+    mentions: [],
+    reactions: [],
+    content: 'Анна renamed the group to Планы',
+    system: { type: 'conversation_renamed', name: 'Планы' },
+    createdAt: '2026-10-20T11:00:00Z',
+  }
+  stubApi({
+    detail: group,
+    startGroup: createdGroup,
+    workspaces: [workspace],
+    members: [anna, bob, carol].map(member),
+    messages: [systemLine],
+  })
+  // jsdom gives every element zero height; the virtualized feed needs a viewport.
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, 400, 600),
+  )
+  Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+    configurable: true,
+    value: 600,
+  })
+  renderWithProviders(
+    <MemoryRouter initialEntries={['/me']}>
+      <Routes>
+        <Route
+          path="/me"
+          element={
+            <>
+              <StartConversation />
+              <p>список бесед</p>
+            </>
+          }
+        />
+        <Route path="/me/:conversationId" element={<DirectPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+
+  await userEvent.click(screen.getByRole('button', { name: 'Написать' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Новое сообщение' })
+  await userEvent.click(await within(dialog).findByRole('option', { name: /Боб/ }))
+  await userEvent.click(within(dialog).getByRole('option', { name: /Кэрол/ }))
+  await userEvent.type(within(dialog).getByLabelText(/Название группы/), 'Планы')
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Создать группу' }))
+
+  expect(await screen.findByRole('heading', { name: 'Планы', level: 1 })).toBeInTheDocument()
+  expect(
+    await screen.findByRole('note', { name: /переименовал чат в «Планы»/ }),
+  ).toBeInTheDocument()
 })
