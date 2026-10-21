@@ -261,3 +261,67 @@ test('a deleted server leaves every member, open or not', async ({ browser }) =>
   await ownerContext.close()
   await readerContext.close()
 })
+
+/**
+ * Server events travel on each member's own stream: a reader looking at their
+ * direct messages still sees a server renamed in the rail, and a reader kicked
+ * while inside a server is taken out with a word on why.
+ */
+test('a server that is not open still changes, and a kick takes the reader out', async ({
+  browser,
+}) => {
+  test.setTimeout(90_000)
+
+  const ownerContext = await browser.newContext()
+  const readerContext = await browser.newContext()
+  await signUp(ownerContext, 'owner')
+  const readerAccount = await signUp(readerContext, 'reader')
+
+  const name = unique('Сервер')
+  const { workspace } = await call<{ workspace: { id: string } }>(
+    ownerContext.request,
+    'post',
+    '/workspaces',
+    { name },
+  )
+  const invite = await call<{ code: string }>(
+    ownerContext.request,
+    'post',
+    `/workspaces/${workspace.id}/invites`,
+  )
+  await call(readerContext.request, 'post', `/invites/${invite.code}/accept`)
+  const general = await call<{ id: string }>(
+    ownerContext.request,
+    'post',
+    `/workspaces/${workspace.id}/channels`,
+    { name: 'общий' },
+  )
+
+  // Not watching the server: the rail follows its new name anyway.
+  const reader = await readerContext.newPage()
+  await reader.goto('/me')
+  await skipProfileOnboarding(reader)
+  await expect(reader.getByText('Подключаемся…')).toHaveCount(0)
+  await expect(reader.getByRole('link', { name })).toBeVisible()
+  const renamed = unique('Переименован')
+  await call(ownerContext.request, 'patch', `/workspaces/${workspace.id}`, { name: renamed })
+  await expect(reader.getByRole('link', { name: renamed })).toBeVisible({ timeout: 5000 })
+
+  // Inside the server, the reader is kicked: out, with a word on why.
+  await reader.goto(`/s/${workspace.id}/${general.id}`)
+  await expect(reader.getByRole('heading', { name: '# общий', level: 1 })).toBeVisible()
+  await expect(reader.getByText('Подключаемся…')).toHaveCount(0)
+  await call(
+    ownerContext.request,
+    'delete',
+    `/workspaces/${workspace.id}/members/${readerAccount.id}`,
+  )
+  await expect(
+    reader.getByText('Вы больше не участник этого сервера.', { exact: true }),
+  ).toBeVisible({ timeout: 5000 })
+  await expect(reader).toHaveURL(/\/$/)
+  await expect(reader.getByRole('link', { name: renamed })).toHaveCount(0)
+
+  await ownerContext.close()
+  await readerContext.close()
+})

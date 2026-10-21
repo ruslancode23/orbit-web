@@ -38,7 +38,7 @@ import {
   toggleChannelSidebar,
   useChannelSidebarOpen,
 } from '../model/channel-sidebar'
-import { useLeaveDeletedWorkspace } from '../model/use-leave-deleted-workspace'
+import { useLeaveLostWorkspace } from '../model/use-leave-lost-workspace'
 import { useVoiceShortcuts } from '../model/use-voice-shortcuts'
 
 /**
@@ -90,7 +90,7 @@ const Shell = () => {
   useFriendNotifications()
   useSecretNotifications()
   useVoiceShortcuts()
-  useLeaveDeletedWorkspace(workspaceId)
+  useLeaveLostWorkspace(workspaceId)
 
   // A narrow screen closes the sliding channel column on Esc and after a move.
   useEffect(() => {
