@@ -6,7 +6,7 @@ import { ClaimGuest } from '@/features/claim-guest'
 import { InstallApp } from '@/features/install-app'
 import { NotificationSettings } from '@/features/notifications'
 import { DeviceSettings } from '@/features/select-device'
-import { AccountSettings, ProfileSettings } from '@/features/user-card'
+import { AccountSettings, PrivacySettings, ProfileSettings } from '@/features/user-card'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -95,7 +95,8 @@ export const UserSettings = ({
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <DialogTitle>Настройки пользователя</DialogTitle>
               <DialogDescription>
-                {user ? user.nickname : 'Ваш аккаунт'} — профиль, звук, уведомления и приложение.
+                {user ? user.nickname : 'Ваш аккаунт'} — профиль, звук, уведомления, приватность и
+                приложение.
               </DialogDescription>
             </div>
             <DialogClose asChild>
@@ -115,6 +116,7 @@ export const UserSettings = ({
               <TabsTrigger value="profile">Профиль</TabsTrigger>
               <TabsTrigger value="voice">Голос и видео</TabsTrigger>
               <TabsTrigger value="notifications">Уведомления</TabsTrigger>
+              <TabsTrigger value="privacy">Приватность</TabsTrigger>
               <TabsTrigger value="app">Приложение</TabsTrigger>
               <TabsTrigger value="account">Аккаунт</TabsTrigger>
             </TabsList>
@@ -129,6 +131,10 @@ export const UserSettings = ({
 
             <TabsContent value="notifications" className="flex flex-col gap-2">
               <NotificationSettings />
+            </TabsContent>
+
+            <TabsContent value="privacy" className="max-h-[60vh] overflow-y-auto pr-1">
+              <PrivacySettings />
             </TabsContent>
 
             <TabsContent value="app" className="flex flex-col gap-2">

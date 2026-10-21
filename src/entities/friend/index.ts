@@ -14,6 +14,7 @@ export {
   useIncomingFriendRequestCount,
   useSendFriendRequest,
 } from './model/queries'
+export { BlockedUsersList } from './ui/BlockedUsersList'
 export { FriendRequestBadge } from './ui/FriendRequestBadge'
 export { FriendsEmpty } from './ui/FriendsEmpty'
 
