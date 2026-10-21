@@ -58,13 +58,55 @@ it('marks the servers stale on workspace.updated and leaves the rest alone', () 
   expect(isStale(keys.channels)).toBe(false)
 })
 
-it('marks everything stale when the members changed', () => {
+it('refreshes what reads membership, and only that, when the members changed', () => {
   const { queryClient, keys, isStale } = seed()
+  const members = listWorkspaceMembersQueryKey({ path: { workspaceId } })
+  const history = listMessagesQueryKey({ path: { channelId: 'c-general' } })
+  const profile = getUserProfileQueryKey({ path: { userId: 'u-anna' } })
+  for (const key of [members, history, profile]) {
+    queryClient.setQueryData(key, {})
+  }
 
   applyEvent(queryClient, { type: 'member.changed', workspaceId })
 
   expect(isStale(keys.workspaces)).toBe(true)
+  expect(isStale(keys.workspace)).toBe(true)
+  expect(isStale(members)).toBe(true)
+  // A new role changes canWrite in read-only channels.
   expect(isStale(keys.channels)).toBe(true)
+  // A join or a role change does not touch what people wrote or who they are.
+  expect(isStale(history)).toBe(false)
+  expect(isStale(profile)).toBe(false)
+})
+
+// Another admin created, renamed or moved a channel: the event names the channel
+// only, because canWrite in the list depends on the reader.
+it('asks for the channel list again on channel.changed', () => {
+  const { queryClient, keys, isStale } = seed()
+
+  applyEvent(queryClient, { type: 'channel.changed', workspaceId, channelId: 'c-new' })
+
+  expect(isStale(keys.channels)).toBe(true)
+  expect(isStale(keys.workspaces)).toBe(false)
+})
+
+it('drops the history of a deleted channel and refreshes the list and the counters', () => {
+  const { queryClient, keys, isStale } = seed()
+  const path = { channelId: 'c-gone' }
+  const unread = listUnreadQueryKey({ path: { workspaceId } })
+  const other = listMessagesQueryKey({ path: { channelId: 'c-kept' } })
+  queryClient.setQueryData(listMessagesQueryKey({ path }), {})
+  queryClient.setQueryData(listMessagesInfiniteQueryKey({ path }), {})
+  queryClient.setQueryData(unread, {})
+  queryClient.setQueryData(other, {})
+
+  applyEvent(queryClient, { type: 'channel.deleted', workspaceId, channelId: 'c-gone' })
+
+  expect(isStale(keys.channels)).toBe(true)
+  expect(isStale(unread)).toBe(true)
+  expect(queryClient.getQueryData(listMessagesQueryKey({ path }))).toBeUndefined()
+  expect(queryClient.getQueryData(listMessagesInfiniteQueryKey({ path }))).toBeUndefined()
+  expect(queryClient.getQueryData(other)).toBeDefined()
 })
 
 // Presence comes whole for one channel; putting it into the cached server is
@@ -414,4 +456,49 @@ it('refreshes friends, requests and blocks when a friendship ends', () => {
   expect(queryClient.getQueryState(friends)?.isInvalidated).toBe(true)
   expect(queryClient.getQueryState(requests)?.isInvalidated).toBe(true)
   expect(queryClient.getQueryState(blocks)?.isInvalidated).toBe(true)
+})
+
+// The member column shows the same dot as the friend list: the server sends
+// presence.updated to everyone on a shared server, so the member is patched too.
+it('patches the member of every loaded server from presence.updated', () => {
+  const queryClient = new QueryClient()
+  const first = listWorkspaceMembersQueryKey({ path: { workspaceId } })
+  const second = listWorkspaceMembersQueryKey({
+    path: { workspaceId: '22222222-2222-4222-8222-222222222222' },
+  })
+  const member = (id: string, presence: WorkspaceMember['presence']): WorkspaceMember => ({
+    user: {
+      id,
+      nickname: id,
+      displayName: '',
+      accentColor: 'slate',
+      bio: '',
+      isGuest: false,
+      createdAt: new Date(),
+    },
+    role: 'member',
+    joinedAt: new Date(),
+    presence,
+  })
+  queryClient.setQueryData<WorkspaceMember[]>(first, [
+    member('u-bob', 'offline'),
+    member('u-anna', 'online'),
+  ])
+  queryClient.setQueryData<WorkspaceMember[]>(second, [member('u-bob', 'offline')])
+
+  applyEvent(queryClient, {
+    type: 'presence.updated',
+    workspaceId,
+    payload: { userId: 'u-bob', status: 'online', updatedAt: '2026-10-21T10:00:00Z' },
+  })
+
+  const bobIn = (key: readonly unknown[]) =>
+    queryClient.getQueryData<WorkspaceMember[]>(key)?.find((item) => item.user.id === 'u-bob')
+  expect(bobIn(first)?.presence).toBe('online')
+  expect(bobIn(second)?.presence).toBe('online')
+  expect(
+    queryClient.getQueryData<WorkspaceMember[]>(first)?.find((item) => item.user.id === 'u-anna')
+      ?.presence,
+  ).toBe('online')
+  expect(queryClient.getQueryState(first)?.isInvalidated).toBe(false)
 })

@@ -6,10 +6,14 @@ import {
   type Friend,
   type PresenceStatus,
   type VoicePresence,
+  type WorkspaceMember,
+  listChannelsQueryKey,
   listMessagesInfiniteQueryKey,
   listConversationsQueryKey,
   listMessagesQueryKey,
   listUnreadQueryKey,
+  listWorkspaceBansQueryKey,
+  listWorkspaceMembersQueryKey,
   listWorkspacesQueryKey,
 } from '@/shared/api'
 
@@ -113,13 +117,28 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       applyUserProfile(queryClient, profile)
     }
   }
-  // A friend went online, idle, do-not-disturb or offline. The payload is
-  // small and names one account, so the cached friend is patched in place:
-  // the dot changes without refetching the whole list. The server already
+  // A friend or a member of a server went online, idle, do-not-disturb or
+  // offline. The payload is small and names one account, so the cached friend
+  // and member are patched in place: the dot changes without refetching a list. The server already
   // applies "do not disturb" and invisibility, so the value is shown as is.
   if (event.type === 'presence.updated') {
     const state = parseFriendPresence(event.payload)
     if (state) {
+      // The member column of every loaded server shows the same dot.
+      queryClient.setQueriesData<WorkspaceMember[]>(
+        { predicate: (query) => queryIdOf(query.queryKey) === 'listWorkspaceMembers' },
+        (members) => {
+          if (!Array.isArray(members)) {
+            return members
+          }
+          return members.map((member) => {
+            if (member.user.id !== state.userId || member.presence === state.status) {
+              return member
+            }
+            return { ...member, presence: state.status }
+          })
+        },
+      )
       queryClient.setQueriesData<Friend[]>(
         { predicate: (query) => queryIdOf(query.queryKey) === 'listFriends' },
         (friends) => {
@@ -158,10 +177,34 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       'getMutual',
     ])
   }
-  // Someone joined, left, was banned or changed role: the member list and the
-  // servers we are on may both have changed.
+  // Someone joined, left, was banned or changed role. What reads membership is
+  // refreshed, and nothing else: the histories and profiles stay as they are.
   if (event.type === 'member.changed') {
-    void queryClient.invalidateQueries()
+    invalidateQueriesById(queryClient, ['listWorkspaces', 'getMutual'])
+    if (event.workspaceId) {
+      const path = { workspaceId: event.workspaceId }
+      void queryClient.invalidateQueries({ queryKey: getWorkspaceQueryKey({ path }) })
+      void queryClient.invalidateQueries({ queryKey: listWorkspaceMembersQueryKey({ path }) })
+      void queryClient.invalidateQueries({ queryKey: listWorkspaceBansQueryKey({ path }) })
+      // A new role changes canWrite in read-only channels.
+      void queryClient.invalidateQueries({ queryKey: listChannelsQueryKey({ path }) })
+    }
+  }
+  // A channel appeared, changed, moved or went away. The event names it only:
+  // canWrite in the list depends on who reads it, so the list is asked again.
+  if ((event.type === 'channel.changed' || event.type === 'channel.deleted') && event.workspaceId) {
+    void queryClient.invalidateQueries({
+      queryKey: listChannelsQueryKey({ path: { workspaceId: event.workspaceId } }),
+    })
+    if (event.type === 'channel.deleted' && event.channelId) {
+      // Its history cannot be asked for any more; the unread counts lose it.
+      const path = { channelId: event.channelId }
+      queryClient.removeQueries({ queryKey: listMessagesQueryKey({ path }) })
+      queryClient.removeQueries({ queryKey: listMessagesInfiniteQueryKey({ path }) })
+      void queryClient.invalidateQueries({
+        queryKey: listUnreadQueryKey({ path: { workspaceId: event.workspaceId } }),
+      })
+    }
   }
 }
 
