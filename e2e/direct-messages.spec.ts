@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test'
 
 import {
   createChannel,
@@ -8,6 +8,14 @@ import {
   unique,
   skipProfileOnboarding,
 } from './helpers.ts'
+
+const API_URL = process.env.VITE_API_URL ?? 'http://localhost:8080'
+
+async function post<T>(api: APIRequestContext, path: string, data?: object): Promise<T> {
+  const response = await api.post(`${API_URL}/api/v1${path}`, data ? { data } : {})
+  expect(response.ok(), `${path} answered ${String(response.status())}`).toBe(true)
+  return (await response.json()) as T
+}
 
 async function register(page: Page, nickname: string): Promise<void> {
   await page.goto('/register')
@@ -90,6 +98,100 @@ test('two people talk in a direct dialogue, live and with the unread badge', asy
   // The list preview follows the newest message, so the row says what it says.
   await expect(peer.getByRole('link', { name: new RegExp(ownerName) })).toContainText(reply)
 
+  // Hiding is private and lasts until a new message: the dialogue goes out of
+  // this account's list and comes back by itself when the peer writes again.
+  await owner.getByRole('button', { name: 'Действия с беседой' }).click()
+  await owner.getByRole('menuitem', { name: 'Скрыть' }).click()
+  await expect(owner.getByRole('link', { name: new RegExp(peerName) })).toHaveCount(0)
+
+  const afterHiding = unique('после скрытия')
+  await peer.getByRole('textbox', { name: 'Сообщение' }).fill(afterHiding)
+  await peer.getByRole('button', { name: 'Отправить' }).click()
+  await expect(owner.getByRole('link', { name: new RegExp(peerName) })).toBeVisible()
+  await expect(owner.getByRole('link', { name: new RegExp(peerName) })).toContainText(afterHiding)
+
   await ownerContext.close()
   await peerContext.close()
+})
+
+// A group is made through the API: creating one from the interface is DM-5
+// (SCRUM-87), still ahead. Renaming, adding people and leaving are what this
+// scenario exercises, and the system lines are how the feed tells them.
+test('a group is renamed, gains a member and is left with system lines', async ({ browser }) => {
+  const ownerContext = await browser.newContext()
+  const owner = await post<{ id: string; nickname: string }>(
+    ownerContext.request,
+    '/auth/register',
+    { nickname: unique('anna'), password },
+  )
+  const bobApi = await request.newContext()
+  const bob = await post<{ id: string }>(bobApi, '/auth/register', {
+    nickname: unique('bob'),
+    password,
+  })
+  const carolApi = await request.newContext()
+  const carol = await post<{ id: string }>(carolApi, '/auth/register', {
+    nickname: unique('carol'),
+    password,
+  })
+  const group = await post<{ id: string }>(ownerContext.request, '/conversations', {
+    userIds: [bob.id, carol.id],
+  })
+
+  // A friend is whom the «Добавить людей» dialog offers; a common server is
+  // what the default friendship policy asks for first.
+  const daveApi = await request.newContext()
+  const dave = await post<{ id: string; nickname: string }>(daveApi, '/auth/register', {
+    nickname: unique('dave'),
+    password,
+  })
+  const workspace = await post<{ workspace: { id: string } }>(ownerContext.request, '/workspaces', {
+    name: unique('Знакомые'),
+  })
+  const invite = await post<{ code: string }>(
+    ownerContext.request,
+    `/workspaces/${workspace.workspace.id}/invites`,
+  )
+  await post(daveApi, `/invites/${invite.code}/accept`)
+  await post(ownerContext.request, '/friends/requests', { nickname: dave.nickname })
+  await post(daveApi, `/friends/requests/${owner.id}/accept`)
+
+  const page = await ownerContext.newPage()
+  await page.goto('/me')
+  await skipProfileOnboarding(page)
+
+  await page.getByRole('link', { name: 'Групповой чат' }).click()
+  await expect(page.getByRole('heading', { name: 'Групповой чат', level: 1 })).toBeVisible()
+
+  // Rename: the title changes everywhere and the feed gets a system line.
+  await page.getByRole('button', { name: 'Действия с группой' }).click()
+  await page.getByRole('menuitem', { name: 'Переименовать' }).click()
+  const rename = page.getByRole('dialog', { name: 'Переименовать группу' })
+  await rename.getByLabel('Название группы').fill('Планы')
+  await rename.getByRole('button', { name: 'Сохранить' }).click()
+  await expect(page.getByRole('heading', { name: 'Планы', level: 1 })).toBeVisible()
+  await expect(page.getByRole('note', { name: /переименовал чат в «Планы»/ })).toBeVisible()
+
+  // Add a friend: the server writes one system line per new member.
+  await page.getByRole('button', { name: 'Добавить людей' }).click()
+  const add = page.getByRole('dialog', { name: 'Добавить людей' })
+  await add.getByRole('checkbox', { name: dave.nickname }).check()
+  await add.getByRole('button', { name: 'Добавить' }).click()
+  await expect(page.getByRole('note', { name: /добавил/ })).toBeVisible()
+
+  // Leaving ends access: the dialogue goes from the list and its history is gone.
+  await page.getByRole('button', { name: 'Действия с группой' }).click()
+  await page.getByRole('menuitem', { name: 'Выйти из группы' }).click()
+  const leave = page.getByRole('dialog', { name: 'Выйти из группы' })
+  await leave.getByRole('button', { name: 'Выйти' }).click()
+  await expect(page).toHaveURL(/\/me$/)
+  await expect(page.getByRole('link', { name: 'Планы' })).toHaveCount(0)
+
+  await page.goto(`/me/${group.id}`)
+  await expect(page.getByRole('heading', { name: 'Диалог не найден' })).toBeVisible()
+
+  await ownerContext.close()
+  await bobApi.dispose()
+  await carolApi.dispose()
+  await daveApi.dispose()
 })
