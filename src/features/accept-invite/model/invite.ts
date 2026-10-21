@@ -1,4 +1,5 @@
 import { isApiError } from '@/shared/api'
+import { describeRetryAfter } from '@/shared/lib/retry-after'
 
 const fallback = 'Не получилось присоединиться. Попробуйте ещё раз.'
 
@@ -34,6 +35,9 @@ export const describeGuestJoinError = (error: unknown): string => {
   }
   if (error.status === 400) {
     return 'Сервер не принял имя. Проверьте его.'
+  }
+  if (error.status === 429) {
+    return `Слишком много новых аккаунтов с этого адреса. ${describeRetryAfter(error.retryAfterSeconds)}`
   }
   return fallback
 }

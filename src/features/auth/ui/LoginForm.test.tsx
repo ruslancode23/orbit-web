@@ -23,14 +23,14 @@ const anna = {
   createdAt: '2026-10-18T10:00:00Z',
 }
 
-const answerWith = (status: number, body: unknown) => {
+const answerWith = (status: number, body: unknown, headers: Record<string, string> = {}) => {
   vi.stubGlobal(
     'fetch',
     vi.fn(() =>
       Promise.resolve(
         new Response(JSON.stringify(body), {
           status,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...headers },
         }),
       ),
     ),
@@ -75,6 +75,22 @@ it('says the login or the password is wrong, without saying which', async () => 
 
   const alert = await screen.findByRole('alert')
   expect(alert).toHaveTextContent('Неверный логин или пароль.')
+  expect(navigate).not.toHaveBeenCalled()
+})
+
+it('says how long to wait when sign-in attempts ran out', async () => {
+  answerWith(
+    429,
+    { error: { code: 'too_many_requests', message: 'too many sign-in attempts' } },
+    { 'Retry-After': '360' },
+  )
+  renderWithProviders(<LoginForm />, { route: '/login' })
+
+  await signIn('Anna', 'not my password')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Слишком много попыток входа. Попробуйте снова через 6 мин.',
+  )
   expect(navigate).not.toHaveBeenCalled()
 })
 

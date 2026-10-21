@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 
 import { getCurrentUserQueryKey, isApiError, loginMutation } from '@/shared/api'
+import { describeRetryAfter } from '@/shared/lib/retry-after'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
@@ -91,6 +92,10 @@ const describeLoginError = (error: unknown): string => {
   // The server does not say which half was wrong, and neither do we.
   if (error.status === 401) {
     return 'Неверный логин или пароль.'
+  }
+  // Too many wrong passwords for this login, or too many attempts from here.
+  if (error.status === 429) {
+    return `Слишком много попыток входа. ${describeRetryAfter(error.retryAfterSeconds)}`
   }
   return 'Не получилось войти. Попробуйте ещё раз.'
 }

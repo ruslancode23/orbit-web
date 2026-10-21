@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 
 import { getCurrentUserQueryKey, isApiError, registerMutation } from '@/shared/api'
+import { describeRetryAfter } from '@/shared/lib/retry-after'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
@@ -115,6 +116,9 @@ const describeRegisterError = (error: unknown): string => {
   }
   if (error.status === 400) {
     return 'Проверьте ник и пароль: сервер их не принял.'
+  }
+  if (error.status === 429) {
+    return `Слишком много новых аккаунтов с этого адреса. ${describeRetryAfter(error.retryAfterSeconds)}`
   }
   return 'Не получилось создать аккаунт. Попробуйте ещё раз.'
 }
