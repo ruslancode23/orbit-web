@@ -1,5 +1,5 @@
-import { isApiError, type ApiError } from '@/shared/api'
-import { pluralRu } from '@/shared/lib/plural'
+import { isApiError } from '@/shared/api'
+import { describeRetryAfter } from '@/shared/lib/retry-after'
 
 /** A field of the account forms a refusal of the server is about. */
 export type AccountField = 'nickname' | 'email' | 'currentPassword' | 'newPassword'
@@ -8,18 +8,6 @@ export interface AccountErrorText<Field extends AccountField = AccountField> {
   /** Where to show it; none means the form as a whole. */
   field?: Field
   message: string
-}
-
-/** «через 45 мин» / «через 30 секунд», from the server's `Retry-After`. */
-const retryAfterText = (error: ApiError): string => {
-  const seconds = error.retryAfterSeconds
-  if (seconds === undefined) {
-    return 'Попробуйте позже.'
-  }
-  if (seconds >= 60) {
-    return `Попробуйте снова через ${String(Math.ceil(seconds / 60))} мин.`
-  }
-  return `Попробуйте снова через ${String(seconds)} ${pluralRu(seconds, ['секунду', 'секунды', 'секунд'])}.`
 }
 
 const networkText = 'Нет соединения с сервером.'
@@ -55,7 +43,7 @@ export function describeNicknameError(
     }
   }
   if (error.status === 429) {
-    return { message: `Слишком часто. ${retryAfterText(error)}` }
+    return { message: `Слишком часто. ${describeRetryAfter(error.retryAfterSeconds)}` }
   }
   return { message: fallback }
 }
@@ -82,7 +70,7 @@ export function describeEmailError(error: unknown): AccountErrorText<'email' | '
     return { field: 'email', message: 'Проверьте адрес почты: сервер его не принял.' }
   }
   if (error.status === 429) {
-    return { message: `Слишком часто. ${retryAfterText(error)}` }
+    return { message: `Слишком часто. ${describeRetryAfter(error.retryAfterSeconds)}` }
   }
   return { message: fallback }
 }
@@ -111,7 +99,7 @@ export function describePasswordError(
     return { message: 'Гость не может сменить пароль — сначала создайте аккаунт.' }
   }
   if (error.status === 429) {
-    return { message: `Слишком часто. ${retryAfterText(error)}` }
+    return { message: `Слишком часто. ${describeRetryAfter(error.retryAfterSeconds)}` }
   }
   return { message: fallback }
 }

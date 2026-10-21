@@ -23,12 +23,12 @@ const anna = {
   createdAt: '2026-10-18T10:00:00Z',
 }
 
-const answerWith = (status: number, body: unknown) => {
+const answerWith = (status: number, body: unknown, headers: Record<string, string> = {}) => {
   const fetchMock = vi.fn((_input?: unknown) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
         status,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...headers },
       }),
     ),
   )
@@ -97,6 +97,22 @@ it('says a short password is short before asking the server', async () => {
 
   expect(await screen.findByRole('alert')).toHaveTextContent('не короче 10 символов')
   expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it('says how long to wait when this address made too many accounts', async () => {
+  answerWith(
+    429,
+    { error: { code: 'too_many_requests', message: 'too many new accounts' } },
+    { 'Retry-After': '45' },
+  )
+  renderWithProviders(<RegisterForm />, { route: '/register' })
+
+  await fill('Аня', 'correct horse battery')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Слишком много новых аккаунтов с этого адреса. Попробуйте снова через 45 секунд.',
+  )
+  expect(navigate).not.toHaveBeenCalled()
 })
 
 it('explains a taken nickname', async () => {
