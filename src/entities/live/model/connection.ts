@@ -1,5 +1,7 @@
 import { env } from '@/shared/config'
 
+import type { PresenceActivity, PresenceChoice } from './presence'
+
 /** What the server sends; `type` names the event (see orbit-server README). */
 export interface LiveEvent {
   type: string
@@ -44,6 +46,10 @@ export class LiveConnection {
   private subscription: { workspaceId: string; cursors: Record<string, number> } | undefined
   /** Per-conversation cursors of the account stream: a dialogue has no server. */
   private conversations: Record<string, number> | undefined
+  /** The status the account picked, repeated after every reconnect. */
+  private status: PresenceChoice | undefined
+  /** What this tab says about itself, repeated after every reconnect. */
+  private activity: PresenceActivity | undefined
 
   private readonly handlers: ConnectionHandlers
   private readonly url: string
@@ -77,6 +83,14 @@ export class LiveConnection {
       }
       if (this.conversations) {
         this.sendResume(this.conversations)
+      }
+      // The server keeps presence in memory: after a reconnect it has to learn
+      // both the chosen status and what this tab said about itself.
+      if (this.status) {
+        this.sendStatus(this.status)
+      }
+      if (this.activity) {
+        this.sendActivity(this.activity)
       }
     })
 
@@ -117,6 +131,24 @@ export class LiveConnection {
     this.sendResume(conversations)
   }
 
+  /**
+   * The status the account picked, for one device and therefore all of them.
+   * Kept here so a reconnect repeats it without the caller watching `status`.
+   */
+  setStatus(status: PresenceChoice): void {
+    this.status = status
+    this.sendStatus(status)
+  }
+
+  /**
+   * What this tab says about itself: hidden or untouched means idle. Kept here
+   * for the same reason as the status: a reconnect must repeat it.
+   */
+  setActivity(activity: PresenceActivity): void {
+    this.activity = activity
+    this.sendActivity(activity)
+  }
+
   close(): void {
     this.closed = true
     if (this.timer) {
@@ -138,6 +170,21 @@ export class LiveConnection {
       return
     }
     this.socket.send(JSON.stringify({ type: 'resume', conversations }))
+  }
+
+  private sendStatus(status: PresenceChoice) {
+    this.send({ type: 'status', status })
+  }
+
+  private sendActivity(activity: PresenceActivity) {
+    this.send({ type: 'presence', activity })
+  }
+
+  private send(frame: object) {
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return
+    }
+    this.socket.send(JSON.stringify(frame))
   }
 
   private scheduleRetry() {

@@ -6,7 +6,7 @@ import {
   FriendRequestBadge,
   useIncomingFriendRequestCount,
 } from '@/entities/friend'
-import { useLive } from '@/entities/live'
+import { useLive, usePresenceActivity } from '@/entities/live'
 import { describeUnread, UnreadBadge, useConversationUnreadTotal } from '@/entities/unread'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
@@ -79,6 +79,7 @@ const Shell = () => {
   if (workspaceId) {
     watch(workspaceId)
   }
+  usePresenceActivity()
   useMessageNotifications({ workspaceId, channelId })
   useSecretNotifications()
   useVoiceShortcuts()

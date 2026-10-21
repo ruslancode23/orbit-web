@@ -8,6 +8,7 @@ import {
   useConversationSummaries,
   type ConversationSummary,
 } from '@/entities/conversation'
+import { useFriends } from '@/entities/friend'
 import { authorName, formatRelativeTime, messagePreview } from '@/entities/message'
 import { secretChatName, useSecretChats, useSecretDevice } from '@/entities/secret-chat'
 import type { SecretChat } from '@/entities/secret-chat'
@@ -15,6 +16,7 @@ import { useSession } from '@/entities/session'
 import { describeUnread, UnreadBadge, useConversationUnread } from '@/entities/unread'
 import { UserAvatar, UserAvatarStack, userDisplayName } from '@/entities/user'
 import { SetupSecretChats } from '@/features/start-secret-chat'
+import type { PresenceStatus } from '@/shared/api'
 import { cn } from '@/shared/lib/cn'
 import { Avatar } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
@@ -83,13 +85,14 @@ const previewOf = (summary: ConversationSummary): string => {
 interface AvatarProps {
   summary: ConversationSummary
   userId: string
+  presence: PresenceStatus | undefined
 }
 
-const ConversationAvatar = ({ summary, userId }: AvatarProps) => {
+const ConversationAvatar = ({ summary, userId, presence }: AvatarProps) => {
   const { conversation } = summary
   const peer = conversationPeer(conversation, userId)
   if (peer) {
-    return <UserAvatar profile={peer} size={20} decorative />
+    return <UserAvatar profile={peer} size={20} status={presence} decorative />
   }
   const others = conversationMembersExcept(conversation, userId)
   if (others.length === 0) {
@@ -110,13 +113,16 @@ const ConversationRow = ({
   summary,
   userId,
   secrets,
+  presences,
 }: {
   summary: ConversationSummary
   userId: string
   secrets: readonly SecretChat[]
+  presences: ReadonlyMap<string, PresenceStatus>
 }) => {
   const { conversation } = summary
   const peer = conversationPeer(conversation, userId)
+  const presence = peer ? presences.get(peer.id) : undefined
   const name = conversationName(conversation, userId)
   const label = peer ? userDisplayName(peer) : name
   const unread = useConversationUnread(conversation.id)
@@ -131,7 +137,7 @@ const ConversationRow = ({
         className={rowClass}
         aria-label={description ? `${label}, ${description}` : label}
       >
-        <ConversationAvatar summary={summary} userId={userId} />
+        <ConversationAvatar summary={summary} userId={userId} presence={presence} />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="flex items-baseline justify-between gap-2">
             <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -210,6 +216,8 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
   // `/me` is the friends section itself, so the row is current there too.
   const friendsOpen = location.pathname === '/me' || location.pathname === '/me/friends'
   const { summaries, isPending, error } = useConversationSummaries()
+  const { data: friends } = useFriends()
+  const presences = new Map((friends ?? []).map((friend) => [friend.id, friend.presence]))
   const device = useSecretDevice()
   const secretChats = useSecretChats(device.data?.deviceId)
   const [search, setSearch] = useState('')
@@ -326,6 +334,7 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
                       summary={summary}
                       userId={userId}
                       secrets={peer ? (secretsByPeer.get(peer.id) ?? []) : []}
+                      presences={presences}
                     />
                   )
                 })}

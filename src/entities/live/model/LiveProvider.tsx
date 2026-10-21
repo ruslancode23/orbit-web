@@ -1,9 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+
+import { isPageVisible } from '@/shared/lib/page-visibility'
 
 import { applyEvent } from './apply-event'
 import { LiveConnection, type LiveStatus } from './connection'
 import { LiveContext, type LiveListener, type LiveValue } from './context'
+import { getPresenceChoice, type PresenceActivity, type PresenceChoice } from './presence'
 
 /**
  * Holds the app's single live connection. It lives above the routes, so moving
@@ -47,6 +50,10 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
     if (conversationsRef.current) {
       connection.resume(conversationsRef.current)
     }
+    // Presence lives in the server's memory, so every fresh socket starts with
+    // what this device had chosen and how this tab started.
+    connection.setStatus(getPresenceChoice())
+    connection.setActivity(isPageVisible() ? 'active' : 'idle')
     connection.open()
     // Re-watch what this session was watching before a remount.
     if (watchedRef.current) {
@@ -59,29 +66,45 @@ export const LiveProvider = ({ children, enabled }: LiveProviderProps) => {
     }
   }, [queryClient, enabled])
 
+  const watch = useCallback((workspaceId: string) => {
+    if (watchedRef.current === workspaceId) {
+      return
+    }
+    watchedRef.current = workspaceId
+    connectionRef.current?.subscribe(workspaceId)
+  }, [])
+
+  const resume = useCallback((conversations: Record<string, number>) => {
+    conversationsRef.current = conversations
+    connectionRef.current?.resume(conversations)
+  }, [])
+
+  const listen = useCallback((listener: LiveListener) => {
+    const listeners = listenersRef.current
+    listeners.add(listener)
+    return () => {
+      listeners.delete(listener)
+    }
+  }, [])
+
+  const setPresence = useCallback((next: PresenceChoice) => {
+    connectionRef.current?.setStatus(next)
+  }, [])
+
+  const setActivity = useCallback((activity: PresenceActivity) => {
+    connectionRef.current?.setActivity(activity)
+  }, [])
+
   const value = useMemo<LiveValue>(
     () => ({
       status,
-      watch: (workspaceId: string) => {
-        if (watchedRef.current === workspaceId) {
-          return
-        }
-        watchedRef.current = workspaceId
-        connectionRef.current?.subscribe(workspaceId)
-      },
-      resume: (conversations: Record<string, number>) => {
-        conversationsRef.current = conversations
-        connectionRef.current?.resume(conversations)
-      },
-      listen: (listener: LiveListener) => {
-        const listeners = listenersRef.current
-        listeners.add(listener)
-        return () => {
-          listeners.delete(listener)
-        }
-      },
+      watch,
+      resume,
+      setStatus: setPresence,
+      setActivity,
+      listen,
     }),
-    [status],
+    [status, watch, resume, setPresence, setActivity, listen],
   )
 
   return <LiveContext value={value}>{children}</LiveContext>

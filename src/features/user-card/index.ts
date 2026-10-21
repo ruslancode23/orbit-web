@@ -1,3 +1,4 @@
+export { EditProfileDialog } from './ui/EditProfileDialog'
 export { StartConversation } from './ui/StartConversation'
 export { StartDirectChat } from './ui/StartDirectChat'
 export { UserCard, type UserCardProps } from './ui/UserCard'
