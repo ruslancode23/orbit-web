@@ -1,4 +1,4 @@
-import type { Message } from '@/shared/api'
+import type { Message, MessageKind, SystemMessage } from '@/shared/api'
 
 export type { Message }
 
@@ -12,11 +12,68 @@ export function startsNewGroup(message: Message, previous: Message | undefined):
   if (!previous) {
     return true
   }
+  // A system line is an event, not somebody's speech: it stands on its own and
+  // never joins the block above it.
+  if (message.kind === 'system' || previous.kind === 'system') {
+    return true
+  }
   if (previous.author?.id !== message.author?.id) {
     return true
   }
   const gap = message.createdAt.getTime() - previous.createdAt.getTime()
   return gap > GROUP_WINDOW_MS
+}
+
+/** The public part of an account that a name can be taken from. */
+export interface NamedPerson {
+  id: string
+  nickname: string
+  displayName?: string
+}
+
+/** A person's display name, or their handle when they have not set one. */
+export const personName = (person: { nickname: string; displayName?: string } | undefined) => {
+  if (person === undefined) {
+    return 'Удалённый аккаунт'
+  }
+  const name = (person.displayName ?? '').trim()
+  return name === '' ? person.nickname : name
+}
+
+/** The part of a system line that says what happened. */
+export interface SystemLine {
+  kind: MessageKind
+  author?: { nickname: string; displayName?: string }
+  system?: SystemMessage
+  content: string
+}
+
+/**
+ * What a system line says, in the reader's language. The server sends a
+ * readable fallback in `content`, but the structured `system` part is what a
+ * client renders from, so the words follow the client and not the server.
+ */
+export const systemEventText = (
+  line: SystemLine,
+  people: readonly NamedPerson[] = [],
+): string | undefined => {
+  if (line.kind !== 'system') {
+    return undefined
+  }
+  const system = line.system
+  if (system === undefined) {
+    return 'Чат изменился'
+  }
+  const actor = personName(line.author)
+  if (system.type === 'member_added') {
+    const target = people.find((person) => person.id === system.targetId)
+    return `${actor} добавил ${target === undefined ? 'участника' : personName(target)}`
+  }
+  if (system.type === 'member_removed') {
+    return `${actor} вышел`
+  }
+  const name = system.name?.trim() ?? ''
+  return name === '' ? `${actor} переименовал чат` : `${actor} переименовал чат в «${name}»`
 }
 
 /** Hours and minutes, the way a chat shows them. */
@@ -75,8 +132,10 @@ export function authorName(message: Message): string {
   }
   // The generated type always has a display name, but a message cached before
   // profiles — or an older server — can still send only the nickname.
-  const name = (stringProperty(author, 'displayName') ?? '').trim()
-  return name === '' ? author.nickname : name
+  return personName({
+    nickname: author.nickname,
+    displayName: stringProperty(author, 'displayName'),
+  })
 }
 
 /** A one-line version of a message for a reply preview. */

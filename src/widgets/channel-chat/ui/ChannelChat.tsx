@@ -246,6 +246,7 @@ export const ChannelChat = ({
                     message={message}
                     workspaceId={workspaceId}
                     previous={messages[row.index - 1]}
+                    {...(mentionPeople === undefined ? {} : { people: mentionPeople })}
                     mentionsMe={user ? message.mentions.includes(user.id) : false}
                     myNickname={user?.nickname}
                     canWrite={canWrite}
