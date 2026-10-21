@@ -79,6 +79,19 @@ describe('generated client', () => {
     })
   })
 
+  it('keeps the Retry-After wait of a rate limit', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 'too_many_requests', message: 'wait' } }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '42' },
+      }),
+    )
+
+    const error = await rejection(createChannelVoiceToken({ path: { channelId: 'c-1' } }))
+
+    expect(error).toMatchObject({ status: 429, retryAfterSeconds: 42 })
+  })
+
   it('maps a non-JSON error page to http_error', async () => {
     fetchMock.mockResolvedValue(new Response('<html>Bad Gateway</html>', { status: 502 }))
 

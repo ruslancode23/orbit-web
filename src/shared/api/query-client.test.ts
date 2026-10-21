@@ -53,4 +53,19 @@ describe('a session that ended', () => {
 
     expect(queryClient.getQueryData(getCurrentUserQueryKey())).toEqual(user)
   })
+
+  it('survives a 401 from a mutation that only checks the current password', async () => {
+    const queryClient = createQueryClient()
+    queryClient.setQueryData(getCurrentUserQueryKey(), user)
+    const mutation = queryClient.getMutationCache().build(queryClient, {
+      mutationFn: () => Promise.reject(new ApiError({ status: 401, code: 'x', message: 'x' })),
+      meta: { skipSessionExpiry: true },
+      retry: false,
+    })
+
+    await mutation.execute(undefined).catch(() => undefined)
+    await Promise.resolve()
+
+    expect(queryClient.getQueryData(getCurrentUserQueryKey())).toEqual(user)
+  })
 })
