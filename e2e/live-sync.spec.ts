@@ -325,3 +325,31 @@ test('a server that is not open still changes, and a kick takes the reader out',
   await ownerContext.close()
   await readerContext.close()
 })
+
+/**
+ * This account's own settings follow it across devices: a block made on one
+ * device appears in the blocked list another device has open.
+ */
+test('a block made on another device appears in the open blocked list', async ({ browser }) => {
+  test.setTimeout(60_000)
+
+  const annaContext = await browser.newContext()
+  const bobContext = await browser.newContext()
+  await signUp(annaContext, 'anna')
+  const bob = await signUp(bobContext, 'bob')
+
+  // «This device»: the blocked list is open.
+  const anna = await annaContext.newPage()
+  await anna.goto('/me')
+  await skipProfileOnboarding(anna)
+  await expect(anna.getByText('Подключаемся…')).toHaveCount(0)
+  await anna.getByRole('tab', { name: 'Заблокированные' }).click()
+  await expect(anna.getByText(`@${bob.nickname}`)).toHaveCount(0)
+
+  // «Another device» of the same account blocks Bob.
+  await call(annaContext.request, 'put', `/users/me/blocks/${bob.id}`)
+  await expect(anna.getByText(`@${bob.nickname}`)).toBeVisible({ timeout: 5000 })
+
+  await annaContext.close()
+  await bobContext.close()
+})

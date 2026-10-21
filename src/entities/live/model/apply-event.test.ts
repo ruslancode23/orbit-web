@@ -6,7 +6,11 @@ import {
   getWorkspaceQueryKey,
   getConversationQueryKey,
   getConversationUnreadQueryKey,
+  getDmPolicyQueryKey,
   listChannelsQueryKey,
+  listDevicesQueryKey,
+  listInvitesQueryKey,
+  listWorkspaceBansQueryKey,
   listConversationsInfiniteQueryKey,
   listConversationsQueryKey,
   listFriendRequestsQueryKey,
@@ -565,4 +569,39 @@ it('drops a deleted server from the rail and forgets its cache', () => {
   expect(left?.map((item) => item.workspace.id)).toEqual([otherId])
   expect(queryClient.getQueryData(channels)).toBeUndefined()
   expect(queryClient.getQueryData(otherChannels)).toBeDefined()
+})
+
+// The staff lists and this account's own settings follow changes made by
+// another admin or on another device.
+it('refreshes the invite and ban lists of a server for its staff', () => {
+  const queryClient = new QueryClient()
+  const invites = listInvitesQueryKey({ path: { workspaceId } })
+  const bans = listWorkspaceBansQueryKey({ path: { workspaceId } })
+  queryClient.setQueryData(invites, [])
+  queryClient.setQueryData(bans, [])
+
+  applyEvent(queryClient, { type: 'invites.changed', workspaceId })
+  expect(queryClient.getQueryState(invites)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(bans)?.isInvalidated).toBe(false)
+
+  applyEvent(queryClient, { type: 'bans.changed', workspaceId })
+  expect(queryClient.getQueryState(bans)?.isInvalidated).toBe(true)
+})
+
+it('refreshes the block list, the policies and the devices of this account', () => {
+  const queryClient = new QueryClient()
+  const blocks = listUserBlocksQueryKey()
+  const dmPolicy = getDmPolicyQueryKey()
+  const devices = listDevicesQueryKey()
+  for (const key of [blocks, dmPolicy, devices]) {
+    queryClient.setQueryData(key, {})
+  }
+
+  applyEvent(queryClient, { type: 'privacy.changed' })
+  expect(queryClient.getQueryState(blocks)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(dmPolicy)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(devices)?.isInvalidated).toBe(false)
+
+  applyEvent(queryClient, { type: 'devices.changed' })
+  expect(queryClient.getQueryState(devices)?.isInvalidated).toBe(true)
 })
