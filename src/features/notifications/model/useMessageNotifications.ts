@@ -10,6 +10,7 @@ import { getPlatform } from '@/shared/platform'
 
 import { incomingMessage, notificationBody, shouldNotify } from './message-notification'
 import { useNotificationMode } from './mode'
+import { useNotificationsMuted } from './mute'
 
 interface Where {
   /** The server the live stream follows: only its messages arrive. */
@@ -26,6 +27,7 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
   const { listen } = useLive()
   const { user } = useSession()
   const mode = useNotificationMode()
+  const muted = useNotificationsMuted()
   const { data: channels } = useChannels(workspaceId)
   const { membership } = useWorkspace(workspaceId)
   const navigate = useNavigate()
@@ -34,7 +36,7 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
   const workspaceName = membership?.workspace.name
 
   useEffect(() => {
-    if (mode === 'off' || workspaceId === undefined) {
+    if (mode === 'off' || muted || workspaceId === undefined) {
       return undefined
     }
     return listen((event) => {
@@ -42,7 +44,13 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
       if (!message) {
         return
       }
-      const context = { mode, myId, openChannelId: channelId, pageVisible: isPageVisible() }
+      const context = {
+        mode,
+        myId,
+        openChannelId: channelId,
+        pageVisible: isPageVisible(),
+        muted,
+      }
       if (!shouldNotify(message, context)) {
         return
       }
@@ -59,5 +67,5 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
         },
       })
     })
-  }, [listen, mode, myId, channelId, workspaceId, channels, workspaceName, navigate])
+  }, [listen, mode, muted, myId, channelId, workspaceId, channels, workspaceName, navigate])
 }

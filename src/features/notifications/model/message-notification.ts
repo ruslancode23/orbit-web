@@ -16,6 +16,8 @@ export interface NotifyContext {
   /** The channel on screen, if any. */
   openChannelId: string | undefined
   pageVisible: boolean
+  /** «Не беспокоить» silences every notification, whatever the mode says. */
+  muted: boolean
 }
 
 const MAX_BODY = 140
@@ -25,7 +27,7 @@ const MAX_BODY = 140
  * never for the channel the person is looking at; the mode decides the rest.
  */
 export function shouldNotify(message: IncomingMessage, context: NotifyContext): boolean {
-  if (context.mode === 'off' || context.myId === undefined) {
+  if (context.muted || context.mode === 'off' || context.myId === undefined) {
     return false
   }
   if (message.author?.id === context.myId) {

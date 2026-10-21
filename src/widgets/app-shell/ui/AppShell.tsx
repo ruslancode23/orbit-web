@@ -11,7 +11,11 @@ import { describeUnread, UnreadBadge, useConversationUnreadTotal } from '@/entit
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
-import { useMessageNotifications, useSecretNotifications } from '@/features/notifications'
+import {
+  useFriendNotifications,
+  useMessageNotifications,
+  useSecretNotifications,
+} from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
 import { MenuIcon, MessageIcon, PlusIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -81,6 +85,7 @@ const Shell = () => {
   }
   usePresenceActivity()
   useMessageNotifications({ workspaceId, channelId })
+  useFriendNotifications()
   useSecretNotifications()
   useVoiceShortcuts()
 

@@ -1,3 +1,5 @@
+export { useFriendNotifications } from './model/useFriendNotifications'
 export { useMessageNotifications } from './model/useMessageNotifications'
+export { useNotificationsMuted } from './model/mute'
 export { NotificationSettings } from './ui/NotificationSettings'
 export { useSecretNotifications } from './model/useSecretNotifications'

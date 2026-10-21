@@ -3,7 +3,12 @@ import { useId, useState, type ChangeEvent } from 'react'
 import { getPlatform, type NotificationPermissionState } from '@/shared/platform'
 import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
+import { Switch } from '@/shared/ui/switch'
 
+import {
+  setFriendNotificationsEnabled,
+  useFriendNotificationsEnabled,
+} from '../model/friend-notifications'
 import {
   NOTIFICATION_MODES,
   setNotificationMode,
@@ -21,7 +26,9 @@ const isMode = (value: string): value is NotificationMode =>
  */
 export const NotificationSettings = () => {
   const fieldId = useId()
+  const friendsId = useId()
   const mode = useNotificationMode()
+  const friendsEnabled = useFriendNotificationsEnabled()
   const [permission, setPermission] = useState<NotificationPermissionState>(() =>
     getPlatform().notifications.permission(),
   )
@@ -37,6 +44,13 @@ export const NotificationSettings = () => {
     }
     setNotificationMode(next)
     if (next !== 'off' && permission === 'default') {
+      void askPermission()
+    }
+  }
+
+  const handleFriendsChange = (next: boolean) => {
+    setFriendNotificationsEnabled(next)
+    if (next && permission === 'default') {
       void askPermission()
     }
   }
@@ -72,6 +86,19 @@ export const NotificationSettings = () => {
       {mode !== 'off' && permission === 'unsupported' && (
         <p className="text-xs text-fg-muted">Этот браузер не показывает уведомления.</p>
       )}
+
+      <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor={friendsId} className="text-sm">
+            Заявки в друзья
+          </Label>
+          <p className="text-xs text-fg-muted">
+            Входящая заявка и заявка, которую приняли. «Не беспокоить» выключает их, как и
+            остальные.
+          </p>
+        </div>
+        <Switch id={friendsId} checked={friendsEnabled} onCheckedChange={handleFriendsChange} />
+      </div>
     </div>
   )
 }

@@ -18,6 +18,7 @@ const context: NotifyContext = {
   myId: me,
   openChannelId: 'c-other',
   pageVisible: true,
+  muted: false,
 }
 
 it('notifies about someone else’s message in another channel', () => {
@@ -34,6 +35,11 @@ it('stays quiet about the channel on screen, but not about a hidden tab', () => 
   expect(
     shouldNotify(fromBoris, { ...context, openChannelId: 'c-general', pageVisible: false }),
   ).toBe(true)
+})
+
+it('stays quiet in «Не беспокоить», whatever the mode says', () => {
+  expect(shouldNotify(fromBoris, { ...context, muted: true })).toBe(false)
+  expect(shouldNotify(fromBoris, { ...context, muted: true, mode: 'mentions' })).toBe(false)
 })
 
 it('follows the mode', () => {
