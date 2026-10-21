@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, inviteLink, memberCard, password, unique } from './helpers.ts'
+import {
+  createChannel,
+  inviteLink,
+  memberCard,
+  password,
+  unique,
+  skipProfileOnboarding,
+} from './helpers.ts'
 
 const plaintext = 'совершенно секретный текст'
 
@@ -9,6 +16,7 @@ async function register(page: Page, nickname: string): Promise<void> {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
   await expect(page.getByText(nickname, { exact: true })).toBeVisible()
 }
 

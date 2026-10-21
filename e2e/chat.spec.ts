@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel } from './helpers.ts'
+import { createChannel, skipProfileOnboarding } from './helpers.ts'
 
 const unique = () => `chat${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
 const password = 'a-long-enough-password'
@@ -10,6 +10,7 @@ async function openChannel(page: Page) {
   await page.getByLabel('Ник').fill(unique())
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
 
   await page.getByRole('link', { name: 'Создать сервер' }).click()
   await page.getByLabel('Название сервера').fill('Команда')

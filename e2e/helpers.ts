@@ -64,3 +64,18 @@ export const memberCard = (page: Page, name: string) =>
   page
     .getByRole('complementary', { name: 'Участники' })
     .getByRole('button', { name: new RegExp(name) })
+
+/**
+ * The first-run «Заполните профиль» step opens over the shell for every fresh
+ * account. Tests that are not about it put it away at once, as a person would.
+ */
+export async function skipProfileOnboarding(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: 'Заполните профиль' })
+  try {
+    await dialog.waitFor({ state: 'visible', timeout: 2000 })
+  } catch {
+    return
+  }
+  await dialog.getByRole('button', { name: 'Пропустить' }).click()
+  await expect(dialog).toBeHidden()
+}

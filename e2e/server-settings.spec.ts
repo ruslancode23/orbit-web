@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
-import { openServerSettings } from './helpers.ts'
+import { openServerSettings, skipProfileOnboarding } from './helpers.ts'
 
 const API_URL = process.env.VITE_API_URL ?? 'http://localhost:8080'
 const password = 'a-long-enough-password'
@@ -39,6 +39,7 @@ test('settings reach the members live, and a member is kept out of them', async 
 
   const member = await memberContext.newPage()
   await member.goto(`/s/${workspace.id}/${general.id}`)
+  await skipProfileOnboarding(member)
   await expect(member.getByRole('heading', { name: 'Команда', level: 2 })).toBeVisible()
   await member.getByRole('button', { name: 'Меню сервера' }).click()
   await expect(member.getByRole('menuitem', { name: 'Создать канал' })).toHaveCount(0)
@@ -51,6 +52,7 @@ test('settings reach the members live, and a member is kept out of them', async 
 
   const owner = await ownerContext.newPage()
   await owner.goto(`/s/${workspace.id}/${general.id}`)
+  await skipProfileOnboarding(owner)
   await openServerSettings(owner)
   await expect(owner.getByRole('heading', { name: 'Настройки сервера' })).toBeVisible()
 

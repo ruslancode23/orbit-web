@@ -72,7 +72,7 @@ it('takes the profile from a loaded member list without a request', () => {
 
 it('takes the profile from the session cache when it is the reader', () => {
   const queryClient = new QueryClient()
-  const me: SelfProfile = { ...anna, email: 'anna@example.com' }
+  const me: SelfProfile = { ...anna, email: 'anna@example.com', profileOnboardedAt: null }
   queryClient.setQueryData(getCurrentUserQueryKey(), me)
   const { fetchMock } = stubFetch(() => json({}))
 

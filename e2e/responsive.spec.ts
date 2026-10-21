@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { createChannel, password, unique } from './helpers.ts'
+import { createChannel, password, unique, skipProfileOnboarding } from './helpers.ts'
 
 test('a narrow screen keeps the chat and slides the channels and members in', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 720 })
@@ -8,6 +8,7 @@ test('a narrow screen keeps the chat and slides the channels and members in', as
   await page.getByLabel('Ник').fill(unique('narrow'))
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
 
   await page.getByRole('link', { name: 'Создать сервер' }).click()
   await page.getByLabel('Название сервера').fill('Команда')

@@ -105,13 +105,14 @@ const stubApi = (
   unread: { current: Counts } = { current: noUnread },
   memberPermissions = defaultPermissions,
   friendRequests: unknown[] = [],
+  session: object = anna,
 ) => {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: unknown) => {
       const url = input instanceof Request ? input.url : String(input)
       const body = url.includes('/auth/me')
-        ? anna
+        ? session
         : url.includes('/friends/requests')
           ? friendRequests
           : url.includes('/unread')
@@ -390,4 +391,54 @@ it('keeps incoming friendship requests apart from unread messages in the rail', 
   })
   expect(within(link).getByText('3')).toBeInTheDocument()
   expect(within(link).getByText('1')).toBeInTheDocument()
+})
+
+it('reminds about a missing photo on the avatar and in the status menu', async () => {
+  stubApi('member', undefined, defaultPermissions, [], {
+    ...anna,
+    displayName: 'Anna',
+    accentColor: 'violet',
+    bio: '',
+    email: null,
+  })
+  renderShell()
+
+  const dot = await screen.findByRole('button', { name: 'Добавить фото профиля' })
+  await userEvent.click(dot)
+
+  const settings = await screen.findByRole('dialog', { name: 'Настройки пользователя' })
+  expect(within(settings).getByRole('form', { name: 'Профиль' })).toBeInTheDocument()
+})
+
+it('offers «Добавить фото» in the status menu only while there is no picture', async () => {
+  stubApi('member', undefined, defaultPermissions, [], {
+    ...anna,
+    displayName: 'Anna',
+    accentColor: 'violet',
+    bio: '',
+    email: null,
+  })
+  const { unmount } = renderShell()
+
+  await screen.findByText('Anna')
+  await userEvent.click(screen.getByRole('button', { name: /Статус:/ }))
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Добавить фото' }))
+  expect(await screen.findByRole('dialog', { name: 'Настройки пользователя' })).toBeInTheDocument()
+  unmount()
+
+  vi.unstubAllGlobals()
+  stubApi('member', undefined, defaultPermissions, [], {
+    ...anna,
+    displayName: 'Anna',
+    accentColor: 'violet',
+    bio: '',
+    email: null,
+    avatarUrl: 'https://files.test/anna.webp?signature=1',
+  })
+  renderShell()
+
+  await screen.findByText('Anna')
+  expect(screen.queryByRole('button', { name: 'Добавить фото профиля' })).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: /Статус:/ }))
+  expect(screen.queryByRole('menuitem', { name: 'Добавить фото' })).not.toBeInTheDocument()
 })

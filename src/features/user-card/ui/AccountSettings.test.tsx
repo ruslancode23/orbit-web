@@ -14,6 +14,7 @@ const me: SelfProfile = {
   bio: '',
   isGuest: false,
   email: 'anna@example.com',
+  profileOnboardedAt: null,
   createdAt: new Date('2026-10-18T10:00:00Z'),
 }
 

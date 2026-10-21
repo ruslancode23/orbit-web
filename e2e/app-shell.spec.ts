@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { skipProfileOnboarding } from './helpers.ts'
+
 const unique = () => `shell${String(Date.now())}${String(Math.floor(Math.random() * 1000))}`
 const password = 'a-long-enough-password'
 const ONE_PIXEL_PNG =
@@ -11,6 +13,7 @@ async function signUp(page: Page): Promise<string> {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
   await expect(page.getByText('Создайте свой первый сервер')).toBeVisible()
   return nickname
 }

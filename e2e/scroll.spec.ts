@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
+import { skipProfileOnboarding } from './helpers.ts'
+
 const API_URL = process.env.VITE_API_URL ?? 'http://localhost:8080'
 const password = 'a-long-enough-password'
 const unique = (prefix: string) =>
@@ -58,6 +60,7 @@ test('the document never scrolls while the channel column and the feed do', asyn
 
   const page = await context.newPage()
   await page.goto(`/s/${workspace.id}/${channel.id}`)
+  await skipProfileOnboarding(page)
   await expect(page.getByRole('img', { name: 'скролл.png' })).toBeVisible()
 
   const documentSize = await page.evaluate(() => {

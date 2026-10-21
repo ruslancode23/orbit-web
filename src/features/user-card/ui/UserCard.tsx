@@ -26,6 +26,8 @@ export interface UserCardProps {
   triggerClassName?: string
   /** Extra card content, such as the voice state and volume in the member list. */
   extra?: ReactNode
+  /** The way to a full account shown on a guest's own card. */
+  guestAction?: ReactNode
   /** What the trigger draws; the card around it is the same everywhere. */
   children: ReactNode
 }
@@ -60,6 +62,7 @@ export const UserCard = ({
   align = 'center',
   triggerClassName,
   extra,
+  guestAction,
   children,
 }: UserCardProps) => {
   const [open, setOpen] = useState(false)
@@ -121,6 +124,7 @@ export const UserCard = ({
               isMe={isMe}
               {...(workspaceId === undefined ? {} : { workspaceId })}
               {...(extra === undefined ? {} : { extra })}
+              {...(guestAction === undefined ? {} : { guestAction })}
               mode="popover"
               onEdit={() => {
                 setEditOpen(true)
@@ -160,6 +164,7 @@ export const UserCard = ({
                 isMe={isMe}
                 {...(workspaceId === undefined ? {} : { workspaceId })}
                 {...(extra === undefined ? {} : { extra })}
+                {...(guestAction === undefined ? {} : { guestAction })}
                 mode="dialog"
                 onEdit={() => {
                   setEditOpen(true)
