@@ -1,5 +1,7 @@
 import { expect, request, test, type APIRequestContext } from '@playwright/test'
 
+import { skipProfileOnboarding } from './helpers.ts'
+
 const API_URL = process.env.VITE_API_URL ?? 'http://localhost:8080'
 const password = 'a-long-enough-password'
 const unique = (prefix: string) =>
@@ -39,6 +41,8 @@ test('a channel read on one device stops being unread on the other', async ({ br
   const phonePage = await phone.newPage()
   await laptopPage.goto(`/s/${workspace.id}/${general.id}`)
   await phonePage.goto(`/s/${workspace.id}/${general.id}`)
+  await skipProfileOnboarding(laptopPage)
+  await skipProfileOnboarding(phonePage)
   for (const page of [laptopPage, phonePage]) {
     await expect(page.getByRole('link', { name: '# флуд', exact: true })).toBeVisible()
   }

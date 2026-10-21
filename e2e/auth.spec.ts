@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { signOut } from './helpers.ts'
+import { signOut, skipProfileOnboarding } from './helpers.ts'
 
 // The server is shared with the other specs, so every account here gets a name
 // of its own instead of relying on a clean database.
@@ -21,6 +21,7 @@ test('register, stay signed in across a reload, sign out', async ({ page }) => {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
 
   // The shell greets a fresh account with no servers yet, and names it in the sidebar.
   await expect(page.getByText('Создайте свой первый сервер')).toBeVisible()
@@ -44,6 +45,7 @@ test('a wrong password says so without saying which half was wrong', async ({ pa
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
   await expect(page.getByText(nickname, { exact: true })).toBeVisible()
   await signOut(page)
 
@@ -66,6 +68,7 @@ test('a taken nickname is refused', async ({ page }) => {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
   await expect(page.getByText(nickname, { exact: true })).toBeVisible()
   await signOut(page)
 
@@ -73,6 +76,7 @@ test('a taken nickname is refused', async ({ page }) => {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
 
   await expect(page.getByRole('alert')).toContainText('уже заняты')
 })

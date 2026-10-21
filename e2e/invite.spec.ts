@@ -1,12 +1,20 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, inviteLink, password, unique, userPanel } from './helpers.ts'
+import {
+  createChannel,
+  inviteLink,
+  password,
+  unique,
+  userPanel,
+  skipProfileOnboarding,
+} from './helpers.ts'
 
 async function openServer(page: Page) {
   await page.goto('/register')
   await page.getByLabel('Ник').fill(unique('owner'))
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
 
   await page.getByRole('link', { name: 'Создать сервер' }).click()
   await page.getByLabel('Название сервера').fill('Команда')
@@ -53,12 +61,17 @@ test('an invite link brings a guest in, and the guest can keep the account', asy
   await guestPage.getByRole('button', { name: 'Создать аккаунт' }).click()
   await guestPage.getByLabel('Пароль').fill(password)
   await guestPage.getByRole('button', { name: 'Создать аккаунт' }).click()
+  // Claiming closes the settings and opens the one-time profile step.
+  await skipProfileOnboarding(guestPage)
 
-  await expect(guestPage.getByText('Полный аккаунт')).toBeVisible()
-  await expect(guestPage.getByText('Вы вошли как гость.')).toHaveCount(0)
-  await guestPage.keyboard.press('Escape')
   await expect(userPanel(guestPage).getByText(guestName, { exact: true })).toBeVisible()
   await expect(userPanel(guestPage).getByText('гость', { exact: true })).toHaveCount(0)
+
+  // The account is a full one now, and the step does not come back.
+  await guestPage.getByRole('button', { name: 'Настройки пользователя' }).click()
+  await guestPage.getByRole('tab', { name: 'Аккаунт' }).click()
+  await expect(guestPage.getByText('Полный аккаунт')).toBeVisible()
+  await guestPage.keyboard.press('Escape')
 
   await guestContext.close()
 })

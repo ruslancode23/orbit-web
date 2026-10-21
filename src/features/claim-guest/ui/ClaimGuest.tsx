@@ -25,13 +25,18 @@ interface ClaimValues {
   password: string
 }
 
+interface ClaimGuestProps {
+  /** Runs after the guest has become a full account, e.g. to close the settings. */
+  onClaimed?: () => void
+}
+
 /**
  * A guest keeps its id, servers and history when it becomes a full account;
  * the server only adds a password (and an email when given). The banner stays
  * out of the way until the guest asks for it, and disappears once the account
  * is no longer a guest.
  */
-export const ClaimGuest = () => {
+export const ClaimGuest = ({ onClaimed }: ClaimGuestProps) => {
   const { user } = useSession()
 
   if (user?.isGuest !== true) {
@@ -39,10 +44,10 @@ export const ClaimGuest = () => {
   }
 
   // Keyed by id so the form starts from this guest's name, not from an empty one.
-  return <ClaimForm key={user.id} guest={user} />
+  return <ClaimForm key={user.id} guest={user} {...(onClaimed ? { onClaimed } : {})} />
 }
 
-const ClaimForm = ({ guest }: { guest: SelfProfile }) => {
+const ClaimForm = ({ guest, onClaimed }: { guest: SelfProfile; onClaimed?: () => void }) => {
   const [open, setOpen] = useState(false)
   const nicknameId = useId()
   const emailId = useId()
@@ -59,9 +64,13 @@ const ClaimForm = ({ guest }: { guest: SelfProfile }) => {
 
   const claim = useMutation({
     ...claimGuestAccountMutation(),
-    onSuccess: (account) => {
+    onSuccess: async (account) => {
       // Same id, now a full account: the session query is the one to update.
       queryClient.setQueryData(getCurrentUserQueryKey(), account)
+      // Only `/auth/me` has `profileOnboardedAt`; ask for it before handing the
+      // screen to the one-time profile step.
+      await queryClient.invalidateQueries({ queryKey: getCurrentUserQueryKey() })
+      onClaimed?.()
     },
   })
 

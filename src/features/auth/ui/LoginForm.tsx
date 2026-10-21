@@ -28,8 +28,10 @@ export const LoginForm = () => {
   const signIn = useMutation({
     ...loginMutation(),
     onSuccess: async (user) => {
-      // The answer is the account: no need to ask who we are right after.
       queryClient.setQueryData(getCurrentUserQueryKey(), user)
+      // The sign-in answer lacks `profileOnboardedAt` and the email; the shell
+      // asks `/auth/me` for the full profile as soon as it mounts.
+      await queryClient.invalidateQueries({ queryKey: getCurrentUserQueryKey() })
       await navigate(afterAuth, { replace: true })
     },
   })

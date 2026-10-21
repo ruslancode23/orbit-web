@@ -1,5 +1,6 @@
 export { AccountSettings } from './ui/AccountSettings'
 export { EditProfileDialog } from './ui/EditProfileDialog'
+export { ProfileOnboarding } from './ui/ProfileOnboarding'
 export { ProfileSettings } from './ui/ProfileSettings'
 export { SetStatusDialog } from './ui/SetStatusDialog'
 export { StartConversation } from './ui/StartConversation'

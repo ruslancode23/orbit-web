@@ -16,6 +16,7 @@ import {
   useMessageNotifications,
   useSecretNotifications,
 } from '@/features/notifications'
+import { ProfileOnboarding } from '@/features/user-card'
 import { cn } from '@/shared/lib/cn'
 import { MenuIcon, MessageIcon, PlusIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -230,6 +231,9 @@ const Shell = () => {
         <VoiceStage />
         <Outlet />
       </main>
+
+      {/* One first-run step, mounted with the shell so it survives navigation. */}
+      <ProfileOnboarding />
     </div>
   )
 }

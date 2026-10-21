@@ -34,6 +34,9 @@ export const RegisterForm = () => {
     ...registerMutation(),
     onSuccess: async (user) => {
       queryClient.setQueryData(getCurrentUserQueryKey(), user)
+      // The sign-up answer has no `profileOnboardedAt`: only `/auth/me` carries
+      // it, so the session is marked stale and the shell asks for the full one.
+      await queryClient.invalidateQueries({ queryKey: getCurrentUserQueryKey() })
       await navigate(afterAuth, { replace: true })
     },
   })

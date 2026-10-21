@@ -26,19 +26,22 @@ const json = (body: unknown, status = 200) =>
 
 const stubApi = (claimStatus = 200) => {
   const claims: string[] = []
+  let claimed = false
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: unknown) => {
       const request = input as Request
       const url = new URL(request.url)
       if (url.pathname.endsWith('/auth/me')) {
-        return json(guest)
+        return json(claimed ? fullAccount : guest)
       }
       if (url.pathname.endsWith('/auth/claim')) {
         claims.push(await request.clone().text())
-        return claimStatus === 200
-          ? json(fullAccount)
-          : json({ error: { code: 'conflict', message: 'taken' } }, claimStatus)
+        if (claimStatus === 200) {
+          claimed = true
+          return json(fullAccount)
+        }
+        return json({ error: { code: 'conflict', message: 'taken' } }, claimStatus)
       }
       return json({})
     }),

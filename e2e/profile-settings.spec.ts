@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, memberCard, password, unique, userPanel } from './helpers.ts'
+import {
+  createChannel,
+  memberCard,
+  password,
+  unique,
+  userPanel,
+  skipProfileOnboarding,
+} from './helpers.ts'
 
 /** Registers a fresh account, makes a server and opens its first text channel. */
 async function openWorkspace(page: Page, nickname: string): Promise<void> {
@@ -8,6 +15,7 @@ async function openWorkspace(page: Page, nickname: string): Promise<void> {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
   await expect(userPanel(page)).toContainText(nickname)
 
   await page.getByRole('link', { name: 'Создать сервер' }).click()

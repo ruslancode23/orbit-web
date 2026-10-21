@@ -1,6 +1,8 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
 
+import { skipProfileOnboarding } from './helpers.ts'
+
 const API_URL = process.env.VITE_API_URL ?? 'http://localhost:8080'
 const password = 'a-long-enough-password'
 
@@ -119,6 +121,7 @@ test.describe('accessibility', () => {
   test('the chat, the settings and a voice channel pass axe', async ({ browser }) => {
     const { context, page, nickname, workspaceId, channelId } = await seed(browser)
     await page.goto(`/s/${workspaceId}/${channelId}`)
+    await skipProfileOnboarding(page)
     await expect(page.getByText('Привет, команда!')).toBeVisible()
     await expectNoSeriousViolations(page)
 
@@ -145,6 +148,7 @@ test.describe('visual snapshots', () => {
   test('the chat, the settings, the voice channel and the member column', async ({ browser }) => {
     const { context, page, nickname, workspaceId, channelId } = await seed(browser)
     await page.goto(`/s/${workspaceId}/${channelId}`)
+    await skipProfileOnboarding(page)
     await expect(page.getByText('Привет, команда!')).toBeVisible()
 
     // The member rows arrive after the feed, and their avatar carries the

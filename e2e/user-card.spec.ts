@@ -1,12 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, memberCard, password, unique } from './helpers.ts'
+import { createChannel, memberCard, password, unique, skipProfileOnboarding } from './helpers.ts'
 
 async function openWorkspace(page: Page, nickname: string): Promise<void> {
   await page.goto('/register')
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
   await expect(page.getByRole('region', { name: 'Пользователь' })).toContainText(nickname)
 
   await page.getByRole('link', { name: 'Создать сервер' }).click()

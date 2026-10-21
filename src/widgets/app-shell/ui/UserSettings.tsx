@@ -21,6 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 interface UserSettingsProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The section to show; the user panel opens «Профиль» when it points at the avatar. */
+  tab?: string
+  onTabChange?: (tab: string) => void
 }
 
 type LeaveAction = { kind: 'tab'; value: string } | { kind: 'close' }
@@ -32,11 +35,24 @@ type LeaveAction = { kind: 'tab'; value: string } | { kind: 'close' }
  * The profile tab is a form with a live card, so switching away from unsaved
  * edits — or closing the dialog — asks first instead of throwing them away.
  */
-export const UserSettings = ({ open, onOpenChange }: UserSettingsProps) => {
+export const UserSettings = ({
+  open,
+  onOpenChange,
+  tab: controlledTab,
+  onTabChange,
+}: UserSettingsProps) => {
   const { user } = useSession()
-  const [tab, setTab] = useState('profile')
+  const [innerTab, setInnerTab] = useState('profile')
+  const tab = controlledTab ?? innerTab
   const [profileDirty, setProfileDirty] = useState(false)
   const [pendingLeave, setPendingLeave] = useState<LeaveAction | null>(null)
+
+  const selectTab = (next: string) => {
+    if (controlledTab === undefined) {
+      setInnerTab(next)
+    }
+    onTabChange?.(next)
+  }
 
   const requestTab = (next: string) => {
     if (next === tab) {
@@ -46,7 +62,7 @@ export const UserSettings = ({ open, onOpenChange }: UserSettingsProps) => {
       setPendingLeave({ kind: 'tab', value: next })
       return
     }
-    setTab(next)
+    selectTab(next)
   }
 
   const requestOpenChange = (next: boolean) => {
@@ -65,7 +81,7 @@ export const UserSettings = ({ open, onOpenChange }: UserSettingsProps) => {
       return
     }
     if (action.kind === 'tab') {
-      setTab(action.value)
+      selectTab(action.value)
     } else {
       onOpenChange(false)
     }
@@ -124,7 +140,20 @@ export const UserSettings = ({ open, onOpenChange }: UserSettingsProps) => {
             </TabsContent>
 
             <TabsContent value="account" className="flex flex-col gap-4">
-              {user && <AccountSettings profile={user} claimGuest={<ClaimGuest />} />}
+              {user && (
+                <AccountSettings
+                  profile={user}
+                  claimGuest={
+                    <ClaimGuest
+                      onClaimed={() => {
+                        // The account changed under the form: close it and let the
+                        // one-time profile step take the screen.
+                        onOpenChange(false)
+                      }}
+                    />
+                  }
+                />
+              )}
               <div className="border-t border-border pt-4">
                 <LogoutButton />
               </div>

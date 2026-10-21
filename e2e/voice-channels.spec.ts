@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, inviteLink, password, unique, userPanel } from './helpers.ts'
+import {
+  createChannel,
+  inviteLink,
+  password,
+  unique,
+  userPanel,
+  skipProfileOnboarding,
+} from './helpers.ts'
 
 async function createVoiceServer(page: Page): Promise<string> {
   const nickname = unique('owner')
@@ -8,6 +15,7 @@ async function createVoiceServer(page: Page): Promise<string> {
   await page.getByLabel('Ник').fill(nickname)
   await page.getByLabel('Пароль').fill(password)
   await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
 
   await page.getByRole('link', { name: 'Создать сервер' }).click()
   await page.getByLabel('Название сервера').fill('Голос')
