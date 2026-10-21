@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { EditIcon } from '@/shared/ui/icon'
+import { EditIcon, SmileIcon } from '@/shared/ui/icon'
 
 type VisibleStatus = Exclude<PresenceChoice, 'auto'>
 
@@ -43,6 +43,7 @@ interface UserStatusMenuProps {
   status: PresenceChoice
   onStatusChange: (status: VisibleStatus) => void
   onEditProfile: () => void
+  onSetStatus: () => void
   /** The avatar and the name; the whole block opens the menu. */
   children: ReactNode
 }
@@ -57,6 +58,7 @@ export const UserStatusMenu = ({
   status,
   onStatusChange,
   onEditProfile,
+  onSetStatus,
   children,
 }: UserStatusMenuProps) => {
   const activity = usePresenceActivityState()
@@ -95,6 +97,10 @@ export const UserStatusMenu = ({
         </DropdownMenuRadioGroup>
         <DropdownMenuGroup>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={onSetStatus}>
+            <SmileIcon className="size-4 text-fg-muted" />
+            Задать статус
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={onEditProfile}>
             <EditIcon className="size-4 text-fg-muted" />
             Редактировать профиль

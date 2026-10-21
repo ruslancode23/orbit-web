@@ -22,8 +22,11 @@ interface UserCardDetailsProps {
   workspaceId?: string
   /** Card-only content, such as the voice state and volume in the member list. */
   extra?: ReactNode
-  /** The dialog has no «Открыть профиль» button: it is already the full profile. */
-  mode: 'popover' | 'dialog'
+  /**
+   * The dialog has no «Открыть профиль» button: it is already the full profile.
+   * `preview` is the same card without actions, for a live preview in settings.
+   */
+  mode: 'popover' | 'dialog' | 'preview'
   onEdit: () => void
   onOpenProfile?: () => void
   onDone?: () => void
@@ -110,29 +113,31 @@ export const UserCardDetails = ({
 
         {mode === 'dialog' && <ProfileTabsSlot profile={profile} workspaceId={workspaceId} />}
 
-        <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
-          {!isMe && (
-            <StartDirectChat
-              userId={profile.id}
-              size="sm"
-              variant="secondary"
-              {...(onDone ? { onDone } : {})}
-            />
-          )}
-          {isMe && (
-            <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
-              Редактировать профиль
-            </Button>
-          )}
-          {onOpenProfile !== undefined && (
-            <Button type="button" size="sm" variant="ghost" onClick={onOpenProfile}>
-              Открыть профиль
-            </Button>
-          )}
-          {!isMe && <FriendActionSlot userId={profile.id} />}
-        </div>
+        {mode !== 'preview' && (
+          <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+            {!isMe && (
+              <StartDirectChat
+                userId={profile.id}
+                size="sm"
+                variant="secondary"
+                {...(onDone ? { onDone } : {})}
+              />
+            )}
+            {isMe && (
+              <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
+                Редактировать профиль
+              </Button>
+            )}
+            {onOpenProfile !== undefined && (
+              <Button type="button" size="sm" variant="ghost" onClick={onOpenProfile}>
+                Открыть профиль
+              </Button>
+            )}
+            {!isMe && <FriendActionSlot userId={profile.id} />}
+          </div>
+        )}
 
-        {member !== undefined && workspaceId !== undefined && (
+        {mode !== 'preview' && member !== undefined && workspaceId !== undefined && (
           <ModerationActions workspaceId={workspaceId} member={member} />
         )}
       </div>

@@ -5,7 +5,7 @@ import { useSession } from '@/entities/session'
 import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { DeviceMenu } from '@/features/select-device'
-import { EditProfileDialog } from '@/features/user-card'
+import { EditProfileDialog, SetStatusDialog } from '@/features/user-card'
 import { Avatar } from '@/shared/ui/avatar'
 import {
   HeadphonesIcon,
@@ -40,6 +40,7 @@ export const UserPanel = () => {
   const toast = useToast()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
 
   const connection = CONNECTION[status]
   const name = user ? userDisplayName(user) : '…'
@@ -101,6 +102,9 @@ export const UserPanel = () => {
               onEditProfile={() => {
                 setEditOpen(true)
               }}
+              onSetStatus={() => {
+                setStatusOpen(true)
+              }}
             >
               {avatar}
               {identity}
@@ -156,6 +160,15 @@ export const UserPanel = () => {
           profile={user}
           onClose={() => {
             setEditOpen(false)
+          }}
+        />
+      )}
+
+      {user && statusOpen && (
+        <SetStatusDialog
+          profile={user}
+          onClose={() => {
+            setStatusOpen(false)
           }}
         />
       )}

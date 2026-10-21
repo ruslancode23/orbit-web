@@ -206,7 +206,7 @@ it('opens the profile editor from your own card', async () => {
   await userEvent.click(within(card).getByRole('button', { name: 'Редактировать профиль' }))
 
   const editor = await screen.findByRole('dialog', { name: 'Редактировать профиль' })
-  expect(within(editor).getByRole('textbox', { name: 'Имя' })).toHaveValue('Анна')
+  expect(within(editor).getByRole('textbox', { name: 'Отображаемое имя' })).toHaveValue('Анна')
   expect(within(editor).getByRole('textbox', { name: 'О себе' })).toHaveValue(
     'Пишу код и пью кофе.',
   )
