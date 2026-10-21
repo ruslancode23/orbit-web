@@ -9,6 +9,7 @@ import { useSecretNotifications } from './useSecretNotifications'
 const listeners: ((event: { type: string; channelId?: string; payload?: unknown }) => void)[] = []
 
 vi.mock('@/entities/live', () => ({
+  usePresenceChoice: () => 'auto',
   useLive: () => ({
     listen: (
       listener: (event: { type: string; channelId?: string; payload?: unknown }) => void,

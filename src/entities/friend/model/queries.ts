@@ -208,5 +208,20 @@ export const useFriendActions = () => {
   }
 }
 
-/** Sends a request by exact nickname. The answer is neutral on purpose. */
-export const useSendFriendRequest = () => useMutation(createFriendRequestMutation())
+/**
+ * Sends a request by exact nickname. The answer is neutral on purpose, so the
+ * pending list is asked again instead of being updated from it: only the list
+ * may say that a request really exists.
+ */
+export const useSendFriendRequest = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...createFriendRequestMutation(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        predicate: (query) => queryId(query.queryKey) === 'listFriendRequests',
+      })
+    },
+  })
+}

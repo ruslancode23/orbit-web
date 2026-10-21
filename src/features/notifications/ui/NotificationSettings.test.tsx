@@ -5,12 +5,14 @@ import { createFakePlatform, renderWithProviders } from '@/shared/lib/test'
 import { setPlatform } from '@/shared/platform'
 
 import { NotificationSettings } from './NotificationSettings'
+import { setFriendNotificationsEnabled } from '../model/friend-notifications'
 import { setNotificationMode } from '../model/mode'
 
 let platform: ReturnType<typeof createFakePlatform>
 
 beforeEach(() => {
   setNotificationMode('mentions')
+  setFriendNotificationsEnabled(true)
   platform = createFakePlatform()
   setPlatform(platform)
 })
@@ -60,4 +62,27 @@ it('explains when the browser refused', () => {
   renderWithProviders(<NotificationSettings />)
 
   expect(screen.getByText(/Браузер запретил уведомления/)).toBeInTheDocument()
+})
+
+it('turns friendship notifications off and remembers it', async () => {
+  const { unmount } = renderWithProviders(<NotificationSettings />)
+  const toggle = screen.getByRole('switch', { name: 'Заявки в друзья' })
+  expect(toggle).toBeChecked()
+
+  await userEvent.click(toggle)
+  expect(toggle).not.toBeChecked()
+  unmount()
+
+  renderWithProviders(<NotificationSettings />)
+  expect(screen.getByRole('switch', { name: 'Заявки в друзья' })).not.toBeChecked()
+})
+
+it('asks for permission when friendship notifications are turned back on', async () => {
+  setFriendNotificationsEnabled(false)
+  platform.notifications.permission.mockReturnValue('default')
+  renderWithProviders(<NotificationSettings />)
+
+  await userEvent.click(screen.getByRole('switch', { name: 'Заявки в друзья' }))
+
+  expect(platform.notifications.requestPermission).toHaveBeenCalledOnce()
 })

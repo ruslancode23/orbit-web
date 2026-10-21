@@ -6,12 +6,16 @@ import {
   FriendRequestBadge,
   useIncomingFriendRequestCount,
 } from '@/entities/friend'
-import { useLive } from '@/entities/live'
+import { useLive, usePresenceActivity } from '@/entities/live'
 import { describeUnread, UnreadBadge, useConversationUnreadTotal } from '@/entities/unread'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
-import { useMessageNotifications, useSecretNotifications } from '@/features/notifications'
+import {
+  useFriendNotifications,
+  useMessageNotifications,
+  useSecretNotifications,
+} from '@/features/notifications'
 import { cn } from '@/shared/lib/cn'
 import { MenuIcon, MessageIcon, PlusIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -79,7 +83,9 @@ const Shell = () => {
   if (workspaceId) {
     watch(workspaceId)
   }
+  usePresenceActivity()
   useMessageNotifications({ workspaceId, channelId })
+  useFriendNotifications()
   useSecretNotifications()
   useVoiceShortcuts()
 

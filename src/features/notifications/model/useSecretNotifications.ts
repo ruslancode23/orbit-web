@@ -6,6 +6,7 @@ import { isPageVisible } from '@/shared/lib/page-visibility'
 import { getPlatform } from '@/shared/platform'
 
 import { useNotificationMode } from './mode'
+import { useNotificationsMuted } from './mute'
 
 /** Only the identity of the chat: the envelope is ciphertext and stays that way. */
 const secretChatIdOf = (payload: unknown): string | null => {
@@ -26,11 +27,12 @@ const secretChatIdOf = (payload: unknown): string | null => {
 export function useSecretNotifications(): void {
   const { listen } = useLive()
   const mode = useNotificationMode()
+  const muted = useNotificationsMuted()
   const location = useLocation()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (mode === 'off') {
+    if (mode === 'off' || muted) {
       return undefined
     }
     return listen((event) => {
@@ -53,5 +55,5 @@ export function useSecretNotifications(): void {
         },
       })
     })
-  }, [listen, mode, location.pathname, navigate])
+  }, [listen, mode, muted, location.pathname, navigate])
 }

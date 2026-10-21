@@ -6,6 +6,7 @@ import {
   conversationPeer,
   useConversation,
 } from '@/entities/conversation'
+import { useFriends } from '@/entities/friend'
 import { useSession } from '@/entities/session'
 import { UserAvatar, UserAvatarStack, UserName, userDisplayName } from '@/entities/user'
 import { SecretChatMenuItem } from '@/features/start-secret-chat'
@@ -67,6 +68,8 @@ const describeGroup = (names: readonly string[], total: number): string => {
 const ConversationView = ({ conversationId }: { conversationId: string }) => {
   const { user } = useSession()
   const { data: conversation, isPending, error } = useConversation(conversationId)
+  // Presence of a peer is known for friends; a stranger stays without a dot.
+  const { data: friends } = useFriends()
 
   if (isPending || user === undefined) {
     if (error) {
@@ -83,13 +86,19 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
   const peer = conversationPeer(conversation, user.id)
   const others = conversationMembersExcept(conversation, user.id)
   const title = peer ? userDisplayName(peer) : name
+  const presence = peer ? friends?.find((friend) => friend.id === peer.id)?.presence : undefined
 
   return (
     <section aria-label="Диалог" className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 max-lg:pl-14">
         {peer ? (
-          <UserCard userId={peer.id} label={title} triggerClassName="inline-flex shrink-0">
-            <UserAvatar profile={peer} size={32} decorative />
+          <UserCard
+            userId={peer.id}
+            label={title}
+            {...(presence === undefined ? {} : { status: presence })}
+            triggerClassName="inline-flex shrink-0"
+          >
+            <UserAvatar profile={peer} size={32} status={presence} decorative />
           </UserCard>
         ) : others.length > 0 ? (
           <UserAvatarStack profiles={others} size={32} />
@@ -104,7 +113,11 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
         <div className="flex min-w-0 flex-col">
           <h1 className="truncate text-sm font-semibold">
             {peer ? (
-              <UserCard userId={peer.id} triggerClassName="inline-flex max-w-full text-left">
+              <UserCard
+                userId={peer.id}
+                {...(presence === undefined ? {} : { status: presence })}
+                triggerClassName="inline-flex max-w-full text-left"
+              >
                 <UserName profile={peer} />
               </UserCard>
             ) : (

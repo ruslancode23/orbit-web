@@ -1,6 +1,7 @@
 import { createContext, use } from 'react'
 
 import type { LiveEvent, LiveStatus } from './connection'
+import type { PresenceActivity, PresenceChoice } from './presence'
 
 export type LiveListener = (event: LiveEvent) => void
 
@@ -10,6 +11,10 @@ export interface LiveValue {
   watch: (workspaceId: string) => void
   /** Catch up the account stream: per-conversation cursors, repeated on reconnect. */
   resume: (conversations: Record<string, number>) => void
+  /** The status the account picked; the connection repeats it after a reconnect. */
+  setStatus: (status: PresenceChoice) => void
+  /** What this tab says about itself; repeated after a reconnect too. */
+  setActivity: (activity: PresenceActivity) => void
   /**
    * Hears every event after the cache has been told about it. For reactions
    * that are not data — a notification — never for keeping a second copy.
