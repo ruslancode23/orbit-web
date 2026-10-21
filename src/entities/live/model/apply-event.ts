@@ -11,6 +11,7 @@ import {
   listChannelsQueryKey,
   listMessagesInfiniteQueryKey,
   listConversationsQueryKey,
+  listInvitesQueryKey,
   listMessagesQueryKey,
   listUnreadQueryKey,
   listWorkspaceBansQueryKey,
@@ -210,6 +211,33 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       // A new role changes canWrite in read-only channels.
       void queryClient.invalidateQueries({ queryKey: listChannelsQueryKey({ path }) })
     }
+  }
+  // The staff lists of a server: only its admins and owner hear these.
+  if (event.type === 'invites.changed' && event.workspaceId) {
+    void queryClient.invalidateQueries({
+      queryKey: listInvitesQueryKey({ path: { workspaceId: event.workspaceId } }),
+    })
+  }
+  if (event.type === 'bans.changed' && event.workspaceId) {
+    void queryClient.invalidateQueries({
+      queryKey: listWorkspaceBansQueryKey({ path: { workspaceId: event.workspaceId } }),
+    })
+  }
+  // This account's own settings changed on another device: its block list,
+  // who may write to it, who may send requests, its devices.
+  if (event.type === 'privacy.changed') {
+    invalidateQueriesById(queryClient, [
+      'listUserBlocks',
+      'getDmPolicy',
+      'getFriendRequestPolicy',
+      'getMutual',
+    ])
+  }
+  if (event.type === 'devices.changed') {
+    invalidateQueriesById(queryClient, ['listDevices'])
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] === 'listSecretChats',
+    })
   }
   // A channel appeared, changed, moved or went away. The event names it only:
   // canWrite in the list depends on who reads it, so the list is asked again.
