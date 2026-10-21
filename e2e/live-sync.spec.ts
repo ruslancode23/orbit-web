@@ -200,3 +200,64 @@ test('what changed during a dropped connection appears once it is back', async (
   await ownerContext.close()
   await readerContext.close()
 })
+
+/**
+ * The owner deletes a server. A reader inside it is taken out with a word on
+ * why; a reader elsewhere simply loses it from the rail — the event travels on
+ * each member's own stream, not only to those watching that server.
+ */
+test('a deleted server leaves every member, open or not', async ({ browser }) => {
+  test.setTimeout(90_000)
+
+  const ownerContext = await browser.newContext()
+  const readerContext = await browser.newContext()
+  await signUp(ownerContext, 'owner')
+  await signUp(readerContext, 'reader')
+
+  const join = async (name: string) => {
+    const { workspace } = await call<{ workspace: { id: string } }>(
+      ownerContext.request,
+      'post',
+      '/workspaces',
+      { name },
+    )
+    const invite = await call<{ code: string }>(
+      ownerContext.request,
+      'post',
+      `/workspaces/${workspace.id}/invites`,
+    )
+    await call(readerContext.request, 'post', `/invites/${invite.code}/accept`)
+    const channel = await call<{ id: string }>(
+      ownerContext.request,
+      'post',
+      `/workspaces/${workspace.id}/channels`,
+      { name: 'общий' },
+    )
+    return { id: workspace.id, channelId: channel.id, name }
+  }
+  const open = await join(unique('Открытый'))
+  const elsewhere = await join(unique('Другой'))
+
+  const reader = await readerContext.newPage()
+  await reader.goto(`/s/${open.id}/${open.channelId}`)
+  await skipProfileOnboarding(reader)
+  await expect(reader.getByRole('heading', { name: '# общий', level: 1 })).toBeVisible()
+  await expect(reader.getByText('Подключаемся…')).toHaveCount(0)
+  await expect(reader.getByRole('link', { name: elsewhere.name })).toBeVisible()
+
+  // The server being read is deleted: the reader is taken out.
+  await call(ownerContext.request, 'delete', `/workspaces/${open.id}`)
+  await expect(reader.getByText('Сервер удалён.', { exact: true })).toBeVisible({ timeout: 5000 })
+  await expect(reader).toHaveURL(/\/$/)
+  await expect(reader.getByRole('link', { name: open.name })).toHaveCount(0)
+
+  // A server that is not open is deleted: it just leaves the rail.
+  await reader.getByRole('link', { name: /Личные сообщения/ }).click()
+  await expect(reader).toHaveURL(/\/me$/)
+  await call(ownerContext.request, 'delete', `/workspaces/${elsewhere.id}`)
+  await expect(reader.getByRole('link', { name: elsewhere.name })).toHaveCount(0, { timeout: 5000 })
+  await expect(reader).toHaveURL(/\/me$/)
+
+  await ownerContext.close()
+  await readerContext.close()
+})
