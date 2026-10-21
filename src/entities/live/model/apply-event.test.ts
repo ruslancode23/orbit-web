@@ -25,6 +25,7 @@ import {
   type SelfProfile,
   type UserProfile,
   type WorkspaceMember,
+  type WorkspaceMembership,
 } from '@/shared/api'
 
 import { applyEvent, refreshAfterGap } from './apply-event'
@@ -530,4 +531,38 @@ it('marks the live data stale after a gap and leaves the rest', () => {
     expect(isStale(key)).toBe(true)
   }
   expect(isStale(session)).toBe(false)
+})
+
+// The owner deleted a server: it leaves the rail at once, and what was cached
+// about it is dropped, since every request for it would answer 404.
+it('drops a deleted server from the rail and forgets its cache', () => {
+  const queryClient = new QueryClient()
+  const otherId = '22222222-2222-4222-8222-222222222222'
+  const membership = (id: string): WorkspaceMembership => ({
+    workspace: {
+      id,
+      name: id,
+      description: null,
+      iconUrl: null,
+      ownerId: 'u-owner',
+      createdAt: new Date(),
+      memberPermissions: { canInvite: false, canCreateChannels: false, canAttachFiles: true },
+    },
+    role: 'member',
+  })
+  queryClient.setQueryData<WorkspaceMembership[]>(listWorkspacesQueryKey(), [
+    membership(workspaceId),
+    membership(otherId),
+  ])
+  const channels = listChannelsQueryKey({ path: { workspaceId } })
+  const otherChannels = listChannelsQueryKey({ path: { workspaceId: otherId } })
+  queryClient.setQueryData(channels, [])
+  queryClient.setQueryData(otherChannels, [])
+
+  applyEvent(queryClient, { type: 'workspace.deleted', workspaceId, payload: { workspaceId } })
+
+  const left = queryClient.getQueryData<WorkspaceMembership[]>(listWorkspacesQueryKey())
+  expect(left?.map((item) => item.workspace.id)).toEqual([otherId])
+  expect(queryClient.getQueryData(channels)).toBeUndefined()
+  expect(queryClient.getQueryData(otherChannels)).toBeDefined()
 })

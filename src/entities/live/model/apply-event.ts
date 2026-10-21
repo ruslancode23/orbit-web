@@ -7,6 +7,7 @@ import {
   type PresenceStatus,
   type VoicePresence,
   type WorkspaceMember,
+  type WorkspaceMembership,
   listChannelsQueryKey,
   listMessagesInfiniteQueryKey,
   listConversationsQueryKey,
@@ -96,6 +97,26 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
     } else {
       void queryClient.invalidateQueries({ queryKey: key })
     }
+  }
+  // The owner deleted a server. It leaves the rail at once, before the list is
+  // asked again, and whatever was cached about it is dropped: every request
+  // for it would answer 404 now.
+  if (event.type === 'workspace.deleted' && event.workspaceId) {
+    const deletedId = event.workspaceId
+    queryClient.setQueryData<WorkspaceMembership[]>(listWorkspacesQueryKey(), (memberships) =>
+      memberships?.filter((membership) => membership.workspace.id !== deletedId),
+    )
+    const path = { workspaceId: deletedId }
+    for (const key of [
+      getWorkspaceQueryKey({ path }),
+      listChannelsQueryKey({ path }),
+      listWorkspaceMembersQueryKey({ path }),
+      listWorkspaceBansQueryKey({ path }),
+      listUnreadQueryKey({ path }),
+    ]) {
+      queryClient.removeQueries({ queryKey: key })
+    }
+    invalidateQueriesById(queryClient, ['listWorkspaces', 'getMutual'])
   }
   // A new name, description, icon or member permissions. The server list is
   // what the rail, the header and the buttons read; the payload is not put in
