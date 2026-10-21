@@ -1,6 +1,6 @@
 import { ApiError } from '@/shared/api'
 
-import { describeConversationError } from './errors'
+import { describeConversationError, describeConversationStartError } from './errors'
 
 const failure = (status: number) => new ApiError({ status, code: 'conflict', message: 'no' })
 
@@ -24,4 +24,12 @@ it('explains a lost conversation and a network failure', () => {
 
 it('falls back to the sentence of the action', () => {
   expect(describeConversationError(new Error('boom'), 'Не получилось.')).toBe('Не получилось.')
+})
+
+it('explains a refused start without calling it a missing account or a network failure', () => {
+  expect(describeConversationStartError(failure(404))).toContain('ограничил личные сообщения')
+  expect(describeConversationStartError(failure(0))).toBe('Нет соединения с сервером.')
+  expect(describeConversationStartError(new Error('boom'))).toBe(
+    'Не удалось начать диалог. Попробуйте ещё раз.',
+  )
 })

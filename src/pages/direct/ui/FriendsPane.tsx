@@ -2,11 +2,11 @@ import { useState, type ReactNode } from 'react'
 
 import {
   asList,
+  BlockedUsersList,
   customStatusText,
   describeIncomingRequests,
   FriendsEmpty,
   isFriendOnline,
-  useBlockedUsers,
   useFriendActions,
   useFriendProfiles,
   useFriendRequests,
@@ -21,7 +21,6 @@ import { Skeleton } from '@/shared/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 
 import AddFriendDialog from './AddFriendDialog'
-import BlockedUserRow from './BlockedUserRow'
 import FriendRequestRow from './FriendRequestRow'
 import FriendRow from './FriendRow'
 
@@ -66,14 +65,12 @@ const FriendsPane = () => {
   const friendsQuery = useFriends()
   const incomingQuery = useFriendRequests('incoming')
   const outgoingQuery = useFriendRequests('outgoing')
-  const blocksQuery = useBlockedUsers()
   const actions = useFriendActions()
   const [search, setSearch] = useState('')
 
   const friends = asList(friendsQuery.data)
   const incoming = asList(incomingQuery.data)
   const outgoing = asList(outgoingQuery.data)
-  const blocks = asList(blocksQuery.data)
   const profiles = useFriendProfiles(friends)
   const query = search.trim().toLocaleLowerCase('ru')
 
@@ -96,7 +93,6 @@ const FriendsPane = () => {
   const all = friends.filter(matchesFriend)
   const incomingShown = incoming.filter(matchesRequest)
   const outgoingShown = outgoing.filter(matchesRequest)
-  const blocksShown = blocks.filter((user) => matches(user.nickname, query))
 
   const friendList = (items: readonly Friend[], label: string, empty: ReactNode) => {
     if (friendsQuery.isPending) {
@@ -208,39 +204,18 @@ const FriendsPane = () => {
   }
 
   const blocked = () => {
-    if (blocksQuery.isPending) {
-      return <ListSkeleton label="Загружаем заблокированных" />
-    }
-    if (blocksQuery.error) {
-      return (
-        <p role="alert" className="px-2 py-4 text-sm text-danger">
-          Не удалось загрузить заблокированных.
-        </p>
-      )
-    }
-    if (blocks.length === 0) {
-      return (
-        <FriendsEmpty
-          icon={<ShieldIcon />}
-          title="Никого не заблокировали"
-          description="Заблокированные пользователи не смогут писать вам."
-        />
-      )
-    }
-    if (blocksShown.length === 0) {
-      return <SearchEmpty />
-    }
     return (
-      <ul aria-label="Заблокированные" className="flex flex-col gap-0.5">
-        {blocksShown.map((user) => (
-          <BlockedUserRow
-            key={user.id}
-            user={user}
-            onUnblock={actions.unblockUser}
-            pending={actions.isPending}
+      <BlockedUsersList
+        search={search}
+        empty={
+          <FriendsEmpty
+            icon={<ShieldIcon />}
+            title="Никого не заблокировали"
+            description="Заблокированные пользователи не смогут писать вам."
           />
-        ))}
-      </ul>
+        }
+        noMatches={<SearchEmpty />}
+      />
     )
   }
 

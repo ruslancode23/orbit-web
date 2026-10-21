@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router'
 
-import { useStartConversation } from '@/entities/conversation'
-import { isApiError } from '@/shared/api'
+import { useStartConversation, describeConversationStartError } from '@/entities/conversation'
 import { Button, type ButtonProps } from '@/shared/ui/button'
 import { useToast } from '@/shared/ui/toast'
 
@@ -41,12 +40,7 @@ export const StartDirectChat = ({
           void navigate(`/me/${conversation.id}`)
         },
         onError: (error) => {
-          toast(
-            isApiError(error) && error.message !== ''
-              ? error.message
-              : 'Не удалось начать диалог. Попробуйте ещё раз.',
-            'danger',
-          )
+          toast(describeConversationStartError(error), 'danger')
         },
       },
     )

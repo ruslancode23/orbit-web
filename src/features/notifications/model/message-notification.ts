@@ -7,6 +7,7 @@ export interface IncomingMessage {
   channelId: string
   content: string
   mentions: string[]
+  kind?: string
   author?: { id: string; nickname: string }
 }
 
@@ -71,10 +72,12 @@ export function incomingMessage(event: LiveEvent): IncomingMessage | undefined {
       ? payload.mentions.filter((id): id is string => typeof id === 'string')
       : []
   const author = 'author' in payload ? readAuthor(payload.author) : undefined
+  const kind = 'kind' in payload && typeof payload.kind === 'string' ? payload.kind : undefined
   return {
     channelId: payload.channelId,
     content: payload.content,
     mentions,
+    ...(kind === undefined ? {} : { kind }),
     ...(author ? { author } : {}),
   }
 }

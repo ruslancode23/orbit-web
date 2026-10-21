@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { type Message } from '@/entities/message'
 import { useSession } from '@/entities/session'
@@ -34,6 +34,13 @@ interface ChannelChatProps {
   canWrite: boolean
   /** False when the server does not let this member attach files. */
   canAttach: boolean
+  /**
+   * Drawn instead of the composer when the reader cannot write here at all,
+   * such as a dialogue with a blocked person. The chat stays readable.
+   */
+  writeBlocked?: ReactNode
+  /** The server answered 404 to a send: the dialogue is blocked for the pair. */
+  onWriteUnavailable?: () => void
 }
 
 /** How close to the bottom still counts as "reading the newest", in pixels. */
@@ -56,6 +63,8 @@ export const ChannelChat = ({
   mentionPeople,
   canWrite,
   canAttach,
+  writeBlocked,
+  onWriteUnavailable,
 }: ChannelChatProps) => {
   const { user } = useSession()
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -161,7 +170,7 @@ export const ChannelChat = ({
     <section
       aria-label="Чат"
       className="relative flex min-h-0 flex-1 flex-col"
-      {...(canWrite && canAttach ? dropProps : {})}
+      {...(canWrite && canAttach && writeBlocked === undefined ? dropProps : {})}
     >
       {dragging && (
         <div
@@ -286,7 +295,9 @@ export const ChannelChat = ({
         )}
       </div>
 
-      {canWrite ? (
+      {writeBlocked !== undefined ? (
+        writeBlocked
+      ) : canWrite ? (
         <SendMessage
           workspaceId={workspaceId}
           {...(mentionPeople === undefined ? {} : { mentionPeople })}
@@ -305,6 +316,7 @@ export const ChannelChat = ({
           attachControl={canAttach ? <AttachButton onFiles={uploads.add} /> : undefined}
           onPasteFiles={canAttach ? uploads.add : undefined}
           onSending={uploads.clear}
+          {...(onWriteUnavailable === undefined ? {} : { onUnavailable: onWriteUnavailable })}
         />
       ) : (
         <p className="border-t border-border p-4 text-sm text-fg-muted">

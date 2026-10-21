@@ -78,6 +78,29 @@ it('shows a reply preview and jumps to the message it answers', async () => {
   expect(onJumpTo).toHaveBeenCalledWith(original.id)
 })
 
+it('keeps a message from a blocked author folded until asked', async () => {
+  renderWithProviders(
+    <MessageCard message={makeMessage({ content: 'скрытый текст', blocked: true })} startsGroup />,
+    { route: '/' },
+  )
+
+  const toggle = screen.getByRole('button', {
+    name: /Сообщение от заблокированного пользователя/,
+  })
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByText('скрытый текст')).not.toBeInTheDocument()
+
+  await userEvent.click(toggle)
+
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByText('скрытый текст')).toBeInTheDocument()
+
+  await userEvent.click(toggle)
+
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByText('скрытый текст')).not.toBeInTheDocument()
+})
+
 it('says a message was edited or deleted', () => {
   const { rerender } = renderWithProviders(
     <MessageCard message={makeMessage({ editedAt: new Date() })} startsGroup />,

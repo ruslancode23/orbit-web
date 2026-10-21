@@ -34,3 +34,24 @@ export const describeConversationError = (
   }
   return fallback
 }
+
+/**
+ * The sentence a refused «Написать» shows. Starting a dialogue with someone
+ * whose privacy closes it answers 404, exactly like an unknown account: the
+ * screen must neither claim the account is gone nor show a network failure.
+ */
+export const describeConversationStartError = (error: unknown): string => {
+  if (!isApiError(error)) {
+    return 'Не удалось начать диалог. Попробуйте ещё раз.'
+  }
+  if (error.isNetworkError) {
+    return 'Нет соединения с сервером.'
+  }
+  if (error.status === 404) {
+    return 'Не удалось начать диалог: возможно, пользователь ограничил личные сообщения.'
+  }
+  if (error.status === 429) {
+    return 'Слишком много новых диалогов — попробуйте позже.'
+  }
+  return error.message !== '' ? error.message : 'Не удалось начать диалог. Попробуйте ещё раз.'
+}

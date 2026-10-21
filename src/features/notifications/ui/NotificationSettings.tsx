@@ -87,6 +87,11 @@ export const NotificationSettings = () => {
         <p className="text-xs text-fg-muted">Этот браузер не показывает уведомления.</p>
       )}
 
+      <p className="text-xs text-fg-muted">
+        Личные сообщения уведомляют при любом режиме, кроме «Выключены». Отдельную беседу можно
+        выключить в её меню «Действия с диалогом».
+      </p>
+
       <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor={friendsId} className="text-sm">

@@ -12,6 +12,7 @@ import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
 import {
+  useDirectMessageNotifications,
   useFriendNotifications,
   useMessageNotifications,
   useSecretNotifications,
@@ -84,6 +85,7 @@ const Shell = () => {
   }
   usePresenceActivity()
   useMessageNotifications({ workspaceId, channelId })
+  useDirectMessageNotifications()
   useFriendNotifications()
   useSecretNotifications()
   useVoiceShortcuts()

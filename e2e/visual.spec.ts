@@ -129,6 +129,10 @@ test.describe('accessibility', () => {
     await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.getByRole('dialog')).toContainText(nickname)
     await expectNoSeriousViolations(page)
+
+    await page.getByRole('tab', { name: 'Приватность' }).click()
+    await expect(page.getByRole('group', { name: 'Кто может мне писать' })).toBeVisible()
+    await expectNoSeriousViolations(page)
     await page.keyboard.press('Escape')
 
     await page.getByRole('button', { name: 'Голосовой канал переговорка' }).click()
