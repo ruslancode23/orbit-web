@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { useChannels, type Channel } from '@/entities/channel'
@@ -33,13 +33,17 @@ const ChannelPage = () => {
   // it was open (channel.deleted refreshed the list), or the link is stale.
   const gone = channels !== undefined && channelId !== undefined && channel === undefined
 
+  // Said once per channel: the effect may run again before the navigation lands.
+  const leftRef = useRef<string | undefined>(undefined)
+
   useEffect(() => {
-    if (!gone || !workspaceId) {
+    if (!gone || !workspaceId || leftRef.current === channelId) {
       return
     }
+    leftRef.current = channelId
     toast('Канал удалён или больше недоступен.')
     void navigate(`/s/${workspaceId}`, { replace: true })
-  }, [gone, workspaceId, navigate, toast])
+  }, [gone, workspaceId, channelId, navigate, toast])
 
   if (!workspaceId || !channelId) {
     return null

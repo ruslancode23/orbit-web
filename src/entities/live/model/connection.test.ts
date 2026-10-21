@@ -46,10 +46,12 @@ function connect() {
   const sockets: FakeSocket[] = []
   const events: unknown[] = []
   const statuses: string[] = []
+  const reconnects: number[] = []
   const connection = new LiveConnection(
     {
       onEvent: (event) => events.push(event),
       onStatus: (status) => statuses.push(status),
+      onReconnect: () => reconnects.push(1),
     },
     'ws://api.test/api/v1/ws',
     () => {
@@ -59,7 +61,7 @@ function connect() {
     },
   )
   connection.open()
-  return { connection, sockets, events, statuses }
+  return { connection, sockets, events, statuses, reconnects }
 }
 
 beforeEach(() => {
@@ -180,4 +182,35 @@ it('stops for good when closed', () => {
   vi.advanceTimersByTime(10_000)
 
   expect(sockets).toHaveLength(1)
+})
+
+// The first connection has nothing to catch up on; every later one does,
+// because events from the gap never arrived.
+it('reports a reconnect after a drop, not the first connection', () => {
+  const { sockets, reconnects } = connect()
+  sockets[0]?.accept()
+  expect(reconnects).toHaveLength(0)
+
+  sockets[0]?.drop()
+  vi.runOnlyPendingTimers()
+  sockets[1]?.accept()
+  expect(reconnects).toHaveLength(1)
+})
+
+// Falling behind stops the server's stream while the socket stays up: the
+// client starts over instead of waiting for events that will never come.
+it('starts over when the server says the stream fell behind', () => {
+  const { connection, sockets, events } = connect()
+  connection.subscribe('w-1')
+  sockets[0]?.accept()
+
+  sockets[0]?.message({ type: 'error', code: 'behind', message: 'reconnect and catch up' })
+  expect(events).toHaveLength(0)
+  vi.runOnlyPendingTimers()
+
+  expect(sockets).toHaveLength(2)
+  sockets[1]?.accept()
+  expect(sockets[1]?.sent.map((frame) => JSON.parse(frame) as { type: string })).toContainEqual(
+    expect.objectContaining({ type: 'subscribe', workspaceId: 'w-1' }),
+  )
 })

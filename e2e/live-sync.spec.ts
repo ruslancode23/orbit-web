@@ -94,7 +94,9 @@ test('channels and presence reach an open page live', async ({ browser }) => {
 
   // The open channel is deleted: the page says so and leaves for the server.
   await call(ownerContext.request, 'delete', `/channels/${doomed.id}`)
-  await expect(reader.getByText('Канал удалён или больше недоступен.')).toBeVisible({
+  await expect(
+    reader.getByText('Канал удалён или больше недоступен.', { exact: true }),
+  ).toBeVisible({
     timeout: 5000,
   })
   await expect(reader).toHaveURL(new RegExp(`/s/${workspace.id}$`))
@@ -109,6 +111,91 @@ test('channels and presence reach an open page live', async ({ browser }) => {
   await expect(memberCard(reader, owner.nickname)).toHaveAccessibleName(/В сети/, {
     timeout: 10_000,
   })
+
+  await ownerContext.close()
+  await readerContext.close()
+})
+
+/**
+ * A dropped connection (sleep, a new network, a server restart) misses every
+ * event of the gap: the catch-up by cursor replays new messages only. When the
+ * stream comes back, the page asks again for what it shows, so an edit, a
+ * reaction and a new channel from the gap appear without a reload.
+ */
+test('what changed during a dropped connection appears once it is back', async ({ browser }) => {
+  test.setTimeout(90_000)
+
+  const ownerContext = await browser.newContext()
+  const readerContext = await browser.newContext()
+  await signUp(ownerContext, 'owner')
+  await signUp(readerContext, 'reader')
+
+  const { workspace } = await call<{ workspace: { id: string } }>(
+    ownerContext.request,
+    'post',
+    '/workspaces',
+    { name: unique('Обрыв') },
+  )
+  const invite = await call<{ code: string }>(
+    ownerContext.request,
+    'post',
+    `/workspaces/${workspace.id}/invites`,
+  )
+  await call(readerContext.request, 'post', `/invites/${invite.code}/accept`)
+  const general = await call<{ id: string }>(
+    ownerContext.request,
+    'post',
+    `/workspaces/${workspace.id}/channels`,
+    { name: 'общий' },
+  )
+  const before = unique('до обрыва')
+  const message = await call<{ id: string }>(
+    ownerContext.request,
+    'post',
+    `/channels/${general.id}/messages`,
+    { clientMessageId: crypto.randomUUID(), content: before },
+  )
+
+  // The reader's stream goes through a route the test can cut and hold shut.
+  const reader = await readerContext.newPage()
+  let shut = false
+  const live: { close: () => Promise<void> }[] = []
+  await reader.routeWebSocket(/\/api\/v1\/ws/, (socket) => {
+    if (shut) {
+      void socket.close()
+      return
+    }
+    socket.connectToServer()
+    live.push(socket)
+  })
+
+  await reader.goto(`/s/${workspace.id}/${general.id}`)
+  await skipProfileOnboarding(reader)
+  const chat = reader.getByRole('region', { name: 'Чат' })
+  await expect(chat.getByText(before, { exact: true })).toBeVisible()
+  await expect(reader.getByText('Подключаемся…')).toHaveCount(0)
+
+  // The connection drops and stays down while the owner changes things.
+  shut = true
+  await Promise.all(live.map((socket) => socket.close()))
+  const edited = unique('правка в обрыве')
+  await call(ownerContext.request, 'patch', `/messages/${message.id}`, { content: edited })
+  await call(
+    ownerContext.request,
+    'put',
+    `/messages/${message.id}/reactions/${encodeURIComponent('👍')}`,
+  )
+  await call(ownerContext.request, 'post', `/workspaces/${workspace.id}/channels`, {
+    name: 'пока-вас-не-было',
+  })
+  // Nothing of it can have arrived: the page still shows the old text.
+  await expect(chat.getByText(before, { exact: true })).toBeVisible()
+
+  // The connection comes back by itself; the page refreshes what it shows.
+  shut = false
+  await expect(chat.getByText(edited)).toBeVisible({ timeout: 15_000 })
+  await expect(chat.getByRole('button', { name: /👍, 1 реакция/ })).toBeVisible()
+  await expect(reader.getByRole('link', { name: '# пока-вас-не-было' })).toBeVisible()
 
   await ownerContext.close()
   await readerContext.close()

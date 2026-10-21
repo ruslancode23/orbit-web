@@ -83,7 +83,7 @@ test('privacy closes a dialogue for a stranger and shows the state of a block', 
   await memberCard(peer, ownerName).click()
   const ownerCard = peer.getByRole('dialog', { name: `Карточка ${ownerName}` })
   await ownerCard.getByRole('button', { name: 'Написать' }).click()
-  await expect(peer.getByText('Этому человеку нельзя написать.')).toBeVisible()
+  await expect(peer.getByText('Этому человеку нельзя написать.', { exact: true })).toBeVisible()
   await expect(peer).not.toHaveURL(/\/me\//)
   await peer.keyboard.press('Escape')
 
