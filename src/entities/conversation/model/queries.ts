@@ -19,8 +19,10 @@ import {
   listConversationsQueryKey,
   listMessagesInfiniteQueryKey,
   listMessagesQueryKey,
+  startConversation,
   startConversationMutation,
   unhideConversationMutation,
+  updateConversation,
   updateConversationMutation,
   type Conversation,
   type ConversationMember,
@@ -145,6 +147,59 @@ const invalidateHistory = (queryClient: QueryClient, conversationId: string) => 
   const path = { channelId: conversationId }
   void queryClient.invalidateQueries({ queryKey: listMessagesQueryKey({ path }) })
   void queryClient.invalidateQueries({ queryKey: listMessagesInfiniteQueryKey({ path }) })
+}
+
+/** What starting a group asks for: the people and, when typed, its title. */
+export interface StartGroupVariables {
+  userIds: string[]
+  /** The optional title; absent or blank keeps the group unnamed. */
+  name?: string
+}
+
+export interface StartedGroup {
+  conversation: Conversation
+  /**
+   * The group exists, but the server did not save its optional title. The
+   * caller still opens the dialogue and says so instead of creating a second
+   * group by retrying.
+   */
+  nameFailed: boolean
+}
+
+/**
+ * Creates a group with the chosen people. The conversation endpoint has no
+ * name in its body — the title is set by a member afterwards — so a named
+ * group is a create followed by a rename. A failed rename leaves the group
+ * intact and is reported separately; the history is refreshed because the
+ * rename writes a system line the feed must show without a reload.
+ */
+export const useStartGroupConversation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ userIds, name }: StartGroupVariables): Promise<StartedGroup> => {
+      const { data: created } = await startConversation({ body: { userIds } })
+      const title = name?.trim() ?? ''
+      if (title === '' || created.kind !== 'group') {
+        return { conversation: created, nameFailed: false }
+      }
+      const { data: named } = await updateConversation({
+        path: { conversationId: created.id },
+        body: { name: title },
+      }).catch(() => ({ data: null }))
+      return named === null
+        ? { conversation: created, nameFailed: true }
+        : { conversation: named, nameFailed: false }
+    },
+    onSuccess: ({ conversation }) => {
+      queryClient.setQueryData(
+        getConversationQueryKey({ path: { conversationId: conversation.id } }),
+        conversation,
+      )
+      void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+      invalidateHistory(queryClient, conversation.id)
+    },
+  })
 }
 
 /** Renames a group; the server refuses a direct dialogue with 409. */
