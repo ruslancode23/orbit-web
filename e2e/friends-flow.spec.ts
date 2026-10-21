@@ -147,14 +147,24 @@ test('a friendship goes from a nickname request to shared lists, a message and a
   await bobDialog.click()
   await expect(bob.getByRole('region', { name: 'Чат' }).getByText(firstMessage)).toBeVisible()
 
-  // Back to the friend list: blocking is the strongest outcome of the pair.
-  // The server cuts the friendship with the block, so «Удалить из друзей» and
-  // «Заблокировать» end in the same state; the row and the list prove both.
+  // The pair dialogue still has Bob's card in the header. Anna removes him
+  // from the «Друзья» menu; the card stays open and offers adding him back.
+  const dialogue = anna.getByRole('region', { name: 'Диалог' })
+  await dialogue.getByRole('button', { name: bobName, exact: true }).first().click()
+  const liveCard = anna.getByRole('dialog', { name: `Карточка ${bobName}` })
+  await liveCard.getByRole('button', { name: 'Друзья', exact: true }).click()
+  await anna.getByRole('menuitem', { name: 'Удалить из друзей' }).click()
+  await expect(liveCard.getByRole('button', { name: 'Добавить в друзья' })).toBeVisible()
+  await expect(liveCard.getByRole('button', { name: 'Друзья', exact: true })).toHaveCount(0)
+
+  // Now he is no longer a friend, and blocking is still there — from the
+  // overflow menu of the same card. The card closes once the server confirms.
+  await liveCard.getByRole('button', { name: `Ещё: ${bobName}` }).click()
+  await anna.getByRole('menuitem', { name: 'Заблокировать' }).click()
+  await expect(liveCard).toBeHidden()
+
   await anna.getByRole('link', { name: 'Друзья', exact: true }).click()
   await anna.getByRole('tab', { name: 'Все' }).click()
-  await anna.getByRole('button', { name: `Ещё: ${bobName}` }).click()
-  await anna.getByRole('menuitem', { name: 'Заблокировать' }).click()
-
   await expect(
     anna.getByRole('tabpanel').getByRole('button', { name: bobName, exact: true }),
   ).toHaveCount(0)
