@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
 
 import { useChannels, type Channel } from '@/entities/channel'
 import { ParticipantTile } from '@/entities/participant'
@@ -13,6 +13,7 @@ import { UserCard } from '@/features/user-card'
 import { Button } from '@/shared/ui/button'
 import { HashIcon, LinkIcon, SpeakerIcon, UsersIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
+import { useToast } from '@/shared/ui/toast'
 import { ChannelChat } from '@/widgets/channel-chat'
 import { MemberList, toggleMemberPanel, useMemberPanelOpen } from '@/widgets/member-list'
 
@@ -26,6 +27,19 @@ const ChannelPage = () => {
   const { membership } = useWorkspace(workspaceId)
   const [invitesOpen, setInvitesOpen] = useState(false)
   const channel = channels?.find((item) => item.id === channelId)
+  const navigate = useNavigate()
+  const toast = useToast()
+  // The list is loaded and this channel is not in it: someone deleted it while
+  // it was open (channel.deleted refreshed the list), or the link is stale.
+  const gone = channels !== undefined && channelId !== undefined && channel === undefined
+
+  useEffect(() => {
+    if (!gone || !workspaceId) {
+      return
+    }
+    toast('Канал удалён или больше недоступен.')
+    void navigate(`/s/${workspaceId}`, { replace: true })
+  }, [gone, workspaceId, navigate, toast])
 
   if (!workspaceId || !channelId) {
     return null
