@@ -57,6 +57,11 @@ const stubApi = ({ profile = bob, missing = false, members = {} }: StubOptions =
       if (membersPath !== null) {
         return Promise.resolve(json(members[membersPath[1] ?? ''] ?? []))
       }
+      // The card's friendship action reads these lists; most cards in these
+      // tests are about a person with no relationship yet.
+      if (url.pathname === '/api/v1/friends' || url.pathname === '/api/v1/friends/requests') {
+        return Promise.resolve(json([]))
+      }
       return Promise.resolve(json({}))
     }),
   )
