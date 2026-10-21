@@ -16,6 +16,10 @@ test('a narrow screen keeps the chat and slides the channels and members in', as
   await page.getByRole('button', { name: 'Далее' }).click()
   await page.getByRole('button', { name: 'Создать сервер' }).click()
 
+  // The shell closes the drawer when the route settles; clicking before that
+  // would race the effect instead of testing the narrow layout.
+  await expect(page.getByText('В этом сервере пока нет каналов')).toBeVisible()
+
   const channels = page.getByRole('complementary', { name: 'Каналы' })
   await expect(channels).toBeHidden()
 
