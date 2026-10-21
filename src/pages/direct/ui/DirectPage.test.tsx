@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
+import { setConversationMuted } from '@/features/notifications'
 import { renderWithProviders } from '@/shared/lib/test'
 
 import DirectPage from './DirectPage'
@@ -42,12 +43,15 @@ interface StubOptions {
   friends?: unknown[]
   renameStatus?: number
   addStatus?: number
+  blocks?: { id: string; nickname: string; createdAt: string }[]
+  sendStatus?: number
 }
 
 interface StubState {
   calls: string[]
   renameBodies: unknown[]
   memberBodies: unknown[]
+  blocks: { id: string; nickname: string; createdAt: string }[]
 }
 
 /**
@@ -60,8 +64,10 @@ const stubApi = ({
   friends = [],
   renameStatus = 200,
   addStatus = 200,
+  blocks = [],
+  sendStatus = 200,
 }: StubOptions = {}): StubState => {
-  const state: StubState = { calls: [], renameBodies: [], memberBodies: [] }
+  const state: StubState = { calls: [], renameBodies: [], memberBodies: [], blocks: [...blocks] }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: unknown) => {
@@ -78,7 +84,12 @@ const stubApi = ({
         return json([])
       }
       if (url.pathname === '/api/v1/users/me/blocks') {
-        return json([])
+        return json(state.blocks)
+      }
+      if (url.pathname.startsWith('/api/v1/users/me/blocks/')) {
+        const id = url.pathname.split('/').at(-1)
+        state.blocks = state.blocks.filter((user) => user.id !== id)
+        return new Response(null, { status: 204 })
       }
       if (url.pathname === '/api/v1/conversations/unread') {
         return json({ unread: 0, mentions: 0 })
@@ -130,6 +141,9 @@ const stubApi = ({
         return json([])
       }
       if (url.pathname.endsWith('/messages')) {
+        if (request.method === 'POST' && sendStatus !== 200) {
+          return json({ error: { code: 'not_found', message: 'not found' } }, sendStatus)
+        }
         return json({ messages: [] })
       }
       return json({})
@@ -151,6 +165,7 @@ const renderPage = (route = '/me', { withList = false } = {}) =>
   )
 
 afterEach(() => {
+  setConversationMuted('c-direct', false)
   vi.unstubAllGlobals()
 })
 
@@ -182,6 +197,52 @@ it('opens a pair dialogue with the peer and the usual composer', async () => {
   expect(screen.getByRole('button', { name: 'Прикрепить файл' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Добавить людей' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Действия с группой' })).not.toBeInTheDocument()
+})
+
+it('replaces the composer with the state of a blocked peer and unblocks from it', async () => {
+  const state = stubApi({
+    blocks: [{ id: bob.id, nickname: 'Боб', createdAt: '2026-10-20T10:00:00Z' }],
+  })
+  renderPage('/me/c-direct')
+
+  expect(await screen.findByText('Вы заблокировали пользователя')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Сообщение')).not.toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Разблокировать' }))
+
+  await waitFor(() => {
+    expect(state.calls).toContain('DELETE /api/v1/users/me/blocks/u-bob')
+  })
+  expect(await screen.findByLabelText('Сообщение')).toBeInTheDocument()
+  expect(screen.queryByText('Вы заблокировали пользователя')).not.toBeInTheDocument()
+})
+
+it('explains a send refused with 404 as a blocked dialogue, not a network failure', async () => {
+  stubApi({ sendStatus: 404 })
+  renderPage('/me/c-direct')
+
+  await userEvent.type(await screen.findByLabelText('Сообщение'), 'привет')
+  await userEvent.click(screen.getByRole('button', { name: 'Отправить' }))
+
+  expect(await screen.findByText(/Пользователь недоступен/)).toBeInTheDocument()
+  expect(screen.queryByText('Нет соединения с сервером.')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Сообщение')).not.toBeInTheDocument()
+})
+
+it('turns the notifications of one dialogue off and on from its menu', async () => {
+  stubApi()
+  renderPage('/me/c-direct')
+
+  await screen.findByRole('heading', { name: 'Боб', level: 1 })
+  await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Выключить уведомления' }))
+
+  await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
+  expect(await screen.findByRole('menuitem', { name: 'Включить уведомления' })).toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Включить уведомления' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
+  expect(await screen.findByRole('menuitem', { name: 'Выключить уведомления' })).toBeInTheDocument()
 })
 
 it('names a group by its title and offers the group actions', async () => {

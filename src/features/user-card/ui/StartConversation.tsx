@@ -1,10 +1,10 @@
 import { useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { useStartConversation } from '@/entities/conversation'
+import { useStartConversation, describeConversationStartError } from '@/entities/conversation'
 import { useSession } from '@/entities/session'
 import { UserAvatar, UserName, userDisplayName } from '@/entities/user'
-import { isApiError, type UserProfile } from '@/shared/api'
+import type { UserProfile } from '@/shared/api'
 import { Button, type ButtonProps } from '@/shared/ui/button'
 import {
   Dialog,
@@ -94,12 +94,7 @@ const StartConversationDialog = ({ onClose }: { onClose: () => void }) => {
           void navigate(`/me/${conversation.id}`)
         },
         onError: (failure) => {
-          toast(
-            isApiError(failure) && failure.message !== ''
-              ? failure.message
-              : 'Не удалось начать диалог. Попробуйте ещё раз.',
-            'danger',
-          )
+          toast(describeConversationStartError(failure), 'danger')
         },
       },
     )

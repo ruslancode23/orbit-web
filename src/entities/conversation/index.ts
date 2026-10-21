@@ -1,4 +1,4 @@
-export { describeConversationError } from './model/errors'
+export { describeConversationError, describeConversationStartError } from './model/errors'
 export {
   conversationMembersExcept,
   conversationName,

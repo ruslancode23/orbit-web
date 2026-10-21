@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
 import {
@@ -6,15 +7,23 @@ import {
   conversationPeer,
   useConversation,
 } from '@/entities/conversation'
-import { useFriends } from '@/entities/friend'
+import { asList, useBlockedUsers, useFriendActions, useFriends } from '@/entities/friend'
 import { useSession } from '@/entities/session'
 import { UserAvatar, UserAvatarStack, UserName, userDisplayName } from '@/entities/user'
+import { setConversationMuted, useConversationMuted } from '@/features/notifications'
 import { SecretChatMenuItem } from '@/features/start-secret-chat'
 import { UserCard } from '@/features/user-card'
 import { isApiError } from '@/shared/api'
 import { pluralRu } from '@/shared/lib/plural'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
-import { MoreIcon, UsersIcon } from '@/shared/ui/icon'
+import { Button } from '@/shared/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
+import { BanIcon, BellIcon, MoreIcon, UsersIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { ChannelChat } from '@/widgets/channel-chat'
@@ -71,6 +80,12 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
   const { data: conversation, isPending, error } = useConversation(conversationId)
   // Presence of a peer is known for friends; a stranger stays without a dot.
   const { data: friends } = useFriends()
+  const { data: blocks } = useBlockedUsers()
+  const actions = useFriendActions()
+  const notificationsMuted = useConversationMuted(conversationId)
+  // A pair dialogue refuses a send with 404 when the other side blocked this
+  // account; the server does not tell which side, so this is all the client sees.
+  const [unavailable, setUnavailable] = useState(false)
 
   if (isPending || user === undefined) {
     if (error) {
@@ -88,6 +103,40 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
   const others = conversationMembersExcept(conversation, user.id)
   const title = peer ? userDisplayName(peer) : name
   const presence = peer ? friends?.find((friend) => friend.id === peer.id)?.presence : undefined
+  const blockedPeer = peer !== undefined && asList(blocks).some((item) => item.id === peer.id)
+
+  const writeBlocked = peer ? (
+    blockedPeer ? (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex flex-wrap items-center gap-2 border-t border-border p-4 text-sm text-fg-muted"
+      >
+        <BanIcon className="size-4 shrink-0" />
+        <span>Вы заблокировали пользователя</span>
+        <span aria-hidden="true">·</span>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={actions.isPending}
+          onClick={() => {
+            actions.unblockUser(peer.id)
+          }}
+        >
+          Разблокировать
+        </Button>
+      </div>
+    ) : unavailable ? (
+      <p
+        role="status"
+        aria-live="polite"
+        className="border-t border-border p-4 text-sm text-fg-muted"
+      >
+        Пользователь недоступен — возможно, он ограничил переписку. Написать в этот диалог нельзя.
+      </p>
+    ) : undefined
+  ) : undefined
 
   return (
     <section aria-label="Диалог" className="flex min-h-0 flex-1 flex-col">
@@ -143,6 +192,38 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <SecretChatMenuItem userId={peer.id} nickname={peer.nickname} />
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setConversationMuted(conversationId, !notificationsMuted)
+                  }}
+                >
+                  <BellIcon className="size-4 text-fg-muted" />
+                  {notificationsMuted ? 'Включить уведомления' : 'Выключить уведомления'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {blockedPeer ? (
+                  <DropdownMenuItem
+                    disabled={actions.isPending}
+                    onSelect={() => {
+                      actions.unblockUser(peer.id)
+                    }}
+                  >
+                    <BanIcon className="size-4 text-fg-muted" />
+                    Разблокировать
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    className="text-danger"
+                    disabled={actions.isPending}
+                    onSelect={() => {
+                      actions.blockUser(peer.id)
+                    }}
+                  >
+                    <BanIcon className="size-4" />
+                    Заблокировать
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )
@@ -155,6 +236,10 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
         mentionPeople={conversation.members}
         canWrite
         canAttach
+        {...(writeBlocked === undefined ? {} : { writeBlocked })}
+        onWriteUnavailable={() => {
+          setUnavailable(true)
+        }}
       />
     </section>
   )
@@ -187,7 +272,7 @@ const DirectPage = () => {
   if (conversationId === undefined || conversationId === '') {
     return <FriendsPane />
   }
-  return <ConversationView conversationId={conversationId} />
+  return <ConversationView key={conversationId} conversationId={conversationId} />
 }
 
 export default DirectPage

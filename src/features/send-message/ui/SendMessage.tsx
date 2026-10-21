@@ -49,6 +49,11 @@ interface SendMessageProps {
   onPasteFiles?: (files: File[]) => void
   /** The message was handed to the send with the files above; they can be cleared. */
   onSending?: () => void
+  /**
+   * A direct dialogue the server refuses with 404: the pair is blocked. The
+   * caller replaces the composer with a readable state instead of a retry.
+   */
+  onUnavailable?: () => void
 }
 
 interface ComposerValues {
@@ -96,6 +101,7 @@ export const SendMessage = ({
   attachControl,
   onPasteFiles,
   onSending,
+  onUnavailable,
 }: SendMessageProps) => {
   const fieldId = useId()
   const listId = useId()
@@ -188,7 +194,13 @@ export const SendMessage = ({
         },
       },
       {
-        onError: () => {
+        onError: (error) => {
+          // A dialogue that answers 404 is blocked for this pair: retrying the
+          // same text would only fail again. A channel keeps the usual retry.
+          if (onUnavailable !== undefined && isApiError(error) && error.status === 404) {
+            onUnavailable()
+            return
+          }
           // Keep the id: the retry must not create a second message.
           setFailed(attempt)
         },

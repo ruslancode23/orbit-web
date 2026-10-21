@@ -1,6 +1,8 @@
+import { useId, useState } from 'react'
+
 import { cn } from '@/shared/lib/cn'
 import { Avatar } from '@/shared/ui/avatar'
-import { ReplyIcon } from '@/shared/ui/icon'
+import { BanIcon, ReplyIcon } from '@/shared/ui/icon'
 
 import { MessageText } from './MessageText'
 import {
@@ -65,6 +67,9 @@ export const MessageCard = ({
   people = [],
   renderAuthorPart,
 }: MessageCardProps) => {
+  const [revealed, setRevealed] = useState(false)
+  const panelId = useId()
+
   // A system line is an event the server wrote, not somebody's speech: it has
   // no author header, no reply, no reactions and no actions to take on it.
   if (message.kind === 'system') {
@@ -81,6 +86,50 @@ export const MessageCard = ({
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
         </p>
       </article>
+    )
+  }
+
+  // In a shared group the history keeps what a blocked author wrote, marked by
+  // the server. It stays folded until the reader asks, so the group keeps its
+  // context without putting the words back on screen uninvited.
+  if (message.blocked === true) {
+    return (
+      <div className="py-0.5">
+        <button
+          type="button"
+          aria-expanded={revealed}
+          aria-controls={panelId}
+          onClick={() => {
+            setRevealed((current) => !current)
+          }}
+          className="mx-4 flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-xs text-fg-muted transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+        >
+          <BanIcon className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1">Сообщение от заблокированного пользователя</span>
+          <span aria-hidden="true">·</span>
+          <span className="font-medium text-fg underline">{revealed ? 'Скрыть' : 'Показать'}</span>
+        </button>
+        <div id={panelId} hidden={!revealed}>
+          {revealed && (
+            <MessageCard
+              message={{ ...message, blocked: false }}
+              startsGroup={startsGroup}
+              mentionsMe={mentionsMe}
+              myNickname={myNickname}
+              replyTo={replyTo}
+              onJumpTo={onJumpTo}
+              highlighted={highlighted}
+              editing={editing}
+              attachments={attachments}
+              actions={actions}
+              people={people}
+              renderAuthorPart={renderAuthorPart}
+            >
+              {children}
+            </MessageCard>
+          )}
+        </div>
+      </div>
     )
   }
 
