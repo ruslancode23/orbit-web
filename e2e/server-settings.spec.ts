@@ -59,11 +59,15 @@ test('settings reach the members live, and a member is kept out of them', async 
   await owner.getByLabel('Название сервера').fill('Экипаж')
   await owner.getByLabel(/Описание/).fill('Про космос')
   await owner.getByRole('button', { name: 'Сохранить', exact: true }).click()
-  await expect(owner.getByText('Сохранено')).toBeVisible()
+  // Each form says «Сохранено» on its own, and the first one may still say it
+  // when the second is saved: the assertions are scoped to their form.
+  await expect(owner.getByRole('form', { name: 'Обзор' }).getByText('Сохранено')).toBeVisible()
 
   await owner.getByRole('switch', { name: 'Создавать каналы' }).click()
   await owner.getByRole('button', { name: 'Сохранить права' }).click()
-  await expect(owner.getByText('Сохранено')).toBeVisible()
+  await expect(
+    owner.getByRole('form', { name: 'Права участников' }).getByText('Сохранено'),
+  ).toBeVisible()
 
   await expect(member.getByRole('heading', { name: 'Экипаж', level: 2 })).toBeVisible()
   await member.getByRole('button', { name: 'Меню сервера' }).click()
