@@ -36,6 +36,7 @@ const replyTarget: Message = {
   id: 'm-1',
   channelId,
   seq: 1n,
+  kind: 'user',
   content: 'первое сообщение',
   author: anna,
   mentions: [],

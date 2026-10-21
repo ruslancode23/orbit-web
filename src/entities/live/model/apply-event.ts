@@ -1,5 +1,8 @@
 import {
+  getConversationQueryKey,
+  getConversationUnreadQueryKey,
   getWorkspaceQueryKey,
+  type ConversationPage,
   type Friend,
   type PresenceStatus,
   type VoicePresence,
@@ -13,17 +16,44 @@ import {
 import { applyUserProfile, parseUserProfile } from './user-updated'
 
 import type { LiveEvent } from './connection'
-import type { QueryClient } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 
 /**
  * Turns an event into "this is out of date": the data itself comes from the
  * API, so there is one source of truth and no second copy to keep in step.
  */
 export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
-  // A dialogue is a channel without a server: its messages and its own events
-  // arrive on the account stream, with no workspace to invalidate.
-  if (event.type === 'conversation.created' || event.type === 'conversation.updated') {
+  // A dialogue is a channel without a server: its messages, its read cursor
+  // and the hiding of it arrive on the account stream with no workspace.
+  const personal = event.workspaceId === undefined
+  const personalMessage =
+    personal && event.channelId !== undefined && event.type.startsWith('message.')
+  const conversationListChanged =
+    event.type === 'conversation.created' ||
+    event.type === 'conversation.updated' ||
+    event.type === 'conversation.hidden' ||
+    personalMessage ||
+    (personal && event.type === 'read.changed')
+  if (conversationListChanged) {
+    // Another device of this account hid the dialogue: drop it here at once,
+    // exactly as the account's own sidebar would, then let the server confirm.
+    if (event.type === 'conversation.hidden' && readHidden(event.payload)) {
+      const conversationId = event.channelId ?? readConversationId(event.payload)
+      if (conversationId !== undefined) {
+        removeConversationFromList(queryClient, conversationId)
+      }
+    }
     void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+    void queryClient.invalidateQueries({ queryKey: getConversationUnreadQueryKey() })
+  }
+  if (event.type === 'conversation.created' || event.type === 'conversation.updated') {
+    // The open page holds the members and the title too: a person added or a
+    // group renamed elsewhere must not leave a stale header behind.
+    if (event.channelId !== undefined) {
+      void queryClient.invalidateQueries({
+        queryKey: getConversationQueryKey({ path: { conversationId: event.channelId } }),
+      })
+    }
     // The secret chat list key carries the device header; match it by name.
     void queryClient.invalidateQueries({
       predicate: (query) => query.queryKey[0] === 'listSecretChats',
@@ -142,6 +172,46 @@ const queryIdOf = (queryKey: readonly unknown[]): string | undefined => {
     return undefined
   }
   return typeof params._id === 'string' ? params._id : undefined
+}
+
+/** Whether the event says the dialogue was hidden (true) or shown again (false). */
+const readHidden = (payload: unknown): boolean => {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'hidden' in payload &&
+    payload.hidden === true
+  )
+}
+
+/** `conversation.hidden` names the dialogue in its body as well as in the frame. */
+const readConversationId = (payload: unknown): string | undefined => {
+  if (typeof payload !== 'object' || payload === null || !('conversationId' in payload)) {
+    return undefined
+  }
+  return typeof payload.conversationId === 'string' ? payload.conversationId : undefined
+}
+
+type ConversationListCache = ConversationPage | InfiniteData<ConversationPage>
+
+/** Drops one dialogue from every loaded page of every cached conversation list. */
+const removeConversationFromList = (queryClient: QueryClient, conversationId: string) => {
+  const without = (page: ConversationPage): ConversationPage => ({
+    ...page,
+    conversations: page.conversations.filter((conversation) => conversation.id !== conversationId),
+  })
+  queryClient.setQueriesData<ConversationListCache>(
+    { predicate: (query) => queryIdOf(query.queryKey) === 'listConversations' },
+    (data) => {
+      if (!data) {
+        return data
+      }
+      if ('pages' in data) {
+        return { ...data, pages: data.pages.map(without) }
+      }
+      return without(data)
+    },
+  )
 }
 
 /** Refreshes every cached query with one of the generated names. */

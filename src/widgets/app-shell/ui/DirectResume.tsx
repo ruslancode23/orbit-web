@@ -20,7 +20,7 @@ export const DirectResume = () => {
     const next: Record<string, number> = {}
     for (const summary of summaries) {
       if (summary.lastMessage) {
-        next[summary.conversation.id] = Number(summary.lastMessage.seq)
+        next[summary.id] = Number(summary.lastMessage.seq)
       }
     }
     return next

@@ -5,12 +5,13 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/shared/lib/cn'
 import { XIcon } from '@/shared/ui/icon'
 
-import { ToastContext, type ToastTone, type ToastValue } from './context'
+import { ToastContext, type ToastAction, type ToastTone, type ToastValue } from './context'
 
 interface ToastItem {
   id: number
   message: string
   tone: ToastTone
+  action?: ToastAction
 }
 
 /**
@@ -25,9 +26,9 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     setItems((current) => current.filter((item) => item.id !== id))
   }, [])
 
-  const toast = useCallback((message: string, tone: ToastTone = 'info') => {
+  const toast = useCallback((message: string, tone: ToastTone = 'info', action?: ToastAction) => {
     const id = Date.now() + Math.random()
-    setItems((current) => [...current, { id, message, tone }])
+    setItems((current) => [...current, { id, message, tone, ...(action ? { action } : {}) }])
   }, [])
 
   const value = useMemo<ToastValue>(() => ({ toast }), [toast])
@@ -58,6 +59,18 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
                 <Primitive.Description className="min-w-0 flex-1">
                   {item.message}
                 </Primitive.Description>
+                {item.action && (
+                  <button
+                    type="button"
+                    className="shrink-0 rounded text-sm font-medium text-accent hover:underline focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+                    onClick={() => {
+                      item.action?.onClick()
+                      dismiss(item.id)
+                    }}
+                  >
+                    {item.action.label}
+                  </button>
+                )}
                 <Primitive.Close asChild>
                   <button
                     type="button"

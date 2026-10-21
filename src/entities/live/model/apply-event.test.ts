@@ -1,10 +1,13 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, type InfiniteData } from '@tanstack/react-query'
 
 import {
   getCurrentUserQueryKey,
   getUserProfileQueryKey,
   getWorkspaceQueryKey,
+  getConversationQueryKey,
+  getConversationUnreadQueryKey,
   listChannelsQueryKey,
+  listConversationsInfiniteQueryKey,
   listConversationsQueryKey,
   listFriendRequestsQueryKey,
   listFriendsQueryKey,
@@ -14,7 +17,8 @@ import {
   listUserBlocksQueryKey,
   listWorkspaceMembersQueryKey,
   listWorkspacesQueryKey,
-  type Conversation,
+  type ConversationPage,
+  type ConversationSummary,
   type Friend,
   type Message,
   type MessagePage,
@@ -136,6 +140,7 @@ it('writes user.updated into the profile, the feed, the members and the session'
     id: 'm-1',
     channelId,
     seq: 1n,
+    kind: 'user',
     author: before,
     content: 'привет',
     mentions: [],
@@ -147,14 +152,27 @@ it('writes user.updated into the profile, the feed, the members and the session'
   queryClient.setQueryData<WorkspaceMember[]>(membersKey, [
     { user: before, role: 'member', joinedAt: new Date('2026-10-02T10:00:00Z') },
   ])
-  queryClient.setQueryData<Conversation[]>(conversationsKey, [
-    {
-      id: conversationId,
-      kind: 'direct',
-      members: [{ ...before, joinedAt: new Date('2026-10-03T10:00:00Z') }],
-      createdAt: new Date('2026-10-03T10:00:00Z'),
-    },
-  ])
+  queryClient.setQueryData<ConversationPage>(conversationsKey, {
+    conversations: [
+      {
+        id: conversationId,
+        kind: 'direct',
+        members: [{ ...before, joinedAt: new Date('2026-10-03T10:00:00Z') }],
+        createdAt: new Date('2026-10-03T10:00:00Z'),
+        lastMessage: {
+          id: 'm-1',
+          seq: 1n,
+          kind: 'user',
+          author: before,
+          content: 'привет',
+          createdAt: new Date('2026-10-18T10:00:00Z'),
+        },
+        lastReadSeq: 0n,
+        unread: 1,
+        mentions: 0,
+      },
+    ],
+  })
   queryClient.setQueryData(historyKey, {
     pages: [{ messages: [message] }],
     pageParams: [undefined],
@@ -188,9 +206,9 @@ it('writes user.updated into the profile, the feed, the members and the session'
   expect(queryClient.getQueryData<WorkspaceMember[]>(membersKey)?.[0]?.user.displayName).toBe(
     'Анна',
   )
-  expect(
-    queryClient.getQueryData<Conversation[]>(conversationsKey)?.[0]?.members[0]?.displayName,
-  ).toBe('Анна')
+  const conversations = queryClient.getQueryData<ConversationPage>(conversationsKey)
+  expect(conversations?.conversations[0]?.members[0]?.displayName).toBe('Анна')
+  expect(conversations?.conversations[0]?.lastMessage?.author?.displayName).toBe('Анна')
 
   const history = queryClient.getQueryData<{ pages: MessagePage[] }>(historyKey)
   expect(history?.pages[0]?.messages[0]?.author?.displayName).toBe('Анна')
@@ -202,6 +220,17 @@ it('writes user.updated into the profile, the feed, the members and the session'
   const me = queryClient.getQueryData<SelfProfile>(getCurrentUserQueryKey())
   expect(me?.email).toBe('anna@example.com')
   expect(me?.displayName).toBe('Анна')
+})
+
+// A rename or a new member must reach the open page, not only the sidebar row.
+it('refreshes the open dialogue when a group changes', () => {
+  const queryClient = new QueryClient()
+  const detail = getConversationQueryKey({ path: { conversationId: 'c-group' } })
+  queryClient.setQueryData(detail, {})
+
+  applyEvent(queryClient, { type: 'conversation.updated', channelId: 'c-group', payload: {} })
+
+  expect(queryClient.getQueryState(detail)?.isInvalidated).toBe(true)
 })
 
 // A dialogue is a channel without a server: its events arrive on the personal
@@ -228,6 +257,65 @@ it('refreshes both shapes of a dialogue history on a personal message', () => {
 
   expect(queryClient.getQueryState(page)?.isInvalidated).toBe(true)
   expect(queryClient.getQueryState(history)?.isInvalidated).toBe(true)
+})
+
+const conversationSummary = (id: string): ConversationSummary => ({
+  id,
+  kind: 'direct',
+  members: [],
+  createdAt: new Date('2026-10-20T10:00:00Z'),
+  lastReadSeq: 0n,
+  unread: 1,
+  mentions: 0,
+})
+
+const seedConversationList = (queryClient: QueryClient, id = 'c-direct') => {
+  const listKey = listConversationsInfiniteQueryKey()
+  queryClient.setQueryData<InfiniteData<ConversationPage>>(listKey, {
+    pages: [{ conversations: [conversationSummary(id)] }],
+    pageParams: [undefined],
+  })
+  queryClient.setQueryData(getConversationUnreadQueryKey(), { unread: 1, mentions: 0 })
+  return listKey
+}
+
+it('drops a hidden dialogue at once and refreshes the badge', () => {
+  const queryClient = new QueryClient()
+  const listKey = seedConversationList(queryClient)
+
+  applyEvent(queryClient, {
+    type: 'conversation.hidden',
+    channelId: 'c-direct',
+    payload: { conversationId: 'c-direct', hidden: true },
+  })
+
+  const list = queryClient.getQueryData<InfiniteData<ConversationPage>>(listKey)
+  expect(list?.pages[0]?.conversations).toEqual([])
+  expect(queryClient.getQueryState(getConversationUnreadQueryKey())?.isInvalidated).toBe(true)
+})
+
+it('refreshes the list and its badge on a personal message', () => {
+  const queryClient = new QueryClient()
+  const listKey = seedConversationList(queryClient)
+
+  applyEvent(queryClient, { type: 'message.created', channelId: 'c-direct', seq: 2, payload: {} })
+
+  expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(getConversationUnreadQueryKey())?.isInvalidated).toBe(true)
+})
+
+it('refreshes the list and its badge when another device read a dialogue', () => {
+  const queryClient = new QueryClient()
+  const listKey = seedConversationList(queryClient)
+
+  applyEvent(queryClient, {
+    type: 'read.changed',
+    channelId: 'c-direct',
+    payload: { channelId: 'c-direct', lastReadSeq: 2, unread: 0, mentions: 0 },
+  })
+
+  expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(getConversationUnreadQueryKey())?.isInvalidated).toBe(true)
 })
 
 it('refreshes the unread counters of a server on read.changed', () => {

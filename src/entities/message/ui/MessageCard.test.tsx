@@ -23,6 +23,7 @@ const makeMessage = (overrides: Partial<Message> = {}): Message => {
     id: messageId,
     channelId: '22222222-2222-4222-8222-222222222222',
     seq: 1n,
+    kind: 'user',
     content: 'привет',
     author: anna,
     mentions: [],

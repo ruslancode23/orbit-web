@@ -3,13 +3,14 @@ import { useEffect, useRef } from 'react'
 
 import {
   type ChannelUnread,
+  getConversationUnreadOptions,
+  getConversationUnreadQueryKey,
+  listConversationsQueryKey,
   listUnreadOptions,
   listUnreadQueryKey,
   markChannelReadMutation,
 } from '@/shared/api'
 import { pluralRu } from '@/shared/lib/plural'
-
-import { markConversationRead } from './conversation-unread'
 
 export type { ChannelUnread }
 
@@ -34,6 +35,19 @@ export function useWorkspaceUnread(workspaceId: string | undefined, { watched = 
     enabled: workspaceId !== undefined,
     refetchInterval: watched ? false : UNWATCHED_REFRESH_MS,
   })
+}
+
+/**
+ * The badge over every dialogue of this account, hidden ones left out: the
+ * server counts them from the same read cursors the sidebar rows show, so the
+ * number survives a reload and agrees with what another device just read.
+ */
+export function useConversationUnreadTotal(): UnreadTotal {
+  const { data } = useQuery({
+    ...getConversationUnreadOptions(),
+    staleTime: 30_000,
+  })
+  return data ?? { unread: 0, mentions: 0 }
 }
 
 /** What a whole server has unread, for its icon in the rail. */
@@ -64,7 +78,7 @@ export function describeUnread({ unread, mentions }: UnreadTotal): string {
 }
 
 interface ReadOnViewOptions {
-  /** Absent in a dialogue; the cursor still moves, there is just no counter. */
+  /** Absent in a dialogue; the cursor still moves, there is just no server counter. */
   workspaceId?: string
   channelId: string
   /** The newest message loaded in the channel; undefined while there is none. */
@@ -77,9 +91,11 @@ interface ReadOnViewOptions {
  * Moves the read cursor of a channel up to the newest message while the
  * reader is looking at it, and returns where the cursor stands now.
  *
- * The answer goes straight into the sidebar counts, so the badge goes out
- * without refetching; other devices of the account hear `read.changed` from
- * the server and refetch theirs.
+ * A server channel's answer goes straight into the sidebar counts, so its
+ * badge goes out without refetching; other devices of the account hear
+ * `read.changed` and refetch theirs. A dialogue has no such counters: its rows
+ * and the rail badge are read back from the conversation endpoints, and a move
+ * of its cursor refreshes those two queries.
  */
 export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: ReadOnViewOptions) {
   const queryClient = useQueryClient()
@@ -89,13 +105,10 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
     ...markChannelReadMutation(),
     onSuccess: (state) => {
       if (workspaceId === undefined) {
-        // A dialogue has no server counters: its own store keeps the badge,
-        // and `read.changed` tells the other tabs.
-        markConversationRead(state.channelId, {
-          unread: state.unread,
-          mentions: state.mentions,
-          lastReadSeq: Number(state.lastReadSeq),
-        })
+        // A dialogue has no workspace counters: the list rows and the rail
+        // badge both carry the server's unread numbers, so refresh both.
+        void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+        void queryClient.invalidateQueries({ queryKey: getConversationUnreadQueryKey() })
         return
       }
       queryClient.setQueryData<ChannelUnread[]>(
@@ -111,7 +124,7 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
   })
 
   // A channel created after the counts were fetched has simply never been read.
-  // A dialogue has no counters, so its cursor is moved without one.
+  // A dialogue has no divider, so its cursor is not needed here.
   const lastReadSeq =
     workspaceId === undefined
       ? 0n
