@@ -9,7 +9,9 @@ import {
   formatRelativeTime,
   formatTime,
   messagePreview,
+  systemEventText,
   type Message,
+  type NamedPerson,
 } from '../model/message'
 
 import type { ReactNode } from 'react'
@@ -37,6 +39,11 @@ interface MessageCardProps {
   /** Reactions, laid out under the text. */
   children?: ReactNode
   /**
+   * The people of the conversation. A system line names the person it added
+   * from this list; without it the line stays understandable but less exact.
+   */
+  people?: readonly NamedPerson[]
+  /**
    * Wraps the author's avatar and name, e.g. with the user card. The entity
    * cannot import a feature, so the widget above it supplies the surface.
    */
@@ -55,8 +62,28 @@ export const MessageCard = ({
   attachments,
   actions,
   children,
+  people = [],
   renderAuthorPart,
 }: MessageCardProps) => {
+  // A system line is an event the server wrote, not somebody's speech: it has
+  // no author header, no reply, no reactions and no actions to take on it.
+  if (message.kind === 'system') {
+    const text = systemEventText(message, people) ?? 'Чат изменился'
+    return (
+      <article data-message-id={message.id} className="px-4 py-0.5">
+        <p
+          role="note"
+          aria-label={`Системное событие: ${text}`}
+          className="flex items-center gap-2 text-xs text-fg-muted"
+        >
+          <span aria-hidden="true" className="h-px w-4 shrink-0 bg-border" />
+          <span className="min-w-0">{text}</span>
+          <span aria-hidden="true" className="h-px flex-1 bg-border" />
+        </p>
+      </article>
+    )
+  }
+
   const deleted = message.deletedAt !== undefined
   // A message of files alone has no text to print.
   const hasText = deleted || message.content !== '' || message.editedAt !== undefined

@@ -14,12 +14,13 @@ import { UserCard } from '@/features/user-card'
 import { isApiError } from '@/shared/api'
 import { pluralRu } from '@/shared/lib/plural'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
-import { MoreIcon, PlusIcon, UsersIcon } from '@/shared/ui/icon'
+import { MoreIcon, UsersIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { ChannelChat } from '@/widgets/channel-chat'
 
 import FriendsPane from './FriendsPane'
+import GroupActions from './GroupActions'
 
 const DirectLoading = () => {
   return (
@@ -131,13 +132,7 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
           )}
         </div>
         {isGroup ? (
-          // Adding people needs a server method that does not exist yet. The
-          // control sits where it will act, but stays off instead of pretending.
-          <span className="ml-auto shrink-0">
-            <IconButton label="Добавить людей" disabled>
-              <PlusIcon />
-            </IconButton>
-          </span>
+          <GroupActions conversation={conversation} className="ml-auto" />
         ) : (
           peer && (
             <DropdownMenu>

@@ -37,7 +37,6 @@ import {
   toggleChannelSidebar,
   useChannelSidebarOpen,
 } from '../model/channel-sidebar'
-import { usePersonalUnread } from '../model/use-personal-unread'
 import { useVoiceShortcuts } from '../model/use-voice-shortcuts'
 
 /**
@@ -78,7 +77,6 @@ const Shell = () => {
   const directDescription = [directUnreadDescription, requestDescription]
     .filter((part) => part !== '')
     .join(', ')
-  usePersonalUnread()
 
   // One socket for the app; changing servers only changes what it watches.
   if (workspaceId) {

@@ -3,6 +3,8 @@ import {
   getUserProfileQueryKey,
   type Conversation,
   type ConversationMember,
+  type ConversationPage,
+  type ConversationSummary,
   type CustomStatus,
   type MessagePage,
   type SelfProfile,
@@ -142,6 +144,46 @@ const replaceAuthors = (
   return replaceAuthorsInPage(history, profile)
 }
 
+const replaceSummaryProfile = (
+  summary: ConversationSummary,
+  profile: UserProfile,
+): ConversationSummary => {
+  const lastMessage = summary.lastMessage
+  return {
+    ...summary,
+    members: replaceMembers(summary.members, profile),
+    ...(lastMessage?.author?.id === profile.id
+      ? { lastMessage: { ...lastMessage, author: profile } }
+      : {}),
+  }
+}
+
+const replaceConversationPageProfiles = (
+  page: ConversationPage,
+  profile: UserProfile,
+): ConversationPage => {
+  return {
+    ...page,
+    conversations: page.conversations.map((summary) => replaceSummaryProfile(summary, profile)),
+  }
+}
+
+const replaceConversationListProfiles = (
+  list: ConversationPage | InfiniteData<ConversationPage> | undefined,
+  profile: UserProfile,
+): ConversationPage | InfiniteData<ConversationPage> | undefined => {
+  if (!list) {
+    return list
+  }
+  if ('pages' in list) {
+    return {
+      ...list,
+      pages: list.pages.map((page) => replaceConversationPageProfiles(page, profile)),
+    }
+  }
+  return replaceConversationPageProfiles(list, profile)
+}
+
 /**
  * Puts a changed profile into every place that already holds it: the profile
  * cache, the loaded member lists, the conversations and the feed. They all
@@ -165,13 +207,9 @@ export const applyUserProfile = (queryClient: QueryClient, profile: UserProfile)
       ),
   )
 
-  queryClient.setQueriesData<Conversation[]>(
+  queryClient.setQueriesData<ConversationPage | InfiniteData<ConversationPage>>(
     { predicate: isQuery('listConversations') },
-    (conversations) =>
-      conversations?.map((conversation) => ({
-        ...conversation,
-        members: replaceMembers(conversation.members, profile),
-      })),
+    (list) => replaceConversationListProfiles(list, profile),
   )
 
   queryClient.setQueriesData<Conversation>(

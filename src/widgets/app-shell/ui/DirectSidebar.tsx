@@ -1,19 +1,22 @@
-import { useState, type UIEvent } from 'react'
+import { useEffect, useRef, useState, type UIEvent } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 
 import {
   conversationMembersExcept,
   conversationName,
   conversationPeer,
+  describeConversationError,
   useConversationSummaries,
+  useHideConversation,
+  useUnhideConversation,
   type ConversationSummary,
 } from '@/entities/conversation'
 import { useFriends } from '@/entities/friend'
-import { authorName, formatRelativeTime, messagePreview } from '@/entities/message'
+import { formatRelativeTime, systemEventText } from '@/entities/message'
 import { secretChatName, useSecretChats, useSecretDevice } from '@/entities/secret-chat'
 import type { SecretChat } from '@/entities/secret-chat'
 import { useSession } from '@/entities/session'
-import { describeUnread, UnreadBadge, useConversationUnread } from '@/entities/unread'
+import { describeUnread, UnreadBadge } from '@/entities/unread'
 import { UserAvatar, UserAvatarStack, userDisplayName } from '@/entities/user'
 import { SetupSecretChats } from '@/features/start-secret-chat'
 import type { PresenceStatus } from '@/shared/api'
@@ -30,13 +33,11 @@ import { HideIcon, LockIcon, MoreIcon, SearchIcon, UsersIcon } from '@/shared/ui
 import { IconButton } from '@/shared/ui/icon-button'
 import { Input } from '@/shared/ui/input'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { useToast } from '@/shared/ui/toast'
 
 interface DirectSidebarProps {
   className?: string
 }
-
-/** How many dialogues the list draws at once; the rest come as the reader scrolls. */
-const PAGE_SIZE = 20
 
 const rowClass = ({ isActive }: { isActive: boolean }) =>
   cn(
@@ -75,11 +76,19 @@ const previewOf = (summary: ConversationSummary): string => {
   if (!message) {
     return 'Пока нет сообщений'
   }
-  const text = messagePreview(message)
-  if (summary.conversation.kind === 'group' && message.author && message.deletedAt === undefined) {
-    return `${authorName(message)}: ${text}`
+  if (message.kind === 'system') {
+    return systemEventText(message, summary.members) ?? 'Чат изменился'
   }
-  return text
+  if (message.deletedAt !== undefined) {
+    return 'Сообщение удалено'
+  }
+  const content = message.content.replace(/\s+/g, ' ').trim()
+  const text = content === '' ? 'Вложение' : content
+  const preview = text.length > 120 ? `${text.slice(0, 119)}…` : text
+  if (summary.kind === 'group' && message.author !== undefined) {
+    return `${userDisplayName(message.author)}: ${preview}`
+  }
+  return preview
 }
 
 interface AvatarProps {
@@ -89,12 +98,11 @@ interface AvatarProps {
 }
 
 const ConversationAvatar = ({ summary, userId, presence }: AvatarProps) => {
-  const { conversation } = summary
-  const peer = conversationPeer(conversation, userId)
+  const peer = conversationPeer(summary, userId)
   if (peer) {
     return <UserAvatar profile={peer} size={20} status={presence} decorative />
   }
-  const others = conversationMembersExcept(conversation, userId)
+  const others = conversationMembersExcept(summary, userId)
   if (others.length === 0) {
     return (
       <span
@@ -114,18 +122,19 @@ const ConversationRow = ({
   userId,
   secrets,
   presences,
+  onHide,
 }: {
   summary: ConversationSummary
   userId: string
   secrets: readonly SecretChat[]
   presences: ReadonlyMap<string, PresenceStatus>
+  onHide: (conversationId: string) => void
 }) => {
-  const { conversation } = summary
-  const peer = conversationPeer(conversation, userId)
+  const peer = conversationPeer(summary, userId)
   const presence = peer ? presences.get(peer.id) : undefined
-  const name = conversationName(conversation, userId)
+  const name = conversationName(summary, userId)
   const label = peer ? userDisplayName(peer) : name
-  const unread = useConversationUnread(conversation.id)
+  const unread = { unread: summary.unread, mentions: summary.mentions }
   const description = describeUnread(unread)
   const preview = previewOf(summary)
   const lastMessage = summary.lastMessage
@@ -133,8 +142,9 @@ const ConversationRow = ({
   return (
     <li className="group relative flex flex-col gap-0.5">
       <NavLink
-        to={`/me/${conversation.id}`}
+        to={`/me/${summary.id}`}
         className={rowClass}
+        data-conversation-row="true"
         aria-label={description ? `${label}, ${description}` : label}
       >
         <ConversationAvatar summary={summary} userId={userId} presence={presence} />
@@ -170,9 +180,11 @@ const ConversationRow = ({
           </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {/* Hiding a dialogue needs a server-side flag that the API does not
-              have yet; the action is shown where it will live, but off. */}
-          <DropdownMenuItem disabled>
+          <DropdownMenuItem
+            onSelect={() => {
+              onHide(summary.id)
+            }}
+          >
             <HideIcon className="size-4 text-fg-muted" />
             Скрыть
           </DropdownMenuItem>
@@ -196,11 +208,14 @@ const ConversationRow = ({
 }
 
 const searchableName = (summary: ConversationSummary, userId: string): string => {
-  const peer = conversationPeer(summary.conversation, userId)
+  const peer = conversationPeer(summary, userId)
   if (peer) {
     return `${userDisplayName(peer)} ${peer.nickname}`
   }
-  return conversationName(summary.conversation, userId)
+  const members = conversationMembersExcept(summary, userId)
+    .map((member) => `${userDisplayName(member)} ${member.nickname}`)
+    .join(' ')
+  return `${conversationName(summary, userId)} ${members}`
 }
 
 /**
@@ -208,22 +223,28 @@ const searchableName = (summary: ConversationSummary, userId: string): string =>
  * list: a search field, the dialogues of this account with the newest message
  * and the unread badge, and below them the secret chats of this browser, which
  * exist only when a secret device was created here.
+ *
+ * The list is paged by the server cursor: a screenful arrives in one request,
+ * and the next page is asked for only when the reader reaches the end.
  */
 export const DirectSidebar = ({ className }: DirectSidebarProps) => {
   const { user } = useSession()
   const userId = user?.id ?? ''
   const location = useLocation()
+  const toast = useToast()
   // `/me` is the friends section itself, so the row is current there too.
   const friendsOpen = location.pathname === '/me' || location.pathname === '/me/friends'
-  const { summaries, isPending, error } = useConversationSummaries()
+  const { summaries, isPending, error, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useConversationSummaries()
+  const hide = useHideConversation()
+  const unhide = useUnhideConversation()
   const { data: friends } = useFriends()
   const presences = new Map((friends ?? []).map((friend) => [friend.id, friend.presence]))
   const device = useSecretDevice()
   const secretChats = useSecretChats(device.data?.deviceId)
   const [search, setSearch] = useState('')
-  // The page size belongs to the current query: new text starts the list over
-  // without an effect that would set state on every keystroke.
-  const [page, setPage] = useState({ query: '', size: PAGE_SIZE })
+  const listRef = useRef<HTMLUListElement | null>(null)
+  const focusTimerRef = useRef<number | undefined>(undefined)
 
   const query = search.trim().toLocaleLowerCase('ru')
   const filtered =
@@ -232,20 +253,72 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
       : summaries.filter((summary) =>
           searchableName(summary, userId).toLocaleLowerCase('ru').includes(query),
         )
-  const visible = page.query === query ? page.size : PAGE_SIZE
-  const shown = filtered.slice(0, visible)
-  const hasMore = filtered.length > shown.length
 
   const showMore = () => {
-    setPage({ query, size: visible + PAGE_SIZE })
+    // Where the new page begins, so focus can land on its first row instead of
+    // falling to the page when the button goes away with the last page.
+    const firstNew = filtered.length
+    void fetchNextPage().then(() => {
+      // The rows exist only after React has drawn the new page.
+      focusTimerRef.current = globalThis.setTimeout(() => {
+        const list = listRef.current
+        const row = list?.querySelectorAll<HTMLElement>('[data-conversation-row]')[firstNew]
+        if (row) {
+          row.focus()
+        } else {
+          list?.focus()
+        }
+      }, 0)
+    })
   }
+
+  useEffect(() => {
+    return () => {
+      if (focusTimerRef.current !== undefined) {
+        globalThis.clearTimeout(focusTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget
-    // Near the bottom: bring in the next part of the list.
-    if (element.scrollHeight - element.scrollTop - element.clientHeight < 64 && hasMore) {
-      showMore()
+    // Near the bottom: bring in the next page of the list.
+    if (
+      element.scrollHeight - element.scrollTop - element.clientHeight < 64 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      void fetchNextPage()
     }
+  }
+
+  const hideConversation = (conversationId: string) => {
+    hide.mutate(
+      { path: { conversationId } },
+      {
+        onSuccess: () => {
+          toast('Беседа скрыта', 'info', {
+            label: 'Вернуть',
+            onClick: () => {
+              unhide.mutate(
+                { path: { conversationId } },
+                {
+                  onError: (reason) => {
+                    toast(
+                      describeConversationError(reason, 'Не получилось вернуть беседу.'),
+                      'danger',
+                    )
+                  },
+                },
+              )
+            },
+          })
+        },
+        onError: (reason) => {
+          toast(describeConversationError(reason, 'Не получилось скрыть беседу.'), 'danger')
+        },
+      },
+    )
   }
 
   // A secret chat belongs under the dialogue with the same person: it is one of
@@ -258,7 +331,7 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
   }
   const nested = new Set<string>()
   for (const summary of summaries) {
-    const peer = conversationPeer(summary.conversation, userId)
+    const peer = conversationPeer(summary, userId)
     if (!peer) {
       continue
     }
@@ -321,28 +394,47 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
             </p>
           ) : summaries.length === 0 ? (
             <p className="px-2 text-xs text-fg-muted">Пока нет личных сообщений</p>
-          ) : shown.length === 0 ? (
-            <p className="px-2 text-xs text-fg-muted">Никого не нашли</p>
           ) : (
             <>
-              <ul className="flex flex-col gap-0.5">
-                {shown.map((summary) => {
-                  const peer = conversationPeer(summary.conversation, userId)
-                  return (
-                    <ConversationRow
-                      key={summary.conversation.id}
-                      summary={summary}
-                      userId={userId}
-                      secrets={peer ? (secretsByPeer.get(peer.id) ?? []) : []}
-                      presences={presences}
-                    />
-                  )
-                })}
-              </ul>
-              {hasMore && (
-                <Button variant="ghost" size="sm" onClick={showMore}>
+              {filtered.length === 0 ? (
+                <p className="px-2 text-xs text-fg-muted">Никого не нашли</p>
+              ) : (
+                <ul
+                  ref={listRef}
+                  tabIndex={-1}
+                  aria-busy={isFetchingNextPage}
+                  className="flex flex-col gap-0.5 focus:outline-none"
+                >
+                  {filtered.map((summary) => {
+                    const peer = conversationPeer(summary, userId)
+                    return (
+                      <ConversationRow
+                        key={summary.id}
+                        summary={summary}
+                        userId={userId}
+                        secrets={peer ? (secretsByPeer.get(peer.id) ?? []) : []}
+                        presences={presences}
+                        onHide={hideConversation}
+                      />
+                    )
+                  })}
+                </ul>
+              )}
+              {hasNextPage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isFetchingNextPage}
+                  aria-busy={isFetchingNextPage}
+                  onClick={showMore}
+                >
                   Показать ещё
                 </Button>
+              )}
+              {isFetchingNextPage && (
+                <p role="status" className="px-2 text-xs text-fg-muted">
+                  Загружаем ещё диалоги…
+                </p>
               )}
             </>
           )}

@@ -1,19 +1,42 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+} from '@tanstack/react-query'
 
 import {
+  addConversationMembersMutation,
   getConversationOptions,
   getConversationQueryKey,
-  listConversationsOptions,
+  getConversationUnreadQueryKey,
+  hideConversationMutation,
+  leaveConversationMutation,
+  listConversationsInfiniteOptions,
+  listConversationsInfiniteQueryKey,
   listConversationsQueryKey,
-  listMessagesOptions,
+  listMessagesInfiniteQueryKey,
+  listMessagesQueryKey,
   startConversationMutation,
+  unhideConversationMutation,
+  updateConversationMutation,
   type Conversation,
   type ConversationMember,
-  type Message,
+  type ConversationPage,
+  type ConversationSummary,
 } from '@/shared/api'
 
-/** Every dialogue this account takes part in, in the order the server keeps it. */
-export const useConversations = () => useQuery(listConversationsOptions())
+/** How many dialogues one page of the sidebar holds; the server caps it at 100. */
+const PAGE_SIZE = 20
+
+/** The part of a conversation both a row of the list and its page carry. */
+interface ConversationShape {
+  kind: 'direct' | 'group'
+  name?: string
+  members: ConversationMember[]
+}
 
 /** One dialogue by id; the id is also the channel id its messages live in. */
 export const useConversation = (conversationId: string | undefined) =>
@@ -21,6 +44,37 @@ export const useConversation = (conversationId: string | undefined) =>
     ...getConversationOptions({ path: { conversationId: conversationId ?? '' } }),
     enabled: conversationId !== undefined && conversationId !== '',
   })
+
+/**
+ * The dialogues of this account page by page, liveliest first. The row already
+ * holds everything a sidebar draws — the newest message, the group name and the
+ * unread counts after this account's cursor — so one request is enough for a
+ * whole screen and no history is read for a preview.
+ */
+export const useConversationSummaries = () => {
+  const query = useInfiniteQuery({
+    ...listConversationsInfiniteOptions({ query: { limit: PAGE_SIZE } }),
+    // The first page asks for the liveliest dialogues: no cursor at all.
+    initialPageParam: { query: { limit: PAGE_SIZE } },
+    // The server hands back the cursor of the next page; absent means the end.
+    getNextPageParam: (lastPage) =>
+      lastPage.nextCursor === undefined
+        ? null
+        : { query: { limit: PAGE_SIZE, cursor: lastPage.nextCursor } },
+    staleTime: 30_000,
+  })
+
+  const summaries = (query.data?.pages ?? []).flatMap((page) => page.conversations)
+
+  return {
+    summaries,
+    isPending: query.isPending,
+    error: query.error,
+    hasNextPage: query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+  }
+}
 
 /**
  * Opens the pair dialogue with someone, or returns the one that already exists:
@@ -43,8 +97,141 @@ export const useStartConversation = () => {
   })
 }
 
+type ConversationPages = InfiniteData<ConversationPage>
+
+/** Applies a change to every loaded page of the list. */
+const updateConversationPages = (
+  queryClient: QueryClient,
+  update: (pages: ConversationPage[]) => ConversationPage[],
+) => {
+  queryClient.setQueriesData<ConversationPages>(
+    { queryKey: listConversationsInfiniteQueryKey() },
+    (data) => (data ? { ...data, pages: update(data.pages) } : data),
+  )
+}
+
+/** Drops a dialogue from the loaded list without waiting for the server. */
+export const removeConversationSummary = (queryClient: QueryClient, conversationId: string) => {
+  updateConversationPages(queryClient, (pages) =>
+    pages.map((page) => ({
+      ...page,
+      conversations: page.conversations.filter(
+        (conversation) => conversation.id !== conversationId,
+      ),
+    })),
+  )
+}
+
+/** Puts a changed dialogue back into the list, or refreshes it if it is there. */
+const replaceConversationSummary = (queryClient: QueryClient, conversation: Conversation) => {
+  updateConversationPages(queryClient, (pages) =>
+    pages.map((page) => ({
+      ...page,
+      conversations: page.conversations.map((summary) =>
+        summary.id === conversation.id
+          ? {
+              ...summary,
+              kind: conversation.kind,
+              members: conversation.members,
+              ...(conversation.name === undefined ? {} : { name: conversation.name }),
+            }
+          : summary,
+      ),
+    })),
+  )
+}
+
+const invalidateHistory = (queryClient: QueryClient, conversationId: string) => {
+  const path = { channelId: conversationId }
+  void queryClient.invalidateQueries({ queryKey: listMessagesQueryKey({ path }) })
+  void queryClient.invalidateQueries({ queryKey: listMessagesInfiniteQueryKey({ path }) })
+}
+
+/** Renames a group; the server refuses a direct dialogue with 409. */
+export const useRenameConversation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...updateConversationMutation(),
+    onSuccess: (conversation) => {
+      queryClient.setQueryData(
+        getConversationQueryKey({ path: { conversationId: conversation.id } }),
+        conversation,
+      )
+      replaceConversationSummary(queryClient, conversation)
+      void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+      invalidateHistory(queryClient, conversation.id)
+    },
+  })
+}
+
+/** Adds people to a group; a direct dialogue answers 409 instead of growing. */
+export const useAddConversationMembers = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...addConversationMembersMutation(),
+    onSuccess: (conversation) => {
+      queryClient.setQueryData(
+        getConversationQueryKey({ path: { conversationId: conversation.id } }),
+        conversation,
+      )
+      replaceConversationSummary(queryClient, conversation)
+      void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+      invalidateHistory(queryClient, conversation.id)
+    },
+  })
+}
+
+/** Leaves a group: the conversation and its history stop existing for this account. */
+export const useLeaveConversation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...leaveConversationMutation(),
+    onSuccess: (_answer, variables) => {
+      const conversationId = variables.path.conversationId
+      const path = { channelId: conversationId }
+      queryClient.removeQueries({
+        queryKey: getConversationQueryKey({ path: { conversationId } }),
+      })
+      queryClient.removeQueries({ queryKey: listMessagesQueryKey({ path }) })
+      queryClient.removeQueries({ queryKey: listMessagesInfiniteQueryKey({ path }) })
+      removeConversationSummary(queryClient, conversationId)
+      void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+      void queryClient.invalidateQueries({ queryKey: getConversationUnreadQueryKey() })
+    },
+  })
+}
+
+/** Hides a dialogue from this account's sidebar; its other devices hear the event. */
+export const useHideConversation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...hideConversationMutation(),
+    onSuccess: (_answer, variables) => {
+      removeConversationSummary(queryClient, variables.path.conversationId)
+      void queryClient.invalidateQueries({ queryKey: getConversationUnreadQueryKey() })
+    },
+  })
+}
+
+/** Shows a hidden dialogue again, for example right after hiding it by mistake. */
+export const useUnhideConversation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...unhideConversationMutation(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: listConversationsQueryKey() })
+      void queryClient.invalidateQueries({ queryKey: getConversationUnreadQueryKey() })
+    },
+  })
+}
+
 /** The members of a conversation other than the reader. */
-export const conversationMembersExcept = (conversation: Conversation, userId: string) =>
+export const conversationMembersExcept = (conversation: ConversationShape, userId: string) =>
   conversation.members.filter((member) => member.id !== userId)
 
 /**
@@ -52,7 +239,7 @@ export const conversationMembersExcept = (conversation: Conversation, userId: st
  * so it has no peer at all; use `conversationName` for its title.
  */
 export const conversationPeer = (
-  conversation: Conversation,
+  conversation: ConversationShape,
   userId: string,
 ): ConversationMember | undefined => {
   if (conversation.kind !== 'direct') {
@@ -63,72 +250,15 @@ export const conversationPeer = (
 
 /**
  * What a row in the sidebar and the page header call this conversation: the
- * peer's nickname for a pair, the other members' nicknames for a group.
+ * peer's nickname for a pair, the title the server keeps for a group. A group
+ * without a title stays neutral instead of listing its members as its name.
  */
-export const conversationName = (conversation: Conversation, userId: string): string => {
+export const conversationName = (conversation: ConversationShape, userId: string): string => {
   if (conversation.kind === 'direct') {
     return conversationPeer(conversation, userId)?.nickname ?? 'Диалог'
   }
-  const names = conversationMembersExcept(conversation, userId).map((member) => member.nickname)
-  return names.length > 0 ? names.join(', ') : 'Групповой чат'
+  const name = conversation.name?.trim() ?? ''
+  return name === '' ? 'Групповой чат' : name
 }
 
-/** A dialogue together with the newest message the list previews. */
-export interface ConversationSummary {
-  conversation: Conversation
-  /** Absent while the dialogue has no messages, or while its latest page loads. */
-  lastMessage?: Message
-}
-
-interface SummaryList {
-  summaries: ConversationSummary[]
-  isPending: boolean
-  error: unknown
-  isFetching: boolean
-}
-
-/** The latest message is one page of one: the list shows a single line of it. */
-const LATEST_MESSAGE_LIMIT = 1
-
-/**
- * The dialogues with their latest message, liveliest first.
- *
- * The current server contract has no summary on `GET /conversations`, so the
- * preview comes from the history endpoint — one small request per dialogue,
- * cached and shared by every preview. When conversation summaries arrive
- * (DM-2), this hook is the only place that changes.
- */
-export const useConversationSummaries = (): SummaryList => {
-  const conversations = useConversations()
-  const ids = conversations.data?.map((conversation) => conversation.id) ?? []
-
-  return useQueries({
-    queries: ids.map((channelId) => ({
-      ...listMessagesOptions({ path: { channelId }, query: { limit: LATEST_MESSAGE_LIMIT } }),
-      staleTime: 30_000,
-    })),
-    combine: (results) => {
-      const list: ConversationSummary[] = (conversations.data ?? []).map((conversation, index) => {
-        const lastMessage = results[index]?.data?.messages[0]
-        return lastMessage === undefined ? { conversation } : { conversation, lastMessage }
-      })
-      list.sort(byLastActivity)
-      return {
-        summaries: list,
-        isPending: conversations.isPending,
-        error: conversations.error,
-        isFetching: conversations.isFetching || results.some((result) => result.isFetching),
-      }
-    },
-  })
-}
-
-/** Moments with a message come first; a fresh dialogue without one follows by its birth. */
-const byLastActivity = (a: ConversationSummary, b: ConversationSummary): number => {
-  const left = a.lastMessage?.createdAt.getTime() ?? a.conversation.createdAt.getTime()
-  const right = b.lastMessage?.createdAt.getTime() ?? b.conversation.createdAt.getTime()
-  if (left !== right) {
-    return right - left
-  }
-  return a.conversation.id.localeCompare(b.conversation.id)
-}
+export type { ConversationSummary }

@@ -1,7 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 
-import { getConversationQueryKey, type Conversation } from '@/shared/api'
+import {
+  getConversationQueryKey,
+  type Conversation,
+  type ConversationPage,
+  type ConversationSummary,
+} from '@/shared/api'
 
 import {
   conversationMembersExcept,
@@ -9,7 +14,6 @@ import {
   conversationPeer,
   useConversation,
   useConversationSummaries,
-  useConversations,
   useStartConversation,
 } from './queries'
 
@@ -55,44 +59,76 @@ const direct: Conversation = {
 const group: Conversation = {
   id: 'c-group',
   kind: 'group',
+  name: 'Планы',
   members: [anna, bob, carol],
   createdAt: new Date('2026-10-20T11:00:00Z'),
 }
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-
-interface ApiState {
-  conversations: Conversation[]
-  lastMessages: Record<string, unknown[]>
-  posted: string[]
-  listReads: number
-  detailReads: number
+const directSummary: ConversationSummary = {
+  id: 'c-direct',
+  kind: 'direct',
+  members: [anna, bob],
+  createdAt: new Date('2026-10-20T10:00:00Z'),
+  lastMessage: {
+    id: 'm-direct',
+    seq: 1n,
+    kind: 'user',
+    author: bob,
+    content: 'привет',
+    createdAt: new Date('2026-10-20T13:00:00Z'),
+  },
+  lastReadSeq: 0n,
+  unread: 2,
+  mentions: 1,
+}
+const groupSummary: ConversationSummary = {
+  id: 'c-group',
+  kind: 'group',
+  name: 'Планы',
+  members: [anna, bob, carol],
+  createdAt: new Date('2026-10-20T11:00:00Z'),
+  lastMessage: {
+    id: 'm-group',
+    seq: 4n,
+    kind: 'user',
+    author: carol,
+    content: 'как дела',
+    createdAt: new Date('2026-10-20T12:00:00Z'),
+  },
+  lastReadSeq: 3n,
+  unread: 0,
+  mentions: 0,
 }
 
-const latestMessage = (id: string, channelId: string, createdAt: string) => {
-  return {
-    id,
-    channelId,
-    seq: 1,
-    content: 'привет',
-    mentions: [],
-    reactions: [],
-    createdAt: new Date(createdAt),
-  }
+const json = (body: unknown, status = 200) => {
+  return new Response(
+    JSON.stringify(body, (_key, value: unknown) =>
+      typeof value === 'bigint' ? Number(value) : value,
+    ),
+    { status, headers: { 'Content-Type': 'application/json' } },
+  )
+}
+
+interface ApiState {
+  pages: Record<string, ConversationPage>
+  details: Record<string, Conversation>
+  listCursors: (string | null)[]
+  listReads: number
+  detailReads: number
+  historyReads: number
+  posted: string[]
 }
 
 /** Answers the conversation endpoints and records what was asked for. */
 const stubApi = (overrides: Partial<ApiState> = {}): ApiState => {
   const state: ApiState = {
-    conversations: [direct, group],
-    lastMessages: {},
-    posted: [],
+    pages: { '': { conversations: [directSummary, groupSummary] } },
+    details: { [direct.id]: direct, [group.id]: group },
+    listCursors: [],
     listReads: 0,
     detailReads: 0,
+    historyReads: 0,
+    posted: [],
     ...overrides,
   }
   vi.stubGlobal(
@@ -106,17 +142,26 @@ const stubApi = (overrides: Partial<ApiState> = {}): ApiState => {
           return json(direct)
         }
         state.listReads += 1
-        return json(state.conversations)
+        const cursor = url.searchParams.get('cursor')
+        state.listCursors.push(cursor)
+        const page = state.pages[cursor ?? '']
+        if (!page) {
+          return json({ error: { code: 'invalid_cursor', message: 'no' } }, 400)
+        }
+        return json(page)
+      }
+      if (url.pathname === '/api/v1/conversations/unread') {
+        return json({ unread: 2, mentions: 1 })
       }
       if (url.pathname.startsWith('/api/v1/conversations/')) {
         state.detailReads += 1
         const id = url.pathname.slice(url.pathname.lastIndexOf('/') + 1)
-        const found = state.conversations.find((item) => item.id === id)
+        const found = state.details[id]
         return found ? json(found) : json({ error: { code: 'not_found', message: 'gone' } }, 404)
       }
-      const channel = /^\/api\/v1\/channels\/([^/]+)\/messages$/u.exec(url.pathname)?.[1]
-      if (channel !== undefined) {
-        return json({ messages: state.lastMessages[channel] ?? [] })
+      if (url.pathname.includes('/messages')) {
+        state.historyReads += 1
+        return json({ messages: [] })
       }
       return json({})
     }),
@@ -159,69 +204,74 @@ describe('conversationName', () => {
     expect(conversationName(direct, bob.id)).toBe('Анна')
   })
 
-  it('joins the other members for a group', () => {
-    expect(conversationName(group, anna.id)).toBe('Боб, Кэрол')
+  it('takes the group title from the server instead of joining members', () => {
+    expect(conversationName(group, anna.id)).toBe('Планы')
+    expect(conversationName(groupSummary, anna.id)).toBe('Планы')
   })
 
-  it('falls back to neutral words when there is nobody else', () => {
-    const alone: Conversation = {
-      ...direct,
-      members: [anna],
-    }
+  it('stays neutral for a group without a title', () => {
+    const unnamed: Conversation = { ...group, name: undefined }
+    expect(conversationName(unnamed, anna.id)).toBe('Групповой чат')
+  })
+
+  it('falls back to neutral words when a pair has nobody else', () => {
+    const alone: Conversation = { ...direct, members: [anna] }
     expect(conversationName(alone, anna.id)).toBe('Диалог')
-    expect(conversationName({ ...group, members: [anna] }, anna.id)).toBe('Групповой чат')
-  })
-})
-
-describe('useConversations', () => {
-  it('returns the conversations in the order the server sent them', async () => {
-    stubApi()
-    const { result } = renderQuery(() => useConversations())
-
-    await waitFor(() => {
-      expect(result.current.data?.map((conversation) => conversation.id)).toEqual([
-        'c-direct',
-        'c-group',
-      ])
-    })
-    expect(result.current.data?.[0]?.createdAt).toBeInstanceOf(Date)
   })
 })
 
 describe('useConversationSummaries', () => {
-  it('reads the latest message of every dialogue and orders by it', async () => {
-    stubApi({
-      conversations: [group, direct],
-      lastMessages: {
-        'c-direct': [latestMessage('m-direct', 'c-direct', '2026-10-20T13:00:00Z')],
-        'c-group': [latestMessage('m-group', 'c-group', '2026-10-20T12:00:00Z')],
+  it('reads previews and unread counts from the list, without asking for history', async () => {
+    const state = stubApi()
+    const { result } = renderQuery(() => useConversationSummaries())
+
+    await waitFor(() => {
+      expect(result.current.summaries.map((summary) => summary.id)).toEqual(['c-direct', 'c-group'])
+    })
+    expect(result.current.summaries[0]?.lastMessage?.content).toBe('привет')
+    expect(result.current.summaries[0]?.unread).toBe(2)
+    expect(result.current.summaries[0]?.mentions).toBe(1)
+    expect(result.current.summaries[1]?.name).toBe('Планы')
+    expect(result.current.isPending).toBe(false)
+    // The old contract read one history page per dialogue for the preview.
+    expect(state.historyReads).toBe(0)
+  })
+
+  it('asks for the next page by the cursor the server returned', async () => {
+    const state = stubApi({
+      pages: {
+        '': { conversations: [directSummary], nextCursor: 'page-2' },
+        'page-2': { conversations: [groupSummary] },
       },
     })
     const { result } = renderQuery(() => useConversationSummaries())
 
     await waitFor(() => {
-      expect(result.current.summaries.map((item) => item.conversation.id)).toEqual([
-        'c-direct',
-        'c-group',
-      ])
+      expect(result.current.summaries).toHaveLength(1)
     })
-    expect(result.current.summaries[0]?.lastMessage?.content).toBe('привет')
-    expect(result.current.isPending).toBe(false)
-  })
+    expect(result.current.hasNextPage).toBe(true)
 
-  it('falls back to the creation moment for a dialogue without messages', async () => {
-    stubApi({ conversations: [group, direct], lastMessages: {} })
-    const { result } = renderQuery(() => useConversationSummaries())
+    await act(async () => {
+      await result.current.fetchNextPage()
+    })
 
     await waitFor(() => {
-      expect(result.current.summaries).toHaveLength(2)
+      expect(result.current.summaries.map((summary) => summary.id)).toEqual(['c-direct', 'c-group'])
     })
-    // The group was created later, so it stands first while both are empty.
-    expect(result.current.summaries.map((item) => item.conversation.id)).toEqual([
-      'c-group',
-      'c-direct',
-    ])
-    expect(result.current.summaries[0]?.lastMessage).toBeUndefined()
+    expect(state.listCursors).toEqual([null, 'page-2'])
+    expect(result.current.hasNextPage).toBe(false)
+  })
+
+  it('passes the page size to the server', async () => {
+    stubApi()
+    renderQuery(() => useConversationSummaries())
+
+    await waitFor(() => {
+      expect(vi.mocked(fetch)).toHaveBeenCalled()
+    })
+    const call = vi.mocked(fetch).mock.calls[0]?.[0]
+    const url = new URL(call instanceof Request ? call.url : String(call))
+    expect(url.searchParams.get('limit')).toBe('20')
   })
 })
 
@@ -251,12 +301,12 @@ describe('useStartConversation', () => {
     const state = stubApi()
     const queryClient = new QueryClient()
     const { result } = renderQuery(
-      () => ({ conversations: useConversations(), start: useStartConversation() }),
+      () => ({ list: useConversationSummaries(), start: useStartConversation() }),
       queryClient,
     )
 
     await waitFor(() => {
-      expect(result.current.conversations.data).toHaveLength(2)
+      expect(result.current.list.summaries).toHaveLength(2)
     })
 
     act(() => {

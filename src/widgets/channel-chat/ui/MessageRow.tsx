@@ -1,5 +1,11 @@
 import { AttachmentList } from '@/entities/attachment'
-import { authorName, MessageCard, startsNewGroup, type Message } from '@/entities/message'
+import {
+  authorName,
+  MessageCard,
+  startsNewGroup,
+  type Message,
+  type NamedPerson,
+} from '@/entities/message'
 import { ClaimGuest } from '@/features/claim-guest'
 import { EditMessageForm, MessageActions, ReactionBar } from '@/features/message-actions'
 import { UserCard } from '@/features/user-card'
@@ -10,6 +16,8 @@ interface MessageRowProps {
   workspaceId?: string
   /** The message right above it, for grouping. */
   previous?: Message
+  /** The people of the conversation, to name who a system line added. */
+  people?: readonly NamedPerson[]
   mentionsMe: boolean
   myNickname?: string
   canWrite: boolean
@@ -28,6 +36,7 @@ export const MessageRow = ({
   message,
   workspaceId,
   previous,
+  people,
   mentionsMe,
   myNickname,
   canWrite,
@@ -43,6 +52,7 @@ export const MessageRow = ({
     <MessageCard
       message={message}
       startsGroup={startsNewGroup(message, previous)}
+      {...(people === undefined ? {} : { people })}
       mentionsMe={mentionsMe}
       myNickname={myNickname}
       replyTo={replyTo}

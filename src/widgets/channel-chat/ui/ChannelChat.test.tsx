@@ -37,6 +37,7 @@ const makeMessage = (
 ): Message => {
   return {
     channelId,
+    kind: 'user',
     author: anna,
     mentions: [],
     reactions: [],
@@ -180,7 +181,11 @@ const articleOf = (text: string): HTMLElement => {
   return article
 }
 
-const renderChat = (canWrite = true, canAttach = true) => {
+const renderChat = (
+  canWrite = true,
+  canAttach = true,
+  mentionPeople: { id: string; nickname: string }[] = [],
+) => {
   giveViewportSize()
   return renderWithProviders(
     <ChannelChat
@@ -188,6 +193,7 @@ const renderChat = (canWrite = true, canAttach = true) => {
       channelId={channelId}
       canWrite={canWrite}
       canAttach={canAttach}
+      mentionPeople={mentionPeople}
     />,
     { route: '/' },
   )
@@ -387,6 +393,64 @@ it("marks the reader's mention in the text", async () => {
 
   const mention = await screen.findByText('@Anna')
   expect(mention.tagName).toBe('MARK')
+})
+
+describe('system lines', () => {
+  const systemLine = (
+    id: string,
+    seq: bigint,
+    system: Message['system'],
+    author = anna,
+  ): Message => {
+    return makeMessage({
+      id,
+      seq,
+      kind: 'system',
+      author,
+      content: 'СЛУЖЕБНЫЙ ТЕКСТ, КОТОРЫЙ НЕ ПОКАЗЫВАЮТ',
+      system,
+    })
+  }
+
+  it('renders the three kinds of group events from their structured fields', async () => {
+    stubApi(
+      [
+        systemLine('m-sys-3', 3n, { type: 'conversation_renamed', name: 'Планы' }),
+        systemLine('m-sys-2', 2n, { type: 'member_removed' }),
+        systemLine('m-sys-1', 1n, { type: 'member_added', targetId: boris.id }),
+      ],
+      { lastReadSeq: 3 },
+    )
+    renderChat(true, true, [
+      { id: anna.id, nickname: 'Anna' },
+      { id: boris.id, nickname: 'Boris' },
+    ])
+
+    expect(
+      await screen.findByRole('note', { name: 'Системное событие: Anna добавил Boris' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('note', { name: 'Системное событие: Anna вышел' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('note', { name: 'Системное событие: Anna переименовал чат в «Планы»' }),
+    ).toBeInTheDocument()
+    // The server's readable fallback is not what the client draws.
+    expect(screen.queryByText(/СЛУЖЕБНЫЙ ТЕКСТ/)).not.toBeInTheDocument()
+  })
+
+  it('offers no reply, reaction, edit or delete on an event', async () => {
+    stubApi([systemLine('m-sys-1', 1n, { type: 'member_removed' })])
+    renderChat()
+
+    const note = await screen.findByRole('note', { name: /Anna вышел/ })
+    const article = note.closest('article')
+    if (!(article instanceof HTMLElement)) {
+      throw new Error('no article around the system line')
+    }
+    expect(within(article).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(article).queryByRole('group')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ответить' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Изменить' })).not.toBeInTheDocument()
+  })
 })
 
 describe('attachments', () => {

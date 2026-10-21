@@ -47,7 +47,9 @@ export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageAc
     }
   }, [confirming])
 
-  if (message.deletedAt !== undefined) {
+  // A system line is not somebody's text: there is nothing to react to, reply
+  // to, edit or delete on it.
+  if (message.kind === 'system' || message.deletedAt !== undefined) {
     return null
   }
 

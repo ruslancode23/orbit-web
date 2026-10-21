@@ -1,6 +1,6 @@
 import type { Message } from '@/shared/api'
 
-import { authorName, startsNewGroup } from './message'
+import { authorName, startsNewGroup, systemEventText } from './message'
 
 const anna = {
   id: 'u-anna',
@@ -17,6 +17,7 @@ function message(fields: Partial<Message> = {}): Message {
     id: 'm-1',
     channelId: 'c-1',
     seq: 1,
+    kind: 'user',
     content: 'привет',
     author: anna,
     mentions: [],
@@ -50,6 +51,39 @@ it('starts a group after a long pause or another author', () => {
   expect(startsNewGroup(other, previous)).toBe(true)
 })
 
+it('starts a new group for a system line in either direction', () => {
+  const system = message({ id: 'm-sys', kind: 'system', system: { type: 'member_removed' } })
+  expect(startsNewGroup(system, message())).toBe(true)
+  expect(startsNewGroup(message({ id: 'm-2' }), system)).toBe(true)
+})
+
 it('names a deleted account instead of showing nothing', () => {
   expect(authorName(message({ author: undefined }))).toBe('Удалённый аккаунт')
+})
+
+it('describes a system event without reading its fallback text', () => {
+  const people = [
+    { id: 'u-anna', nickname: 'anna', displayName: 'Анна' },
+    { id: 'u-bob', nickname: 'bob', displayName: 'Боб' },
+  ]
+  expect(
+    systemEventText(
+      {
+        kind: 'system',
+        author: { nickname: 'anna', displayName: 'Анна' },
+        system: { type: 'member_added', targetId: 'u-bob' },
+        content: 'не использовать',
+      },
+      people,
+    ),
+  ).toBe('Анна добавил Боб')
+  expect(
+    systemEventText({
+      kind: 'system',
+      author: { nickname: 'anna', displayName: 'Анна' },
+      system: { type: 'conversation_renamed', name: 'Планы' },
+      content: 'не использовать',
+    }),
+  ).toBe('Анна переименовал чат в «Планы»')
+  expect(systemEventText(message())).toBeUndefined()
 })
