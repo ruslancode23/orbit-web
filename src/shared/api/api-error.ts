@@ -12,6 +12,8 @@ interface ApiErrorInit {
   code: string
   message: string
   cause?: unknown
+  /** The wait the server asked for in `Retry-After`, in seconds. */
+  retryAfterSeconds?: number
 }
 
 /**
@@ -24,12 +26,15 @@ interface ApiErrorInit {
 export class ApiError extends Error {
   readonly status: number
   readonly error: ErrorDetail
+  /** How long the server asked to wait; set when the answer carries `Retry-After`. */
+  readonly retryAfterSeconds: number | undefined
 
-  constructor({ status, code, message, cause }: ApiErrorInit) {
+  constructor({ status, code, message, cause, retryAfterSeconds }: ApiErrorInit) {
     super(message, { cause })
     this.name = 'ApiError'
     this.status = status
     this.error = { code, message }
+    this.retryAfterSeconds = retryAfterSeconds
   }
 
   get code(): string {
@@ -78,15 +83,27 @@ export function toApiError(
       cause: error,
     })
   }
+  const retryAfterSeconds = readRetryAfter(response)
   if (isErrorBody(error)) {
-    return new ApiError({ status: response.status, ...error.error })
+    return new ApiError({ status: response.status, ...error.error, retryAfterSeconds })
   }
   return new ApiError({
     status: response.status,
     code: CLIENT_ERROR_CODES.http,
     message: `Ошибка сервера (${String(response.status)})`,
     cause: error,
+    retryAfterSeconds,
   })
+}
+
+/** `Retry-After` may be a number of seconds or an HTTP date; only seconds are used here. */
+function readRetryAfter(response: Response): number | undefined {
+  const header = response.headers.get('Retry-After')
+  if (header === null) {
+    return undefined
+  }
+  const seconds = Number.parseInt(header, 10)
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined
 }
 
 function isAbortError(error: unknown): boolean {

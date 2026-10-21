@@ -24,6 +24,8 @@ interface ImageCropperProps {
   src: string
   /** Width and height of the result, in pixels. */
   outputSize?: number
+  /** How the frame is drawn: avatars are round, server icons square. */
+  shape?: 'square' | 'circle'
   onCrop: (image: SquareImage) => void
   onCancel: () => void
 }
@@ -33,7 +35,13 @@ interface ImageCropperProps {
  * the slider, and see the result at the sizes it will be shown at. The square
  * is drawn on a canvas in the browser, so only the result is uploaded.
  */
-export const ImageCropper = ({ src, outputSize = 256, onCrop, onCancel }: ImageCropperProps) => {
+export const ImageCropper = ({
+  src,
+  outputSize = 256,
+  shape = 'square',
+  onCrop,
+  onCancel,
+}: ImageCropperProps) => {
   const hintId = useId()
   const imageRef = useRef<HTMLImageElement | null>(null)
   const dragRef = useRef<{ pointer: Point; offset: Point } | null>(null)
@@ -111,7 +119,10 @@ export const ImageCropper = ({ src, outputSize = 256, onCrop, onCancel }: ImageC
           type="button"
           aria-label="Положение изображения"
           aria-describedby={hintId}
-          className="relative shrink-0 cursor-grab touch-none overflow-hidden rounded-2xl bg-bg focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none active:cursor-grabbing"
+          className={cn(
+            'relative shrink-0 cursor-grab touch-none overflow-hidden bg-bg focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none active:cursor-grabbing',
+            shape === 'circle' ? 'rounded-full' : 'rounded-2xl',
+          )}
           style={{ width: FRAME, height: FRAME }}
           onPointerDown={startDrag}
           onPointerMove={drag}
@@ -136,7 +147,10 @@ export const ImageCropper = ({ src, outputSize = 256, onCrop, onCancel }: ImageC
           {[64, 40].map((size) => (
             <span
               key={size}
-              className="relative overflow-hidden rounded-xl bg-bg"
+              className={cn(
+                'relative overflow-hidden bg-bg',
+                shape === 'circle' ? 'rounded-full' : 'rounded-xl',
+              )}
               style={{ width: size, height: size }}
             >
               {layout && (

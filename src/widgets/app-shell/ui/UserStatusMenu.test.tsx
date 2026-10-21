@@ -41,7 +41,12 @@ const sockets: FakeSocket[] = []
 const StatusProbe = () => {
   const { status, choose } = useMyStatus()
   return (
-    <UserStatusMenu status={status} onStatusChange={choose} onEditProfile={() => undefined}>
+    <UserStatusMenu
+      status={status}
+      onStatusChange={choose}
+      onEditProfile={() => undefined}
+      onSetStatus={() => undefined}
+    >
       <span>Анна</span>
     </UserStatusMenu>
   )
@@ -100,9 +105,10 @@ it('opens with the keyboard and returns focus on Escape', async () => {
   expect(button).toHaveFocus()
 })
 
-it('offers the profile editor next to the statuses', async () => {
+it('offers the status and profile editors next to the statuses', async () => {
   renderMenu()
   await userEvent.click(trigger())
 
+  expect(screen.getByRole('menuitem', { name: 'Задать статус' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Редактировать профиль' })).toBeInTheDocument()
 })

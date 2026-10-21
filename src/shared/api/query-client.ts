@@ -18,6 +18,15 @@ export function isSessionExpired(error: unknown): boolean {
   return isApiError(error) && error.status === 401
 }
 
+/**
+ * A mutation that checks the current password answers 401 for a wrong password,
+ * not for a dead session: its options set `meta.skipSessionExpiry`, so the app
+ * stays signed in and the form can point at the field.
+ */
+const isSessionLoss = (error: unknown, meta: Record<string, unknown> | undefined): boolean => {
+  return isSessionExpired(error) && meta?.skipSessionExpiry !== true
+}
+
 export function createQueryClient(): QueryClient {
   // The caches are built before the client exists, so they reach it through
   // this holder, filled in a line below.
@@ -25,9 +34,9 @@ export function createQueryClient(): QueryClient {
 
   // A 401 on any request drops what was cached for that account and marks the
   // session as gone; the route guard sees it and sends the person to sign in.
-  const forgetSession = (error: unknown) => {
+  const forgetSession = (error: unknown, meta?: Record<string, unknown>) => {
     const queryClient = holder.client
-    if (!isSessionExpired(error) || !queryClient) {
+    if (!isSessionLoss(error, meta) || !queryClient) {
       return
     }
     if (queryClient.getQueryData(getCurrentUserQueryKey()) === undefined) {
@@ -41,10 +50,14 @@ export function createQueryClient(): QueryClient {
 
   const queryClient = new QueryClient({
     queryCache: new QueryCache({
-      onError: forgetSession,
+      onError: (error) => {
+        forgetSession(error)
+      },
     }),
     mutationCache: new MutationCache({
-      onError: forgetSession,
+      onError: (error, _variables, _context, mutation) => {
+        forgetSession(error, mutation.meta)
+      },
     }),
     defaultOptions: {
       queries: {
