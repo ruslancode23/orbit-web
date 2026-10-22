@@ -72,7 +72,19 @@ const stubApi = (answers: Partial<Record<string, Answer>> = {}) => {
             ? [200, membership]
             : route === 'POST /api/v1/workspaces/:id/channels'
               ? [201, channel(isRecord(body) ? String(body.name) : '?', channels++)]
-              : [200, []])
+              : route === 'POST /api/v1/workspaces/:id/roles'
+                ? [
+                    201,
+                    {
+                      id: 'r-new',
+                      name: 'роль',
+                      hoist: true,
+                      position: 1,
+                      permissions: [],
+                      isDefault: false,
+                    },
+                  ]
+                : [200, []])
       const [status, payload] = answer
       return new Response(JSON.stringify(payload), {
         status,
@@ -213,6 +225,8 @@ it('creates the server, its icon and channels in order, then opens the first cha
     `PUT /api/v1/workspaces/${workspaceId}/icon`,
     `POST /api/v1/workspaces/${workspaceId}/channels`,
     `POST /api/v1/workspaces/${workspaceId}/channels`,
+    `POST /api/v1/workspaces/${workspaceId}/roles`,
+    `POST /api/v1/workspaces/${workspaceId}/roles`,
   ])
   expect(writes[0]?.body).toEqual({
     name: 'Команда',
@@ -220,9 +234,19 @@ it('creates the server, its icon and channels in order, then opens the first cha
     memberPermissions: { canInvite: true, canCreateChannels: false, canAttachFiles: true },
   })
   expect(writes[1]?.body).toEqual({ file: 'image/webp' })
-  expect(writes.slice(2).map((call) => call.body)).toEqual([
+  expect(writes.slice(2, 4).map((call) => call.body)).toEqual([
     { name: 'общий', topic: 'Новости и вопросы команды' },
     { name: 'оффтоп', topic: 'Всё, что не про работу' },
+  ])
+  // Highest first: each new role lands right above @everyone.
+  expect(writes.slice(4).map((call) => call.body)).toEqual([
+    { name: 'Администратор', color: 'red', hoist: true, permissions: ['administrator'] },
+    {
+      name: 'Модератор',
+      color: 'teal',
+      hoist: true,
+      permissions: ['kickMembers', 'banMembers', 'manageMessages'],
+    },
   ])
   // Nothing went wrong, nothing to report.
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -243,7 +267,7 @@ it('opens the server without channels for the empty template', async () => {
   await fillAndCreate(/Пустой/)
 
   expect(await where()).toHaveTextContent(new RegExp(`^/s/${workspaceId}$`))
-  expect(calls.filter((call) => call.method !== 'GET')).toHaveLength(1)
+  expect(calls.some((call) => call.path.endsWith('/channels'))).toBe(false)
 })
 
 // Once the server exists it is never lost: the person lands in it and is told
@@ -295,6 +319,111 @@ it('stays on the last step and says so when there is no connection', async () =>
   await userEvent.click(screen.getByRole('button', { name: 'Создать сервер' }))
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Нет соединения с сервером.')
-  expect(screen.getByRole('heading', { name: 'Что можно участникам?' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Кто что может?' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Создать сервер' })).toBeEnabled()
+})
+
+const toRolesStep = async () => {
+  await userEvent.type(screen.getByLabelText('Название сервера'), 'Команда')
+  await next()
+  await next()
+  await screen.findByRole('heading', { name: 'Кто что может?' })
+}
+
+const roleName = (index: number) => {
+  const field = screen.getAllByLabelText('Название роли')[index]
+  if (!field) {
+    throw new Error('no role name field')
+  }
+  return field
+}
+
+it('creates only the starter roles that were kept, under their new names', async () => {
+  const calls = stubApi()
+  renderWizard()
+  await toRolesStep()
+
+  await userEvent.click(screen.getByRole('checkbox', { name: /Создать роль «Модератор»/ }))
+  await userEvent.clear(roleName(0))
+  await userEvent.type(roleName(0), '  Старшие ')
+  await userEvent.click(screen.getByRole('button', { name: 'Создать сервер' }))
+
+  await where()
+  const roles = calls.filter((call) => call.path.endsWith('/roles'))
+  expect(roles.map((call) => call.body)).toEqual([
+    { name: 'Старшие', color: 'red', hoist: true, permissions: ['administrator'] },
+  ])
+})
+
+it('checks the role names before sending anything', async () => {
+  const calls = stubApi()
+  renderWizard()
+  await toRolesStep()
+
+  await userEvent.clear(roleName(0))
+  await userEvent.type(roleName(0), 'модератор')
+  await userEvent.click(screen.getByRole('button', { name: 'Создать сервер' }))
+
+  expect(await screen.findAllByText('У двух ролей одинаковые названия.')).toHaveLength(2)
+  expect(calls.filter((call) => call.method !== 'GET')).toEqual([])
+
+  // Leaving the twin out settles it at once.
+  await userEvent.click(screen.getByRole('checkbox', { name: /Создать роль «Модератор»/ }))
+  await waitFor(() => {
+    expect(screen.queryByText('У двух ролей одинаковые названия.')).not.toBeInTheDocument()
+  })
+
+  await userEvent.clear(roleName(0))
+  await userEvent.click(screen.getByRole('button', { name: 'Создать сервер' }))
+  expect(await screen.findByText('Введите название роли.')).toBeInTheDocument()
+  expect(calls.filter((call) => call.method !== 'GET')).toEqual([])
+})
+
+// «Далее» checks only its own step: an error left on a later step must not
+// hold back an earlier one, where it cannot be seen.
+it('checks each step on its own', async () => {
+  stubApi()
+  renderWizard()
+  await toRolesStep()
+  await userEvent.clear(roleName(0))
+  await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+
+  await next()
+  expect(
+    await screen.findByRole('heading', { name: 'С каких каналов начать?' }),
+  ).toBeInTheDocument()
+  await next()
+  expect(await screen.findByRole('heading', { name: 'Кто что может?' })).toBeInTheDocument()
+})
+
+it('stops at the name the server would refuse, counting characters like it', async () => {
+  const calls = stubApi()
+  renderWizard()
+
+  // 64 emoji are 128 UTF-16 units but 64 characters: the server takes them.
+  const field = screen.getByLabelText('Название сервера')
+  fireEvent.change(field, { target: { value: '🚀'.repeat(65) } })
+  await next()
+  expect(await screen.findByText('Название — не больше 64 символов.')).toBeInTheDocument()
+
+  fireEvent.change(field, { target: { value: '🚀'.repeat(64) } })
+  await next()
+  expect(
+    await screen.findByRole('heading', { name: 'С каких каналов начать?' }),
+  ).toBeInTheDocument()
+  expect(calls.filter((call) => call.method !== 'GET')).toEqual([])
+})
+
+it('opens the server anyway when a role fails, and says which', async () => {
+  stubApi({
+    'POST /api/v1/workspaces/:id/roles': [500, { error: { code: 'internal', message: 'x' } }],
+  })
+  renderWizard()
+  await toRolesStep()
+  await userEvent.click(screen.getByRole('button', { name: 'Создать сервер' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'не создались роли «Администратор», «Модератор» — их можно добавить в настройках сервера',
+  )
 })

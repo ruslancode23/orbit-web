@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { Controller, useFormContext, useWatch } from 'react-hook-form'
 
+import { characterCount } from '@/shared/lib/text'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
@@ -43,12 +44,18 @@ export const WorkspaceProfileFields = ({
         <Label htmlFor={nameId}>Название сервера</Label>
         <Input
           id={nameId}
-          maxLength={NAME_MAX}
           autoComplete="off"
           aria-invalid={errors.name ? true : undefined}
           aria-describedby={errors.name ? nameErrorId : undefined}
           {...register('name', {
-            validate: (value) => value.trim().length > 0 || 'Введите название сервера.',
+            // The server counts characters, not UTF-16 units: emoji count once.
+            validate: (value) => {
+              const length = characterCount(value.trim())
+              if (length === 0) {
+                return 'Введите название сервера.'
+              }
+              return length <= NAME_MAX || `Название — не больше ${String(NAME_MAX)} символов.`
+            },
           })}
         />
         {errors.name?.message && (
@@ -64,12 +71,13 @@ export const WorkspaceProfileFields = ({
         </Label>
         <Textarea
           id={descriptionId}
-          maxLength={DESCRIPTION_MAX}
           placeholder="О чём этот сервер"
           aria-invalid={errors.description ? true : undefined}
           aria-describedby={descriptionHintId}
           {...register('description', {
-            maxLength: { value: DESCRIPTION_MAX, message: 'Описание — не больше 500 символов.' },
+            validate: (value) =>
+              characterCount(value.trim()) <= DESCRIPTION_MAX ||
+              `Описание — не больше ${String(DESCRIPTION_MAX)} символов.`,
           })}
         />
         <p id={descriptionHintId} className="flex justify-between gap-2 text-xs text-fg-muted">
@@ -77,7 +85,7 @@ export const WorkspaceProfileFields = ({
             {errors.description?.message}
           </span>
           <span>
-            {description.length} / {DESCRIPTION_MAX}
+            {characterCount(description)} / {DESCRIPTION_MAX}
           </span>
         </p>
       </div>

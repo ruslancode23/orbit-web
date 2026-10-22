@@ -6,6 +6,7 @@
 export interface CreationProblems {
   iconFailed: boolean
   failedChannels: string[]
+  failedRoles: string[]
 }
 
 export interface CreationState {
@@ -24,6 +25,9 @@ export function isCreationState(state: unknown): state is CreationState {
     typeof creationProblems.iconFailed === 'boolean' &&
     'failedChannels' in creationProblems &&
     Array.isArray(creationProblems.failedChannels) &&
-    creationProblems.failedChannels.every((name) => typeof name === 'string')
+    creationProblems.failedChannels.every((name) => typeof name === 'string') &&
+    'failedRoles' in creationProblems &&
+    Array.isArray(creationProblems.failedRoles) &&
+    creationProblems.failedRoles.every((name) => typeof name === 'string')
   )
 }
