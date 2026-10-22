@@ -16,6 +16,7 @@ import { readDevicePreferences } from '@/shared/lib/device-preference'
 import { getPlatform } from '@/shared/platform'
 
 import { DEAFENED_ATTRIBUTE, useAudioControls, useParticipantsWithAudio } from './audio-controls'
+import { useAudioProcessing } from './audio-processing'
 import {
   VoiceRoomContext,
   type ConnectionLoss,
@@ -64,6 +65,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
     setMicrophoneMuted,
     setParticipantVolume,
   } = useAudioControls(room)
+  const { audioProcessing, setAudioProcessing } = useAudioProcessing(room)
 
   const join = useCallback(
     async ({ url, token, channel }: JoinParams) => {
@@ -94,7 +96,10 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       const next = new Room({
         adaptiveStream: true,
         dynacast: true,
-        ...(microphoneId === undefined ? {} : { audioCaptureDefaults: { deviceId: microphoneId } }),
+        audioCaptureDefaults: {
+          ...audioProcessing,
+          ...(microphoneId === undefined ? {} : { deviceId: microphoneId }),
+        },
         ...(speakerId === undefined ? {} : { audioOutput: { deviceId: speakerId } }),
       })
       roomRef.current = next
@@ -198,7 +203,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         setStatus('error')
       }
     },
-    [reset, isMicrophoneMuted],
+    [reset, isMicrophoneMuted, audioProcessing],
   )
 
   const leave = useCallback(async () => {
@@ -239,6 +244,8 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       setMicrophoneMuted,
       setDeafened,
       setParticipantVolume,
+      audioProcessing,
+      setAudioProcessing,
     }),
     [
       status,
@@ -256,6 +263,8 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       setMicrophoneMuted,
       setDeafened,
       setParticipantVolume,
+      audioProcessing,
+      setAudioProcessing,
     ],
   )
 

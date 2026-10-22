@@ -1,32 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import {
-  createChannel,
-  inviteLink,
-  password,
-  unique,
-  userPanel,
-  skipProfileOnboarding,
-} from './helpers.ts'
-
-async function createVoiceServer(page: Page): Promise<string> {
-  const nickname = unique('owner')
-  await page.goto('/register')
-  await page.getByLabel('Ник').fill(nickname)
-  await page.getByLabel('Пароль').fill(password)
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click()
-  await skipProfileOnboarding(page)
-
-  await page.getByRole('link', { name: 'Создать сервер' }).click()
-  await page.getByLabel('Название сервера').fill('Голос')
-  await page.getByRole('button', { name: 'Далее' }).click()
-  await page.getByRole('radio', { name: /Пустой/ }).check()
-  await page.getByRole('button', { name: 'Далее' }).click()
-  await page.getByRole('button', { name: 'Создать сервер' }).click()
-
-  await createChannel(page, 'переговорка', 'voice')
-  return nickname
-}
+import { createChannel, createVoiceServer, inviteLink, unique, userPanel } from './helpers.ts'
 
 async function remoteAudioPeak(page: Page): Promise<number> {
   return page.evaluate(async () => {

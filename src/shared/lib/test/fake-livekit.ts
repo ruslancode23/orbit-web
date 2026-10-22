@@ -60,8 +60,26 @@ export const fakeLiveKit = {
   },
 }
 
+/** The local microphone once it is published; `restartTrack` is how processing changes reach it. */
+export interface FakeMicrophoneTrack {
+  kind: 'audio'
+  isMuted: boolean
+  restartTrack: (options?: Record<string, unknown>) => Promise<void>
+}
+
 export class FakeRoom {
   private handlers = new Map<string, Handler[]>()
+
+  /** What the app passed to `new Room()`; `audioCaptureDefaults` is updated in place, as LiveKit allows. */
+  options: { audioCaptureDefaults?: Record<string, unknown> } & Record<string, unknown>
+
+  /** Null until the first `setMicrophoneEnabled(true)`. */
+  microphoneTrack: FakeMicrophoneTrack | null = null
+
+  /** What `getActiveDevice` answers, by kind. */
+  activeDevices: Partial<Record<string, string>> = {}
+
+  getActiveDevice = vi.fn((kind: string) => this.activeDevices[kind])
 
   localParticipant = {
     identity: 'guest-me',
@@ -75,9 +93,24 @@ export class FakeRoom {
         return Promise.reject(fakeLiveKit.micError)
       }
       this.localParticipant.isMicrophoneEnabled = enabled
+      if (enabled && !this.microphoneTrack) {
+        this.microphoneTrack = {
+          kind: 'audio',
+          isMuted: false,
+          restartTrack: vi.fn(() => Promise.resolve()),
+        }
+      }
+      if (this.microphoneTrack) {
+        this.microphoneTrack.isMuted = !enabled
+      }
       this.emit(enabled ? 'trackUnmuted' : 'trackMuted', { source: 'microphone' })
       return Promise.resolve()
     }),
+    getTrackPublication: vi.fn((source: string) =>
+      source === 'microphone' && this.microphoneTrack
+        ? { source, track: this.microphoneTrack, audioTrack: this.microphoneTrack }
+        : undefined,
+    ),
     setAttributes: vi.fn((attributes: Record<string, string>) => {
       this.localParticipant.attributes = { ...this.localParticipant.attributes, ...attributes }
       this.emit('participantAttributesChanged', attributes, this.localParticipant)
@@ -117,7 +150,8 @@ export class FakeRoom {
     return Promise.resolve()
   })
 
-  constructor() {
+  constructor(options: FakeRoom['options'] = {}) {
+    this.options = options
     fakeLiveKit.rooms.push(this)
   }
 

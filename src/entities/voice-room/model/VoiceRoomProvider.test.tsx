@@ -117,3 +117,76 @@ describe('VoiceRoomProvider reconnection', () => {
     expect(screen.getByRole('status', { name: 'loss' })).toBeEmptyDOMElement()
   })
 })
+
+describe('VoiceRoomProvider audio processing', () => {
+  const ProcessingProbe = () => {
+    const { audioProcessing, setAudioProcessing } = useVoiceRoom()
+    return (
+      <>
+        <output aria-label="noise">{String(audioProcessing.noiseSuppression)}</output>
+        <button
+          type="button"
+          onClick={() => void setAudioProcessing({ ...audioProcessing, noiseSuppression: false })}
+        >
+          noise off
+        </button>
+      </>
+    )
+  }
+
+  const renderWithProcessing = () => {
+    render(
+      <VoiceRoomProvider>
+        <Probe />
+        <ProcessingProbe />
+      </VoiceRoomProvider>,
+    )
+  }
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('captures with all of the browser processing on by default', async () => {
+    renderWithProcessing()
+    await userEvent.click(screen.getByRole('button', { name: 'connect' }))
+
+    expect(fakeLiveKit.lastRoom().options.audioCaptureDefaults).toMatchObject({
+      noiseSuppression: true,
+      echoCancellation: true,
+      autoGainControl: true,
+    })
+  })
+
+  it('restarts the running microphone on the same device and keeps the choice for the next room', async () => {
+    renderWithProcessing()
+    await userEvent.click(screen.getByRole('button', { name: 'connect' }))
+    const room = fakeLiveKit.lastRoom()
+    room.activeDevices.audioinput = 'usb-mic'
+
+    await userEvent.click(screen.getByRole('button', { name: 'noise off' }))
+
+    expect(room.microphoneTrack?.restartTrack).toHaveBeenCalledWith({
+      noiseSuppression: false,
+      echoCancellation: true,
+      autoGainControl: true,
+      deviceId: 'usb-mic',
+    })
+    expect(room.options.audioCaptureDefaults).toMatchObject({ noiseSuppression: false })
+    expect(screen.getByRole('status', { name: 'noise' })).toHaveTextContent('false')
+
+    await userEvent.click(screen.getByRole('button', { name: 'connect' }))
+    expect(fakeLiveKit.lastRoom()).not.toBe(room)
+    expect(fakeLiveKit.lastRoom().options.audioCaptureDefaults).toMatchObject({
+      noiseSuppression: false,
+    })
+  })
+
+  it('remembers the choice on this device before any call', async () => {
+    renderWithProcessing()
+    await userEvent.click(screen.getByRole('button', { name: 'noise off' }))
+
+    expect(fakeLiveKit.rooms).toHaveLength(0)
+    expect(localStorage.getItem('orbit.voice.noise-suppression')).toBe('false')
+  })
+})
