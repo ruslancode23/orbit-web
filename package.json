@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@matrix-org/olm": "^3.2.15",
+    "@sapphi-red/web-noise-suppressor": "0.4.1",
     "@tanstack/react-query": "^5.104.2",
     "@tanstack/react-virtual": "^3.14.21",
     "class-variance-authority": "^0.7.1",

@@ -1,16 +1,39 @@
 import { useId } from 'react'
 
-import { useVoiceRoom, type AudioProcessing } from '@/entities/voice-room'
+import {
+  useVoiceRoom,
+  type AudioProcessing,
+  type NoiseSuppressionMode,
+} from '@/entities/voice-room'
 import { Label } from '@/shared/ui/label'
 import { Switch } from '@/shared/ui/switch'
 import { useToast } from '@/shared/ui/toast'
 
-const OPTIONS: readonly { name: keyof AudioProcessing; label: string; hint: string }[] = [
-  {
-    name: 'noiseSuppression',
-    label: 'Шумоподавление',
-    hint: 'Глушит постоянный фон: вентилятор, гул, шум улицы.',
-  },
+const NOISE_MODES: readonly { value: NoiseSuppressionMode; label: string; description: string }[] =
+  [
+    {
+      value: 'off',
+      label: 'Выключено',
+      description: 'Звук идёт как есть — для студийного микрофона или музыки.',
+    },
+    {
+      value: 'standard',
+      label: 'Стандартное',
+      description: 'Встроенное в браузер: глушит постоянный фон — вентилятор, гул.',
+    },
+    {
+      value: 'enhanced',
+      label: 'Усиленное',
+      description:
+        'Нейросеть RNNoise на вашем устройстве: убирает клавиатуру, шум улицы, голоса фоном. Чуть больше нагрузки на процессор.',
+    },
+  ]
+
+const SWITCHES: readonly {
+  name: Exclude<keyof AudioProcessing, 'noiseSuppression'>
+  label: string
+  hint: string
+}[] = [
   {
     name: 'echoCancellation',
     label: 'Эхоподавление',
@@ -24,24 +47,71 @@ const OPTIONS: readonly { name: keyof AudioProcessing; label: string; hint: stri
 ]
 
 /**
- * The browser's own processing of the microphone. A switch applies at once,
- * in the running call too; the choice is kept on this device.
+ * Noise suppression (off, the browser's, RNNoise) and the browser's other
+ * processing of the microphone. Every change applies at once, in the running
+ * call too; the choice is kept on this device.
  */
 export const AudioProcessingSettings = () => {
-  const { audioProcessing, setAudioProcessing } = useVoiceRoom()
+  const {
+    audioProcessing,
+    setAudioProcessing,
+    noiseSuppressionMode,
+    setNoiseSuppressionMode,
+    enhancedNoiseSuppressionUnavailable,
+  } = useVoiceRoom()
   const toast = useToast()
   const id = useId()
 
+  const failed = () => {
+    toast('Не удалось применить настройку к микрофону.', 'danger')
+  }
+
   const toggle = (name: keyof AudioProcessing, enabled: boolean) => {
-    void setAudioProcessing({ ...audioProcessing, [name]: enabled }).catch(() => {
-      toast('Не удалось применить настройку к микрофону.', 'danger')
-    })
+    void setAudioProcessing({ ...audioProcessing, [name]: enabled }).catch(failed)
   }
 
   return (
     <section className="flex flex-col gap-3">
       <h3 className="text-sm font-semibold">Обработка звука</h3>
-      {OPTIONS.map(({ name, label, hint }) => (
+
+      <fieldset className="flex flex-col gap-0.5">
+        <legend className="mb-1 text-sm">Шумоподавление</legend>
+        {NOISE_MODES.map((mode) => {
+          const optionId = `${id}-noise-${mode.value}`
+          return (
+            <div
+              key={mode.value}
+              className="flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-hover"
+            >
+              <input
+                id={optionId}
+                type="radio"
+                name={`${id}-noise`}
+                value={mode.value}
+                checked={noiseSuppressionMode === mode.value}
+                aria-describedby={`${optionId}-hint`}
+                onChange={() => {
+                  void setNoiseSuppressionMode(mode.value).catch(failed)
+                }}
+                className="mt-0.5 size-4 shrink-0 accent-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+              />
+              <label htmlFor={optionId} className="flex min-w-0 cursor-pointer flex-col">
+                <span className="text-sm text-fg">{mode.label}</span>
+                <span id={`${optionId}-hint`} className="text-xs text-fg-muted">
+                  {mode.description}
+                </span>
+              </label>
+            </div>
+          )
+        })}
+        {enhancedNoiseSuppressionUnavailable && (
+          <p role="alert" className="px-2 text-xs text-danger">
+            Усиленное шумоподавление не запустилось в этом браузере — включено стандартное.
+          </p>
+        )}
+      </fieldset>
+
+      {SWITCHES.map(({ name, label, hint }) => (
         <div key={name} className="flex items-start gap-3">
           <Switch
             id={`${id}-${name}`}

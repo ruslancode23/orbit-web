@@ -78,7 +78,14 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
     releasePushToTalk,
     setParticipantVolume,
   } = useAudioControls(room)
-  const { audioProcessing, setAudioProcessing } = useAudioProcessing(room)
+  const {
+    audioProcessing,
+    captureDefaults,
+    noiseSuppressionMode,
+    enhancedUnavailable,
+    setAudioProcessing,
+    setNoiseSuppressionMode,
+  } = useAudioProcessing(room)
 
   const join = useCallback(
     async ({ url, token, channel }: JoinParams) => {
@@ -110,7 +117,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         adaptiveStream: true,
         dynacast: true,
         audioCaptureDefaults: {
-          ...audioProcessing,
+          ...captureDefaults,
           ...(microphoneId === undefined ? {} : { deviceId: microphoneId }),
         },
         ...(speakerId === undefined ? {} : { audioOutput: { deviceId: speakerId } }),
@@ -216,7 +223,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         setStatus('error')
       }
     },
-    [reset, publishMicrophone, audioProcessing],
+    [reset, publishMicrophone, captureDefaults],
   )
 
   const leave = useCallback(async () => {
@@ -259,6 +266,9 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       setParticipantVolume,
       audioProcessing,
       setAudioProcessing,
+      noiseSuppressionMode,
+      setNoiseSuppressionMode,
+      enhancedNoiseSuppressionUnavailable: enhancedUnavailable,
       inputMode,
       setInputMode,
       pushToTalkKey,
@@ -285,6 +295,9 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       setParticipantVolume,
       audioProcessing,
       setAudioProcessing,
+      noiseSuppressionMode,
+      setNoiseSuppressionMode,
+      enhancedUnavailable,
       inputMode,
       setInputMode,
       pushToTalkKey,

@@ -518,8 +518,11 @@ API и WebSocket не кэшируются никогда. `Vary: Origin` у pre
   (`entities/voice-room/model/voice-preferences.ts`). `setAudioProcessing` из `useVoiceRoom()` пишет их
   в `room.options.audioCaptureDefaults` (для следующего открытия микрофона) и перезапускает
   опубликованный трек `restartTrack` на том же устройстве — звонок не рвётся, mute сохраняется. Что
-  реально ушло в `getUserMedia`, проверяет `e2e/voice-processing.spec.ts`. Krisp от LiveKit работает
-  только с LiveKit Cloud, поэтому усиленное шумоподавление — отдельная задача (FEAT-2, SCRUM-124).
+  реально ушло в `getUserMedia`, проверяет `e2e/voice-processing.spec.ts`. Шумоподавление — три режима
+  (`noiseSuppressionMode`): выключено, стандартное (браузер) и усиленное — RNNoise процессором LiveKit
+  (`entities/voice-room/lib/rnnoise.ts`, грузится лениво; при нём браузерное выключено). Не запустился —
+  откат на стандартное и `enhancedNoiseSuppressionUnavailable`. Почему не Krisp и почему процессор, а не
+  свой захват — ADR-0005.
 - Присутствие под каналом — `entities/voice-presence`: `GET /workspaces/{id}` отдаёт `voice`, а событие
   `voice.presence` точечно кладётся в кеш сервера. В активном канале список берётся из LiveKit (там есть
   говорящий), в остальных — из presence; mute и экран сервер обновляет вебхуками и небольшим опросом

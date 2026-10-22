@@ -57,6 +57,40 @@ export const saveAudioProcessing = (processing: AudioProcessing): void => {
 }
 
 /**
+ * `standard` is the browser's own suppression; `enhanced` is RNNoise on top of
+ * the raw microphone (the browser's is then off, so the voice is not processed twice).
+ */
+export type NoiseSuppressionMode = 'off' | 'standard' | 'enhanced'
+
+const ENHANCED_NOISE_SUPPRESSION_KEY = 'orbit.voice.enhanced-noise-suppression'
+
+export const readEnhancedNoiseSuppression = (): boolean => {
+  return read(ENHANCED_NOISE_SUPPRESSION_KEY) === 'true'
+}
+
+export const saveEnhancedNoiseSuppression = (enhanced: boolean): void => {
+  write(ENHANCED_NOISE_SUPPRESSION_KEY, String(enhanced))
+}
+
+export const noiseSuppressionMode = (
+  processing: AudioProcessing,
+  enhanced: boolean,
+): NoiseSuppressionMode => {
+  if (!processing.noiseSuppression) {
+    return 'off'
+  }
+  return enhanced ? 'enhanced' : 'standard'
+}
+
+/** What goes to getUserMedia: with RNNoise on, the browser's own suppression is off. */
+export const captureConstraints = (
+  processing: AudioProcessing,
+  enhanced: boolean,
+): AudioProcessing => {
+  return { ...processing, noiseSuppression: processing.noiseSuppression && !enhanced }
+}
+
+/**
  * `voice-activity` sends the microphone whenever it hears something; with
  * `push-to-talk` it is open only while a key (or the panel button) is held.
  */
