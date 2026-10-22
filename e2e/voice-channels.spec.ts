@@ -1,35 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createChannel, createVoiceServer, inviteLink, unique, userPanel } from './helpers.ts'
-
-async function remoteAudioPeak(page: Page): Promise<number> {
-  return page.evaluate(async () => {
-    const elements = [...document.querySelectorAll('audio')]
-    const streams = elements
-      .map((element) => element.srcObject)
-      .filter((stream): stream is MediaStream => stream instanceof MediaStream)
-    if (streams.length === 0) {
-      return -1
-    }
-
-    const context = new AudioContext()
-    await context.resume()
-    const analyser = context.createAnalyser()
-    for (const stream of streams) {
-      context.createMediaStreamSource(stream).connect(analyser)
-    }
-
-    const data = new Uint8Array(analyser.frequencyBinCount)
-    let peak = 0
-    for (let index = 0; index < 30; index++) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      analyser.getByteFrequencyData(data)
-      peak = Math.max(peak, ...data)
-    }
-    await context.close()
-    return peak
-  })
-}
+import {
+  createChannel,
+  createVoiceServer,
+  inviteLink,
+  remoteAudioPeak,
+  unique,
+  userPanel,
+} from './helpers.ts'
 
 const panel = (page: Page) => page.getByRole('region', { name: 'Голос подключён' })
 const voiceMembers = (page: Page) => page.getByRole('list', { name: 'В голосе: переговорка' })

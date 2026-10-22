@@ -55,3 +55,31 @@ export const saveAudioProcessing = (processing: AudioProcessing): void => {
     write(PROCESSING_KEYS[name], String(processing[name]))
   }
 }
+
+/**
+ * `voice-activity` sends the microphone whenever it hears something; with
+ * `push-to-talk` it is open only while a key (or the panel button) is held.
+ */
+export type InputMode = 'voice-activity' | 'push-to-talk'
+
+/** `KeyboardEvent.code` of the backtick key: under Esc, unused while typing elsewhere, the same on any layout. */
+export const DEFAULT_PUSH_TO_TALK_KEY = 'Backquote'
+
+const INPUT_MODE_KEY = 'orbit.voice.input-mode'
+const PUSH_TO_TALK_KEY = 'orbit.voice.push-to-talk-key'
+
+export const readInputMode = (): InputMode => {
+  return read(INPUT_MODE_KEY) === 'push-to-talk' ? 'push-to-talk' : 'voice-activity'
+}
+
+export const saveInputMode = (mode: InputMode): void => {
+  write(INPUT_MODE_KEY, mode)
+}
+
+export const readPushToTalkKey = (): string => {
+  return read(PUSH_TO_TALK_KEY) ?? DEFAULT_PUSH_TO_TALK_KEY
+}
+
+export const savePushToTalkKey = (code: string): void => {
+  write(PUSH_TO_TALK_KEY, code)
+}

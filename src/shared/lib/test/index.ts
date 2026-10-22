@@ -1,4 +1,4 @@
-export { FakeRoom, fakeLiveKit } from './fake-livekit'
+export { FakeRoom, fakeCreateLocalAudioTrack, fakeLiveKit } from './fake-livekit'
 export {
   createFakePlatform,
   createFakeSecretStore,

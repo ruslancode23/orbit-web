@@ -1,6 +1,6 @@
 import { createContext, use } from 'react'
 
-import type { AudioProcessing } from './voice-preferences'
+import type { AudioProcessing, InputMode } from './voice-preferences'
 import type { RemoteVideoTrack, Room } from 'livekit-client'
 
 /**
@@ -82,6 +82,18 @@ export interface VoiceRoomValue {
   audioProcessing: AudioProcessing
   /** Applies to the running microphone without leaving the call, and to the next room. */
   setAudioProcessing: (processing: AudioProcessing) => Promise<void>
+  /** Voice activity, or the microphone open only while a key is held. Remembered on this device. */
+  inputMode: InputMode
+  setInputMode: (mode: InputMode) => Promise<void>
+  /** `KeyboardEvent.code` of the push-to-talk key; see `describeKey`. */
+  pushToTalkKey: string
+  setPushToTalkKey: (code: string) => void
+  /** The key or the panel button is held (or was let go less than 200 ms ago). */
+  isPushToTalkHeld: boolean
+  /** Opens the microphone in push-to-talk; does nothing while muted or deafened. */
+  pressPushToTalk: () => void
+  /** Closes it after a short delay, or at once when focus left the page. */
+  releasePushToTalk: (immediately?: boolean) => void
 }
 
 export const VoiceRoomContext = createContext<VoiceRoomValue | null>(null)

@@ -99,3 +99,33 @@ export async function createVoiceServer(page: Page): Promise<string> {
   await createChannel(page, 'переговорка', 'voice')
   return nickname
 }
+
+/** The loudest frequency bin of everything the page plays over 1.5 s; -1 when nothing is attached yet. */
+export async function remoteAudioPeak(page: Page): Promise<number> {
+  return page.evaluate(async () => {
+    const elements = [...document.querySelectorAll('audio')]
+    const streams = elements
+      .map((element) => element.srcObject)
+      .filter((stream): stream is MediaStream => stream instanceof MediaStream)
+    if (streams.length === 0) {
+      return -1
+    }
+
+    const context = new AudioContext()
+    await context.resume()
+    const analyser = context.createAnalyser()
+    for (const stream of streams) {
+      context.createMediaStreamSource(stream).connect(analyser)
+    }
+
+    const data = new Uint8Array(analyser.frequencyBinCount)
+    let peak = 0
+    for (let index = 0; index < 30; index++) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      analyser.getByteFrequencyData(data)
+      peak = Math.max(peak, ...data)
+    }
+    await context.close()
+    return peak
+  })
+}

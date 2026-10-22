@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/shared/ui/se
 import { useToast } from '@/shared/ui/toast'
 
 import { AudioProcessingSettings } from './AudioProcessingSettings'
+import { InputModeSettings } from './InputModeSettings'
 import { DEFAULT_DEVICE, deviceLabel, useAudioDevices } from '../model/useAudioDevices'
 import { useDeviceFallback } from '../model/useDeviceFallback'
 import { useMicrophoneLevel } from '../model/useMicrophoneLevel'
@@ -163,6 +164,8 @@ export const DeviceSettings = () => {
           <span className="text-xs text-fg-muted">{microphoneHint}</span>
         </div>
       </section>
+
+      <InputModeSettings />
 
       <AudioProcessingSettings />
 
