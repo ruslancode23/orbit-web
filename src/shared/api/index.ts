@@ -101,5 +101,8 @@ export type {
   WorkspaceMembership,
   WorkspacePermissions,
   WorkspaceRole,
+  Permission,
+  Role,
+  ChannelOverride,
   WorkspaceUpdateRequest,
 } from './generated/types.gen'

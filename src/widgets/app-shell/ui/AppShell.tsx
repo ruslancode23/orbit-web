@@ -9,7 +9,7 @@ import {
 import { useLive, usePresenceActivity } from '@/entities/live'
 import { describeUnread, UnreadBadge, useConversationUnreadTotal } from '@/entities/unread'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
-import { atLeast, can, useWorkspace, useWorkspaces } from '@/entities/workspace'
+import { can, hasPermission, useWorkspace, useWorkspaces } from '@/entities/workspace'
 import { CreationNotice } from '@/features/create-workspace'
 import {
   useDirectMessageNotifications,
@@ -112,8 +112,12 @@ const Shell = () => {
     setChannelSidebarOpen(false)
   }, [workspaceId, channelId, activeChannel?.id, location.pathname])
 
-  const canManage = atLeast(membership?.role, 'admin')
-  // A member may be allowed to by the server's own settings.
+  // What the buttons offer follows the permissions the server sends; it
+  // checks them again on every action.
+  const canManageServer = hasPermission(membership, 'manageServer')
+  const canManageChannels = hasPermission(membership, 'manageChannels')
+  const canModerate =
+    hasPermission(membership, 'kickMembers') || hasPermission(membership, 'banMembers')
   const canCreateChannels = can(membership, 'canCreateChannels')
   const canInvite = can(membership, 'canInvite')
 
@@ -194,7 +198,8 @@ const Shell = () => {
               <WorkspaceMenu
                 workspace={membership.workspace}
                 role={membership.role}
-                canManage={canManage}
+                canManageServer={canManageServer}
+                canModerate={canModerate}
                 canInvite={canInvite}
                 canCreateChannels={canCreateChannels}
               />
@@ -203,7 +208,8 @@ const Shell = () => {
             <ChannelList
               workspaceId={membership.workspace.id}
               activeChannelId={channelId}
-              canManage={canManage}
+              canManage={canManageChannels}
+              canManageInvites={canManageServer}
               canInvite={canInvite}
             />
           </>

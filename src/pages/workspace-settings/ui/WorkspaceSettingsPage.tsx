@@ -1,6 +1,6 @@
 import { Link, Navigate, useParams } from 'react-router'
 
-import { atLeast, useWorkspace } from '@/entities/workspace'
+import { hasPermission, useWorkspace } from '@/entities/workspace'
 import { DeleteWorkspace } from '@/features/delete-workspace'
 import { MemberPermissionsForm, WorkspaceOverviewForm } from '@/features/edit-workspace'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -31,7 +31,7 @@ const WorkspaceSettingsPage = () => {
   if (!membership) {
     return <Navigate to="/" replace />
   }
-  if (!atLeast(membership.role, 'admin')) {
+  if (!hasPermission(membership, 'manageServer')) {
     return <Navigate to={`/s/${membership.workspace.id}`} replace />
   }
 

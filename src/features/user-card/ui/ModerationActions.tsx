@@ -1,10 +1,13 @@
 import { useSession } from '@/entities/session'
 import {
   describeMemberActionError,
+  mayBan,
   mayChangeRole,
-  mayModerate,
+  mayKick,
   useMemberModeration,
+  useRoles,
   useWorkspace,
+  useWorkspaceMembers,
   type WorkspaceMember,
 } from '@/entities/workspace'
 import { Button } from '@/shared/ui/button'
@@ -24,10 +27,18 @@ export const ModerationActions = ({
   const { user } = useSession()
   const { membership } = useWorkspace(workspaceId)
   const moderation = useMemberModeration(workspaceId)
+  const { data: members } = useWorkspaceMembers(workspaceId)
+  const { data: roles } = useRoles(workspaceId)
+  const standing = {
+    membership,
+    me: members?.find((item) => item.user.id === user?.id),
+    roles,
+  }
   const canChangeRole = mayChangeRole(membership?.role, member, user?.id)
-  const canModerate = mayModerate(membership?.role, member, user?.id)
+  const canKick = mayKick(standing, member)
+  const canBan = mayBan(standing, member)
 
-  if (!canChangeRole && !canModerate) {
+  if (!canChangeRole && !canKick && !canBan) {
     return null
   }
 
@@ -63,34 +74,34 @@ export const ModerationActions = ({
             Снять админа
           </Button>
         )}
-        {canModerate && (
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={moderation.pending}
-              onClick={() => {
-                moderation.remove.mutate({
-                  path: { workspaceId, userId: member.user.id },
-                })
-              }}
-            >
-              Убрать
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={moderation.pending}
-              onClick={() => {
-                moderation.ban.mutate({
-                  path: { workspaceId, userId: member.user.id },
-                  body: {},
-                })
-              }}
-            >
-              Забанить
-            </Button>
-          </>
+        {canKick && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={moderation.pending}
+            onClick={() => {
+              moderation.remove.mutate({
+                path: { workspaceId, userId: member.user.id },
+              })
+            }}
+          >
+            Убрать
+          </Button>
+        )}
+        {canBan && (
+          <Button
+            size="sm"
+            variant="danger"
+            disabled={moderation.pending}
+            onClick={() => {
+              moderation.ban.mutate({
+                path: { workspaceId, userId: member.user.id },
+                body: {},
+              })
+            }}
+          >
+            Забанить
+          </Button>
         )}
       </div>
       {moderation.error && (

@@ -11,6 +11,7 @@ import {
   uploadWorkspaceIconMutation,
   type Workspace,
   type WorkspaceMembership,
+  type Permission,
   type WorkspacePermissions,
   type WorkspaceRole,
 } from '@/shared/api'
@@ -120,6 +121,8 @@ function isAbout(queryKey: readonly unknown[], workspaceId: string): boolean {
 /** Ranks the roles the way the server does, so the UI can ask "at least admin?". */
 const RANK: Record<WorkspaceRole, number> = { member: 1, admin: 2, owner: 3 }
 
+export type { Permission }
+
 export function atLeast(role: WorkspaceRole | undefined, least: WorkspaceRole): boolean {
   if (!role) {
     return false
@@ -131,13 +134,46 @@ export function atLeast(role: WorkspaceRole | undefined, least: WorkspaceRole): 
 export type MemberPermission = keyof WorkspacePermissions
 
 /**
- * Whether this account may do it here: the owner and admins always may, a
- * member when the server allows it. A convenience for drawing buttons — the
- * server checks the same flags on every request.
+ * Whether this account holds a permission on the server, before any channel:
+ * the server sends what @everyone and the account's roles add up to. A
+ * convenience for drawing buttons — the server checks again on every request.
+ * A server that does not send permissions yet is read the old way: the owner
+ * and admins may do everything.
+ */
+export function hasPermission(
+  membership: WorkspaceMembership | undefined,
+  permission: Permission,
+): boolean {
+  if (!membership) {
+    return false
+  }
+  if (membership.permissions) {
+    return (
+      membership.permissions.includes(permission) ||
+      membership.permissions.includes('administrator')
+    )
+  }
+  return atLeast(membership.role, 'admin')
+}
+
+/** The permissions behind the old member flags; creating channels is also managing them. */
+const FLAG_PERMISSIONS: Record<MemberPermission, readonly Permission[]> = {
+  canInvite: ['createInvite'],
+  canCreateChannels: ['createChannels', 'manageChannels'],
+  canAttachFiles: ['attachFiles'],
+}
+
+/**
+ * Whether this account may do what one of the old member flags speaks about:
+ * any of the permissions behind it. Without permissions from the server, the
+ * owner and admins always may and a member when the server allows it.
  */
 export function can(membership: WorkspaceMembership | undefined, permission: MemberPermission) {
   if (!membership) {
     return false
+  }
+  if (membership.permissions) {
+    return FLAG_PERMISSIONS[permission].some((needed) => hasPermission(membership, needed))
   }
   if (atLeast(membership.role, 'admin')) {
     return true

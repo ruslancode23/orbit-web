@@ -7,10 +7,12 @@ import {
   removeWorkspaceMemberMutation,
   setWorkspaceMemberRoleMutation,
   type WorkspaceMember,
+  type WorkspaceMembership,
   type WorkspaceRole,
 } from '@/shared/api'
 
-import { atLeast } from './workspace'
+import { outranks, type Role } from './roles'
+import { hasPermission } from './workspace'
 
 export const ROLE_NAME: Record<WorkspaceRole, string> = {
   owner: 'владелец',
@@ -44,19 +46,33 @@ export const useMemberModeration = (workspaceId: string) => {
   }
 }
 
-/** Moderation goes downwards only, and never against oneself — as on the server. */
-export const mayModerate = (
-  myRole: WorkspaceRole | undefined,
-  member: WorkspaceMember,
-  myId: string | undefined,
-): boolean => {
-  if (myRole === undefined) {
-    return false
-  }
-  return member.user.id !== myId && atLeast(myRole, 'admin') && !atLeast(member.role, myRole)
+/** What the current account needs to decide what it may do to someone. */
+export interface Standing {
+  membership: WorkspaceMembership | undefined
+  /** This account as a member of the server: its roles decide its rank. */
+  me: WorkspaceMember | undefined
+  roles: readonly Role[] | undefined
 }
 
-/** Only the owner moves people between roles. */
+/** Kicking goes downwards only, never against oneself — as on the server. */
+export const mayKick = (standing: Standing, member: WorkspaceMember): boolean => {
+  return (
+    member.user.id !== standing.me?.user.id &&
+    hasPermission(standing.membership, 'kickMembers') &&
+    outranks(standing.me, member, standing.roles)
+  )
+}
+
+/** Banning goes downwards only too. */
+export const mayBan = (standing: Standing, member: WorkspaceMember): boolean => {
+  return (
+    member.user.id !== standing.me?.user.id &&
+    hasPermission(standing.membership, 'banMembers') &&
+    outranks(standing.me, member, standing.roles)
+  )
+}
+
+/** Only the owner moves people between the old roles: admin and member. */
 export const mayChangeRole = (
   myRole: WorkspaceRole | undefined,
   member: WorkspaceMember,

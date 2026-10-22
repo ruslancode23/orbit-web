@@ -15,14 +15,18 @@ export {
 export { useWorkspaceMembers, type WorkspaceMember } from './model/members'
 export {
   describeMemberActionError,
+  mayBan,
   mayChangeRole,
-  mayModerate,
+  mayKick,
   ROLE_NAME,
   useMemberModeration,
+  type Standing,
 } from './model/moderation'
+export { displayRoleOf, outranks, rankOf, useRoles, type Role } from './model/roles'
 export {
   atLeast,
   can,
+  hasPermission,
   useCreateWorkspace,
   useDeleteWorkspace,
   useDeleteWorkspaceIcon,
@@ -31,6 +35,7 @@ export {
   useWorkspace,
   useWorkspaces,
   type MemberPermission,
+  type Permission,
   type Workspace,
   type WorkspaceMembership,
   type WorkspacePermissions,

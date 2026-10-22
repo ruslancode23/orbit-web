@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { useSession } from '@/entities/session'
-import type { WorkspaceRole } from '@/entities/workspace'
+import { useRoles, useWorkspace, type WorkspaceRole } from '@/entities/workspace'
 import { listWorkspaceMembersOptions } from '@/shared/api'
 import { Button } from '@/shared/ui/button'
 import {
@@ -16,9 +16,11 @@ import { Skeleton } from '@/shared/ui/skeleton'
 
 import {
   describeMemberActionError,
-  mayModerate,
+  mayBan,
+  mayKick,
   ROLE_NAME,
   useMemberModeration,
+  type Standing,
 } from '../model/moderation'
 
 interface ManageMembersProps {
@@ -30,8 +32,9 @@ interface ManageMembersProps {
 
 /**
  * Members of a server and what may be done to them. Only the owner moves people
- * between roles; an admin may remove and ban those below them. The buttons
- * follow the same rules the server enforces — and the server enforces them again.
+ * between the old roles; kicking and banning take the permission and a rank
+ * above the person. The buttons follow the rules the server enforces — and the
+ * server enforces them again.
  */
 export const ManageMembers = ({ workspaceId, role, open, onOpenChange }: ManageMembersProps) => {
   const { user } = useSession()
@@ -40,6 +43,13 @@ export const ManageMembers = ({ workspaceId, role, open, onOpenChange }: ManageM
     enabled: open,
   })
   const moderation = useMemberModeration(workspaceId)
+  const { membership } = useWorkspace(workspaceId)
+  const { data: roles } = useRoles(open ? workspaceId : undefined)
+  const standing: Standing = {
+    membership,
+    me: members?.find((member) => member.user.id === user?.id),
+    roles,
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -81,7 +91,8 @@ export const ManageMembers = ({ workspaceId, role, open, onOpenChange }: ManageM
             <ul className="flex flex-col gap-3">
               {members?.map((member) => {
                 const isMe = member.user.id === user?.id
-                const moderates = mayModerate(role, member, user?.id)
+                const kicks = mayKick(standing, member)
+                const bans = mayBan(standing, member)
                 return (
                   <li key={member.user.id} className="flex flex-col gap-1 text-sm">
                     <span className="truncate">
@@ -117,32 +128,32 @@ export const ManageMembers = ({ workspaceId, role, open, onOpenChange }: ManageM
                           Снять админа
                         </Button>
                       )}
-                      {moderates && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              moderation.remove.mutate({
-                                path: { workspaceId, userId: member.user.id },
-                              })
-                            }}
-                          >
-                            Убрать
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => {
-                              moderation.ban.mutate({
-                                path: { workspaceId, userId: member.user.id },
-                                body: {},
-                              })
-                            }}
-                          >
-                            Забанить
-                          </Button>
-                        </>
+                      {kicks && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            moderation.remove.mutate({
+                              path: { workspaceId, userId: member.user.id },
+                            })
+                          }}
+                        >
+                          Убрать
+                        </Button>
+                      )}
+                      {bans && (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            moderation.ban.mutate({
+                              path: { workspaceId, userId: member.user.id },
+                              body: {},
+                            })
+                          }}
+                        >
+                          Забанить
+                        </Button>
                       )}
                     </div>
                   </li>

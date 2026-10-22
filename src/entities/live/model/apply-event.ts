@@ -8,11 +8,13 @@ import {
   type VoicePresence,
   type WorkspaceMember,
   type WorkspaceMembership,
+  listChannelOverridesQueryKey,
   listChannelsQueryKey,
   listMessagesInfiniteQueryKey,
   listConversationsQueryKey,
   listInvitesQueryKey,
   listMessagesQueryKey,
+  listRolesQueryKey,
   listUnreadQueryKey,
   listWorkspaceBansQueryKey,
   listWorkspaceMembersQueryKey,
@@ -212,6 +214,20 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       void queryClient.invalidateQueries({ queryKey: listChannelsQueryKey({ path }) })
     }
   }
+  // Roles were made, changed, moved or deleted: colours, groups and what each
+  // member may do — on the server and in its channels — follow them.
+  if (event.type === 'roles.changed' && event.workspaceId) {
+    const path = { workspaceId: event.workspaceId }
+    invalidateQueriesById(queryClient, ['listWorkspaces', 'listChannelOverrides'])
+    for (const key of [
+      listRolesQueryKey({ path }),
+      getWorkspaceQueryKey({ path }),
+      listWorkspaceMembersQueryKey({ path }),
+      listChannelsQueryKey({ path }),
+    ]) {
+      void queryClient.invalidateQueries({ queryKey: key })
+    }
+  }
   // The staff lists of a server: only its admins and owner hear these.
   if (event.type === 'invites.changed' && event.workspaceId) {
     void queryClient.invalidateQueries({
@@ -245,6 +261,12 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
     void queryClient.invalidateQueries({
       queryKey: listChannelsQueryKey({ path: { workspaceId: event.workspaceId } }),
     })
+    // An override changed what someone may do here.
+    if (event.channelId) {
+      void queryClient.invalidateQueries({
+        queryKey: listChannelOverridesQueryKey({ path: { channelId: event.channelId } }),
+      })
+    }
     if (event.type === 'channel.deleted' && event.channelId) {
       // Its history cannot be asked for any more; the unread counts lose it.
       const path = { channelId: event.channelId }
@@ -284,6 +306,8 @@ const LIVE_QUERIES = [
   'listDevices',
   'getDmPolicy',
   'getFriendRequestPolicy',
+  'listRoles',
+  'listChannelOverrides',
 ] as const
 
 /**

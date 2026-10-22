@@ -18,7 +18,10 @@ import { IconButton } from '@/shared/ui/icon-button'
 interface WorkspaceMenuProps {
   workspace: Workspace
   role: WorkspaceRole
-  canManage: boolean
+  /** Server settings and the list of invite links: manageServer. */
+  canManageServer: boolean
+  /** «Участники и баны»: kickMembers or banMembers. */
+  canModerate: boolean
   canInvite: boolean
   canCreateChannels: boolean
 }
@@ -31,7 +34,8 @@ interface WorkspaceMenuProps {
 export const WorkspaceMenu = ({
   workspace,
   role,
-  canManage,
+  canManageServer,
+  canModerate,
   canInvite,
   canCreateChannels,
 }: WorkspaceMenuProps) => {
@@ -78,7 +82,7 @@ export const WorkspaceMenu = ({
                 Создать канал
               </DropdownMenuItem>
             )}
-            {canManage && (
+            {canModerate && (
               <DropdownMenuItem
                 onSelect={() => {
                   setMembersOpen(true)
@@ -88,7 +92,7 @@ export const WorkspaceMenu = ({
                 Участники и баны
               </DropdownMenuItem>
             )}
-            {canManage && (
+            {canManageServer && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -108,7 +112,7 @@ export const WorkspaceMenu = ({
       <ManageInvites
         workspaceId={workspace.id}
         canInvite={canInvite}
-        canManage={canManage}
+        canManage={canManageServer}
         open={invitesOpen}
         onOpenChange={setInvitesOpen}
       />
