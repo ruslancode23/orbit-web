@@ -291,3 +291,12 @@ export const BanIcon = (props: IconProps) => (
     <path d="m5.6 5.6 12.8 12.8" />
   </Icon>
 )
+
+export const BugIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m8 2 1.9 1.9M16 2l-1.9 1.9" />
+    <path d="M9 7.1V6a3 3 0 0 1 6 0v1.1" />
+    <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6z" />
+    <path d="M12 20v-9M6.5 13H3m18 0h-3.5M6 9 3 7m15 2 3-2M6 17l-3 2m15-2 3 2" />
+  </Icon>
+)

@@ -5,6 +5,7 @@ import type {
   PlatformMediaDevices,
   PlatformNotifications,
   PlatformScreenCapture,
+  PlatformSystem,
   ScreenCapture,
 } from '@/shared/platform'
 
@@ -40,6 +41,9 @@ export function createFakePlatform() {
       setEnabled: vi.fn<PlatformAutostart['setEnabled']>(() => Promise.resolve()),
     },
     secretStore: createFakeSecretStore(),
+    system: {
+      describe: vi.fn<PlatformSystem['describe']>(() => 'FakeBrowser/1.0 (TestOS)'),
+    },
     install: {
       isSupported: vi.fn<PlatformInstall['isSupported']>(() => true),
       canPrompt: vi.fn<PlatformInstall['canPrompt']>(() => false),

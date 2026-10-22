@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
@@ -38,11 +40,34 @@ const securityPlugin = (mode: string) => {
   }
 }
 
+/**
+ * The build as a bug report names it: the package version and the commit, or
+ * `dev` when the tree is not a git checkout (a bare source archive).
+ */
+const appVersion = (): string => {
+  const pkg: unknown = JSON.parse(readFileSync('package.json', 'utf8'))
+  const version =
+    typeof pkg === 'object' && pkg !== null && 'version' in pkg && typeof pkg.version === 'string'
+      ? pkg.version
+      : '0.0.0'
+  try {
+    const commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      encoding: 'utf8',
+    }).trim()
+    return `${version}+${commit}`
+  } catch {
+    return `${version}+dev`
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const apiOrigin = env.VITE_API_URL ? new URL(env.VITE_API_URL).origin : undefined
   return {
     plugins: [react(), tailwindcss(), securityPlugin(mode)],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion()),
+    },
     // The server allows CORS only from this origin (ORBIT_CORS_ORIGINS). Fail on a busy port
     // instead of silently moving to 5174, where every API request is blocked.
     server: {

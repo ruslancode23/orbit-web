@@ -38,7 +38,7 @@ class FakeSocket {
 
 const sockets: FakeSocket[] = []
 
-const StatusProbe = () => {
+const StatusProbe = ({ onReportBug = () => undefined }: { onReportBug?: () => void }) => {
   const { status, choose } = useMyStatus()
   return (
     <UserStatusMenu
@@ -46,17 +46,18 @@ const StatusProbe = () => {
       onStatusChange={choose}
       onEditProfile={() => undefined}
       onSetStatus={() => undefined}
+      onReportBug={onReportBug}
     >
       <span>Анна</span>
     </UserStatusMenu>
   )
 }
 
-const renderMenu = () => {
+const renderMenu = (onReportBug?: () => void) => {
   vi.stubGlobal('WebSocket', FakeSocket)
   renderWithProviders(
     <LiveProvider enabled>
-      <StatusProbe />
+      <StatusProbe {...(onReportBug === undefined ? {} : { onReportBug })} />
     </LiveProvider>,
   )
   const socket = sockets[0]
@@ -111,4 +112,14 @@ it('offers the status and profile editors next to the statuses', async () => {
 
   expect(screen.getByRole('menuitem', { name: 'Задать статус' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Редактировать профиль' })).toBeInTheDocument()
+})
+
+it('offers to report a problem', async () => {
+  const onReportBug = vi.fn()
+  renderMenu(onReportBug)
+  await userEvent.click(trigger())
+
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Сообщить о проблеме' }))
+
+  expect(onReportBug).toHaveBeenCalledOnce()
 })

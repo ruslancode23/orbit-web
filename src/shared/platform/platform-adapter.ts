@@ -14,6 +14,13 @@ export interface PlatformAdapter {
   install: PlatformInstall
   /** Where secret chat keys and decrypted history live; never leaves the device. */
   secretStore: PlatformSecretStore
+  system: PlatformSystem
+}
+
+/** What the app runs in, for a bug report: the browser and the OS, or the desktop shell. */
+export interface PlatformSystem {
+  /** A line a developer can read, such as the browser's user agent. */
+  describe: () => string
 }
 
 /**

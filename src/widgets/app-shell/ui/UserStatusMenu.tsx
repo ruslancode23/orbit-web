@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { EditIcon, PlusIcon, SmileIcon } from '@/shared/ui/icon'
+import { BugIcon, EditIcon, PlusIcon, SmileIcon } from '@/shared/ui/icon'
 
 type VisibleStatus = Exclude<PresenceChoice, 'auto'>
 
@@ -47,6 +47,8 @@ interface UserStatusMenuProps {
   onSetStatus: () => void
   /** Opens the profile settings; only offered while the account has no picture. */
   onAddPhoto?: () => void
+  /** Opens the bug report form. */
+  onReportBug: () => void
   /** The avatar and the name; the whole block opens the menu. */
   children: ReactNode
 }
@@ -63,6 +65,7 @@ export const UserStatusMenu = ({
   onEditProfile,
   onSetStatus,
   onAddPhoto,
+  onReportBug,
   children,
 }: UserStatusMenuProps) => {
   const activity = usePresenceActivityState()
@@ -118,6 +121,11 @@ export const UserStatusMenu = ({
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onReportBug}>
+          <BugIcon className="size-4 text-fg-muted" />
+          Сообщить о проблеме
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

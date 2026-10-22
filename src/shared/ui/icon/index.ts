@@ -1,6 +1,7 @@
 export {
   BanIcon,
   BellIcon,
+  BugIcon,
   CheckIcon,
   CopyIcon,
   ClockIcon,

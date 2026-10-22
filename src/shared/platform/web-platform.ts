@@ -115,6 +115,10 @@ export function createWebPlatform(): PlatformAdapter {
 
     secretStore: createWebSecretStore(),
 
+    system: {
+      describe: () => (typeof navigator === 'undefined' ? 'unknown' : navigator.userAgent),
+    },
+
     autostart: {
       isSupported: () => false,
       isEnabled: () => Promise.resolve(false),
