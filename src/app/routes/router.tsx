@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router'
 
+import AboutBetaPage from '@/pages/about-beta'
 import DirectPage from '@/pages/direct'
 import InvitePage from '@/pages/invite'
 import LoginPage from '@/pages/login'
@@ -16,6 +17,8 @@ import { SecretChatRoute } from './SecretChatRoute'
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  // Open: someone deciding whether to join reads it before having an account.
+  { path: '/beta', element: <AboutBetaPage /> },
   // Open on purpose: the link shows what it leads to before asking for a name.
   { path: '/invite/:code', element: <InvitePage /> },
   {

@@ -6,6 +6,12 @@ function required(name: string): string {
   return value
 }
 
+/** A value from the environment, or undefined when it is not set. */
+function optional(name: string): string | undefined {
+  const value: unknown = import.meta.env[name]
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
 /** A positive whole number from the environment, or the fallback when it is not set. */
 function positiveInteger(name: string, fallback: number): number {
   const value: unknown = import.meta.env[name]
@@ -27,4 +33,10 @@ export const env = {
    * refuse a big file before sending it; the server still checks on its own.
    */
   maxUploadBytes: positiveInteger('VITE_MAX_UPLOAD_BYTES', 25 * 1024 * 1024),
+  /**
+   * Where beta testers write about bugs and ideas: a form, a chat or a
+   * mailto: link. Optional — without it «О бете» asks them to tell whoever
+   * invited them.
+   */
+  feedbackUrl: optional('VITE_FEEDBACK_URL'),
 } as const
