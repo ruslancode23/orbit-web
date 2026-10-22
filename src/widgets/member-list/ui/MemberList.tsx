@@ -229,32 +229,34 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
             ))}
           </div>
         ) : (
-          groupMembers(members, roles).map((group) => (
-            <section
-              key={group.key}
-              aria-label={group.title}
-              className="flex flex-col gap-0.5 p-2 pb-0 last:pb-2"
-            >
-              <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
-                {group.title} — {group.rows.length}
-              </h2>
-              <ul>
-                {group.rows.map((member) => (
-                  <li key={member.user.id}>
-                    <MemberRow
-                      member={member}
-                      name={userDisplayName(member.user)}
-                      nameClass={accentOf(colorRoleOf(member, roles)?.color)?.text}
-                      voice={voiceStates.get(member.user.id)}
-                      userId={member.user.id}
-                      workspaceId={workspaceId}
-                      {...volumeProps(member.user.id)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))
+          // One flat list with the group headings in it: a member who gets a
+          // role shown apart moves under it without remounting, so the card
+          // they were opened in stays open.
+          <ul aria-label="Участники сервера" className="flex flex-col gap-0.5 p-2">
+            {groupMembers(members, roles).flatMap((group) => [
+              <li
+                key={`group-${group.key}`}
+                className="px-1 pt-2 text-xs font-semibold tracking-wide text-fg-muted uppercase first:pt-0"
+              >
+                <h2>
+                  {group.title} — {group.rows.length}
+                </h2>
+              </li>,
+              ...group.rows.map((member) => (
+                <li key={member.user.id}>
+                  <MemberRow
+                    member={member}
+                    name={userDisplayName(member.user)}
+                    nameClass={accentOf(colorRoleOf(member, roles)?.color)?.text}
+                    voice={voiceStates.get(member.user.id)}
+                    userId={member.user.id}
+                    workspaceId={workspaceId}
+                    {...volumeProps(member.user.id)}
+                  />
+                </li>
+              )),
+            ])}
+          </ul>
         )}
       </aside>
     </>
