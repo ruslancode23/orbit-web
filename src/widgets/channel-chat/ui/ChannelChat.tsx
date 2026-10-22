@@ -70,6 +70,9 @@ export const ChannelChat = ({
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useChannelHistory(channelId)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  // Whether the reader has touched the scrolling since the feed was last pinned:
+  // a wheel, a touch, a key or the scrollbar. Only that may unpin the feed.
+  const readerScrolledRef = useRef(false)
   const [atBottom, setAtBottom] = useState(true)
   const [replyTo, setReplyTo] = useState<Message | undefined>(undefined)
   const [editingId, setEditingId] = useState<string | undefined>(undefined)
@@ -117,8 +120,38 @@ export const ChannelChat = ({
     if (!atBottom || !element) {
       return
     }
+    readerScrolledRef.current = false
     element.scrollTop = element.scrollHeight
   }, [atBottom, totalSize, messages.length, channelId])
+
+  // What counts as the reader scrolling: a wheel, a touch, a key, or a press on
+  // the scrollbar (it lands on the list itself, not on a row). Passive
+  // listeners: noticing them must never slow the scrolling down.
+  useEffect(() => {
+    const element = scrollRef.current
+    if (!element) {
+      return undefined
+    }
+    const mark = () => {
+      readerScrolledRef.current = true
+    }
+    const markScrollbar = (event: PointerEvent) => {
+      if (event.target === element) {
+        mark()
+      }
+    }
+    const options = { passive: true }
+    element.addEventListener('wheel', mark, options)
+    element.addEventListener('touchmove', mark, options)
+    element.addEventListener('keydown', mark, options)
+    element.addEventListener('pointerdown', markScrollbar, options)
+    return () => {
+      element.removeEventListener('wheel', mark)
+      element.removeEventListener('touchmove', mark)
+      element.removeEventListener('keydown', mark)
+      element.removeEventListener('pointerdown', markScrollbar)
+    }
+  }, [])
 
   // The mark on a jumped-to message is temporary.
   useEffect(() => {
@@ -146,6 +179,9 @@ export const ChannelChat = ({
     if (index === -1) {
       return
     }
+    // A jump is the reader's own move: the pinned feed must let it happen.
+    readerScrolledRef.current = true
+    setAtBottom(false)
     virtualizer.scrollToIndex(index, { align: 'center' })
     setHighlightedId(messageId)
   }
@@ -153,7 +189,19 @@ export const ChannelChat = ({
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget
     const distance = element.scrollHeight - element.scrollTop - element.clientHeight
-    setAtBottom(distance <= BOTTOM_THRESHOLD)
+    // Only the reader leaves the bottom. The feed also moves by itself — the
+    // virtualizer corrects its offset after measuring rows, a picture decoding
+    // pushes the end away — and none of that may unpin it: while pinned, such
+    // a move is undone at once.
+    if (atBottom && !readerScrolledRef.current && distance > 1) {
+      element.scrollTop = element.scrollHeight
+      return
+    }
+    if (distance <= BOTTOM_THRESHOLD) {
+      setAtBottom(true)
+    } else if (readerScrolledRef.current) {
+      setAtBottom(false)
+    }
 
     // Near the top: bring in what came before.
     if (element.scrollTop < ESTIMATED_ROW * 2 && hasNextPage && !isFetchingNextPage) {
@@ -184,6 +232,7 @@ export const ChannelChat = ({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
+
           className="h-full overflow-y-auto"
           role="log"
           aria-live="polite"
