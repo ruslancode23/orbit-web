@@ -7,6 +7,7 @@ import type { AvatarStatus } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
 
 import { CopyNicknameButton } from './CopyNicknameButton'
+import { MemberRoles } from './MemberRoles'
 import { ModerationActions } from './ModerationActions'
 import { FriendActionSlot, ProfileTabsSlot } from './ProfileSlots'
 import { StartDirectChat } from './StartDirectChat'
@@ -166,7 +167,10 @@ export const UserCardDetails = ({
         )}
 
         {mode !== 'preview' && member !== undefined && workspaceId !== undefined && (
-          <ModerationActions workspaceId={workspaceId} member={member} />
+          <>
+            <MemberRoles workspaceId={workspaceId} member={member} />
+            <ModerationActions workspaceId={workspaceId} member={member} />
+          </>
         )}
       </div>
     </div>

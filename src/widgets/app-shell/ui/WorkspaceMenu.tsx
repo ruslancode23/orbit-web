@@ -18,8 +18,10 @@ import { IconButton } from '@/shared/ui/icon-button'
 interface WorkspaceMenuProps {
   workspace: Workspace
   role: WorkspaceRole
-  /** Server settings and the list of invite links: manageServer. */
+  /** The list of invite links: manageServer. */
   canManageServer: boolean
+  /** «Настройки сервера»: manageServer or manageRoles. */
+  canOpenSettings: boolean
   /** «Участники и баны»: kickMembers or banMembers. */
   canModerate: boolean
   canInvite: boolean
@@ -35,6 +37,7 @@ export const WorkspaceMenu = ({
   workspace,
   role,
   canManageServer,
+  canOpenSettings,
   canModerate,
   canInvite,
   canCreateChannels,
@@ -92,7 +95,7 @@ export const WorkspaceMenu = ({
                 Участники и баны
               </DropdownMenuItem>
             )}
-            {canManageServer && (
+            {canOpenSettings && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

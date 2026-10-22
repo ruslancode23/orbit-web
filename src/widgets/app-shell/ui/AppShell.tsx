@@ -199,6 +199,7 @@ const Shell = () => {
                 workspace={membership.workspace}
                 role={membership.role}
                 canManageServer={canManageServer}
+                canOpenSettings={canManageServer || hasPermission(membership, 'manageRoles')}
                 canModerate={canModerate}
                 canInvite={canInvite}
                 canCreateChannels={canCreateChannels}

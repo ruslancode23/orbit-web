@@ -7,7 +7,7 @@ import WorkspaceSettingsPage from './WorkspaceSettingsPage'
 
 const workspaceId = '0b7e6c1a-2f4d-4c1e-9a3b-5d6e7f8a9b0c'
 
-const stubWorkspaces = (role: 'owner' | 'admin' | 'member') => {
+const stubWorkspaces = (role: 'owner' | 'admin' | 'member', permissions?: string[]) => {
   const memberships = [
     {
       workspace: {
@@ -20,6 +20,7 @@ const stubWorkspaces = (role: 'owner' | 'admin' | 'member') => {
         createdAt: '2026-10-20T10:00:00Z',
       },
       role,
+      ...(permissions === undefined ? {} : { permissions }),
     },
   ]
   vi.stubGlobal(
@@ -67,6 +68,16 @@ it('lets the owner delete the server', async () => {
 
   expect(await screen.findByRole('region', { name: 'Удаление сервера' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Удалить сервер' })).toBeInTheDocument()
+})
+
+// Roles are their own permission: a role manager sees only that section.
+it('gives someone who manages roles only the roles', async () => {
+  stubWorkspaces('member', ['manageRoles', 'viewChannel'])
+  renderPage()
+
+  expect(await screen.findByRole('region', { name: 'Роли' })).toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Обзор' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Права участников' })).not.toBeInTheDocument()
 })
 
 // The server would refuse every change anyway; the page does not pretend.
