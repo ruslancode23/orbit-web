@@ -79,3 +79,23 @@ export async function skipProfileOnboarding(page: Page): Promise<void> {
   await dialog.getByRole('button', { name: 'Пропустить' }).click()
   await expect(dialog).toBeHidden()
 }
+
+/** Registers an owner with a fresh server and one voice channel, «переговорка»; returns the nickname. */
+export async function createVoiceServer(page: Page): Promise<string> {
+  const nickname = unique('owner')
+  await page.goto('/register')
+  await page.getByLabel('Ник').fill(nickname)
+  await page.getByLabel('Пароль').fill(password)
+  await page.getByRole('button', { name: 'Создать аккаунт' }).click()
+  await skipProfileOnboarding(page)
+
+  await page.getByRole('link', { name: 'Создать сервер' }).click()
+  await page.getByLabel('Название сервера').fill('Голос')
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('radio', { name: /Пустой/ }).check()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('button', { name: 'Создать сервер' }).click()
+
+  await createChannel(page, 'переговорка', 'voice')
+  return nickname
+}

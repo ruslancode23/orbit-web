@@ -1,5 +1,6 @@
 import { createContext, use } from 'react'
 
+import type { AudioProcessing } from './voice-preferences'
 import type { RemoteVideoTrack, Room } from 'livekit-client'
 
 /**
@@ -77,6 +78,10 @@ export interface VoiceRoomValue {
   setDeafened: (deafened: boolean) => Promise<void>
   /** Local playback volume of a remote participant, 0–1. */
   setParticipantVolume: (identity: string, volume: number) => void
+  /** The browser's processing of the microphone; remembered on this device. */
+  audioProcessing: AudioProcessing
+  /** Applies to the running microphone without leaving the call, and to the next room. */
+  setAudioProcessing: (processing: AudioProcessing) => Promise<void>
 }
 
 export const VoiceRoomContext = createContext<VoiceRoomValue | null>(null)

@@ -11,6 +11,7 @@ import { Button } from '@/shared/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/shared/ui/select'
 import { useToast } from '@/shared/ui/toast'
 
+import { AudioProcessingSettings } from './AudioProcessingSettings'
 import { DEFAULT_DEVICE, deviceLabel, useAudioDevices } from '../model/useAudioDevices'
 import { useDeviceFallback } from '../model/useDeviceFallback'
 import { useMicrophoneLevel } from '../model/useMicrophoneLevel'
@@ -162,6 +163,8 @@ export const DeviceSettings = () => {
           <span className="text-xs text-fg-muted">{microphoneHint}</span>
         </div>
       </section>
+
+      <AudioProcessingSettings />
 
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold">Динамики</h3>
