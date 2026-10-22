@@ -17,6 +17,7 @@ import { ChevronDownIcon, HashIcon, LinkIcon, SettingsIcon } from '@/shared/ui/i
 import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 
+import { ChannelContextMenu } from './ChannelContextMenu'
 import { setChannelSidebarOpen } from '../model/channel-sidebar'
 
 interface ChannelListProps {
@@ -122,58 +123,73 @@ export const ChannelList = ({
                       : { unread: 0, mentions: 0 }
                   const description = describeUnread(shown)
                   return (
-                    <li key={channel.id} className="group/row relative">
-                      <NavLink
-                        to={`/s/${workspaceId}/${channel.id}`}
-                        onClick={() => {
-                          setChannelSidebarOpen(false)
-                        }}
-                        aria-label={
-                          description ? `# ${channel.name}, ${description}` : `# ${channel.name}`
-                        }
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center gap-1.5 rounded-md py-1 pr-14 pl-2 text-sm transition-colors',
-                            isActive
-                              ? 'bg-surface-hover text-fg'
-                              : 'text-fg-muted hover:bg-surface-hover hover:text-fg',
-                            shown.unread > 0 && 'font-semibold text-fg',
-                          )
-                        }
-                      >
-                        <HashIcon className="size-4 shrink-0 text-fg-muted" />
-                        <span className="min-w-0 flex-1 truncate">{channel.name}</span>
-                        <UnreadBadge unread={shown.unread} mentions={shown.mentions} />
-                      </NavLink>
-                      {(canInvite || managesChannel(channel)) && (
-                        <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 rounded bg-surface-hover opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100">
-                          {canInvite && (
-                            <IconButton
-                              label="Пригласить людей"
-                              size="sm"
-                              className="size-6"
-                              onClick={() => {
-                                setInvitesOpen(true)
-                              }}
-                            >
-                              <LinkIcon className="size-3.5" />
-                            </IconButton>
-                          )}
-                          {managesChannel(channel) && (
-                            <IconButton
-                              label={`Настройки канала ${channel.name}`}
-                              size="sm"
-                              className="size-6"
-                              onClick={() => {
-                                setEditing(channel)
-                              }}
-                            >
-                              <SettingsIcon className="size-3.5" />
-                            </IconButton>
-                          )}
-                        </div>
-                      )}
-                    </li>
+                    <ChannelContextMenu
+                      key={channel.id}
+                      workspaceId={workspaceId}
+                      channel={channel}
+                      hasUnread={counts !== undefined && counts.unread + counts.mentions > 0}
+                      canInvite={canInvite}
+                      canManage={managesChannel(channel)}
+                      onInvite={() => {
+                        setInvitesOpen(true)
+                      }}
+                      onEdit={() => {
+                        setEditing(channel)
+                      }}
+                    >
+                      <li className="group/row relative">
+                        <NavLink
+                          to={`/s/${workspaceId}/${channel.id}`}
+                          onClick={() => {
+                            setChannelSidebarOpen(false)
+                          }}
+                          aria-label={
+                            description ? `# ${channel.name}, ${description}` : `# ${channel.name}`
+                          }
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-center gap-1.5 rounded-md py-1 pr-14 pl-2 text-sm transition-colors',
+                              isActive
+                                ? 'bg-surface-hover text-fg'
+                                : 'text-fg-muted hover:bg-surface-hover hover:text-fg',
+                              shown.unread > 0 && 'font-semibold text-fg',
+                            )
+                          }
+                        >
+                          <HashIcon className="size-4 shrink-0 text-fg-muted" />
+                          <span className="min-w-0 flex-1 truncate">{channel.name}</span>
+                          <UnreadBadge unread={shown.unread} mentions={shown.mentions} />
+                        </NavLink>
+                        {(canInvite || managesChannel(channel)) && (
+                          <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 rounded bg-surface-hover opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+                            {canInvite && (
+                              <IconButton
+                                label="Пригласить людей"
+                                size="sm"
+                                className="size-6"
+                                onClick={() => {
+                                  setInvitesOpen(true)
+                                }}
+                              >
+                                <LinkIcon className="size-3.5" />
+                              </IconButton>
+                            )}
+                            {managesChannel(channel) && (
+                              <IconButton
+                                label={`Настройки канала ${channel.name}`}
+                                size="sm"
+                                className="size-6"
+                                onClick={() => {
+                                  setEditing(channel)
+                                }}
+                              >
+                                <SettingsIcon className="size-3.5" />
+                              </IconButton>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    </ChannelContextMenu>
                   )
                 })}
               </ul>
@@ -204,23 +220,38 @@ export const ChannelList = ({
                         voicePresence?.find((presence) => presence.channelId === channel.id),
                       )
                   return (
-                    <li key={channel.id} className="group/row relative">
-                      <VoiceChannelButton channel={channel} members={members} />
-                      {managesChannel(channel) && (
-                        <div className="absolute top-0.5 right-1 opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100">
-                          <IconButton
-                            label={`Настройки канала ${channel.name}`}
-                            size="sm"
-                            className="size-6 bg-surface"
-                            onClick={() => {
-                              setEditing(channel)
-                            }}
-                          >
-                            <SettingsIcon className="size-3.5" />
-                          </IconButton>
-                        </div>
-                      )}
-                    </li>
+                    <ChannelContextMenu
+                      key={channel.id}
+                      workspaceId={workspaceId}
+                      channel={channel}
+                      hasUnread={false}
+                      canInvite={canInvite}
+                      canManage={managesChannel(channel)}
+                      onInvite={() => {
+                        setInvitesOpen(true)
+                      }}
+                      onEdit={() => {
+                        setEditing(channel)
+                      }}
+                    >
+                      <li className="group/row relative">
+                        <VoiceChannelButton channel={channel} members={members} />
+                        {managesChannel(channel) && (
+                          <div className="absolute top-0.5 right-1 opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+                            <IconButton
+                              label={`Настройки канала ${channel.name}`}
+                              size="sm"
+                              className="size-6 bg-surface"
+                              onClick={() => {
+                                setEditing(channel)
+                              }}
+                            >
+                              <SettingsIcon className="size-3.5" />
+                            </IconButton>
+                          </div>
+                        )}
+                      </li>
+                    </ChannelContextMenu>
                   )
                 })}
               </ul>

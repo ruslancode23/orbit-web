@@ -28,6 +28,7 @@ import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Slider } from '@/shared/ui/slider'
 
+import { MemberContextMenu } from './MemberContextMenu'
 import { groupMembers } from '../model/groups'
 import { setMemberPanelOpen, useMemberPanelOpen } from '../model/member-panel'
 
@@ -320,44 +321,46 @@ const MemberRow = ({
     )
 
   return (
-    <UserCard
-      userId={userId}
-      workspaceId={workspaceId}
-      side="left"
-      align="start"
-      {...(extra === undefined ? {} : { extra })}
-      triggerClassName="flex w-full items-center gap-2 px-1.5 py-1 text-left text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
-      guestAction={<ClaimGuest />}
-    >
-      {member ? (
-        <UserAvatar
-          profile={member.user}
-          size={20}
-          status={member.presence}
-          decorative
-          className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
-        />
-      ) : (
-        <Avatar
-          name={name}
-          size={20}
-          decorative
-          className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
-        />
-      )}
-      <span className={cn('min-w-0 flex-1 truncate', nameClass)}>{name}</span>
-      {member?.role === 'owner' && (
-        <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
-          владелец
-        </span>
-      )}
-      {member?.user.isGuest === true && (
-        <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
-          гость
-        </span>
-      )}
-      <VoiceMarks voice={voice} />
-    </UserCard>
+    <MemberContextMenu member={member} name={name}>
+      <UserCard
+        userId={userId}
+        workspaceId={workspaceId}
+        side="left"
+        align="start"
+        {...(extra === undefined ? {} : { extra })}
+        triggerClassName="flex w-full items-center gap-2 px-1.5 py-1 text-left text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
+        guestAction={<ClaimGuest />}
+      >
+        {member ? (
+          <UserAvatar
+            profile={member.user}
+            size={20}
+            status={member.presence}
+            decorative
+            className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
+          />
+        ) : (
+          <Avatar
+            name={name}
+            size={20}
+            decorative
+            className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
+          />
+        )}
+        <span className={cn('min-w-0 flex-1 truncate', nameClass)}>{name}</span>
+        {member?.role === 'owner' && (
+          <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
+            владелец
+          </span>
+        )}
+        {member?.user.isGuest === true && (
+          <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
+            гость
+          </span>
+        )}
+        <VoiceMarks voice={voice} />
+      </UserCard>
+    </MemberContextMenu>
   )
 }
 
