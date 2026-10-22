@@ -1,6 +1,6 @@
 import { createContext, use } from 'react'
 
-import type { AudioProcessing, InputMode } from './voice-preferences'
+import type { AudioProcessing, InputMode, NoiseSuppressionMode } from './voice-preferences'
 import type { RemoteVideoTrack, Room } from 'livekit-client'
 
 /**
@@ -82,6 +82,11 @@ export interface VoiceRoomValue {
   audioProcessing: AudioProcessing
   /** Applies to the running microphone without leaving the call, and to the next room. */
   setAudioProcessing: (processing: AudioProcessing) => Promise<void>
+  /** Off, the browser's own, or RNNoise (`enhanced`); remembered on this device. */
+  noiseSuppressionMode: NoiseSuppressionMode
+  setNoiseSuppressionMode: (mode: NoiseSuppressionMode) => Promise<void>
+  /** RNNoise could not run in this browser, and the standard suppression took its place. */
+  enhancedNoiseSuppressionUnavailable: boolean
   /** Voice activity, or the microphone open only while a key is held. Remembered on this device. */
   inputMode: InputMode
   setInputMode: (mode: InputMode) => Promise<void>

@@ -9,6 +9,12 @@ import { VoiceRoomProvider } from './VoiceRoomProvider'
 
 import type * as LiveKit from 'livekit-client'
 
+const rnnoise = vi.hoisted(() => ({
+  attachRnnoise: vi.fn((_track: unknown) => Promise.resolve()),
+  detachRnnoise: vi.fn(() => Promise.resolve()),
+}))
+vi.mock('../lib/rnnoise', () => rnnoise)
+
 vi.mock('livekit-client', async (importOriginal) => ({
   ...(await importOriginal<typeof LiveKit>()),
   Room: (await import('@/shared/lib/test')).FakeRoom,
@@ -346,5 +352,104 @@ describe('VoiceRoomProvider push-to-talk', () => {
 
     expect(screen.getByRole('status', { name: 'muted' })).toHaveTextContent('Eve')
     expect(screen.getByRole('status', { name: 'muted' })).not.toHaveTextContent('Bob')
+  })
+})
+
+describe('VoiceRoomProvider enhanced noise suppression', () => {
+  const NoiseProbe = () => {
+    const { noiseSuppressionMode, setNoiseSuppressionMode, enhancedNoiseSuppressionUnavailable } =
+      useVoiceRoom()
+    return (
+      <>
+        <output aria-label="mode">{noiseSuppressionMode}</output>
+        <output aria-label="unavailable">{String(enhancedNoiseSuppressionUnavailable)}</output>
+        <button type="button" onClick={() => void setNoiseSuppressionMode('enhanced')}>
+          enhanced
+        </button>
+        <button type="button" onClick={() => void setNoiseSuppressionMode('standard')}>
+          standard
+        </button>
+      </>
+    )
+  }
+
+  const renderNoise = async () => {
+    render(
+      <VoiceRoomProvider>
+        <Probe />
+        <NoiseProbe />
+      </VoiceRoomProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'connect' }))
+    expect(status()).toHaveTextContent('connected')
+    return fakeLiveKit.lastRoom()
+  }
+
+  const mode = () => screen.getByRole('status', { name: 'mode' })
+
+  afterEach(() => {
+    localStorage.clear()
+    rnnoise.attachRnnoise.mockReset()
+    rnnoise.attachRnnoise.mockResolvedValue(undefined)
+  })
+
+  it('turns the browser suppression off and puts RNNoise on the running microphone', async () => {
+    const room = await renderNoise()
+    expect(mode()).toHaveTextContent('standard')
+
+    await userEvent.click(screen.getByRole('button', { name: 'enhanced' }))
+
+    expect(room.microphoneTrack?.restartTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ noiseSuppression: false }),
+    )
+    await vi.waitFor(() => {
+      expect(rnnoise.attachRnnoise).toHaveBeenCalledWith(room.microphoneTrack)
+    })
+    expect(mode()).toHaveTextContent('enhanced')
+    expect(localStorage.getItem('orbit.voice.enhanced-noise-suppression')).toBe('true')
+  })
+
+  it('joins the next room with RNNoise and without the browser suppression', async () => {
+    localStorage.setItem('orbit.voice.enhanced-noise-suppression', 'true')
+    const room = await renderNoise()
+
+    expect(room.options.audioCaptureDefaults).toMatchObject({ noiseSuppression: false })
+    await vi.waitFor(() => {
+      expect(rnnoise.attachRnnoise).toHaveBeenCalledWith(room.microphoneTrack)
+    })
+  })
+
+  it('takes RNNoise off for the standard suppression', async () => {
+    localStorage.setItem('orbit.voice.enhanced-noise-suppression', 'true')
+    const room = await renderNoise()
+    const track = room.microphoneTrack
+    if (!track) {
+      throw new Error('the microphone was not published')
+    }
+    track.processor = { name: 'orbit-rnnoise' }
+
+    await userEvent.click(screen.getByRole('button', { name: 'standard' }))
+
+    expect(track.stopProcessor).toHaveBeenCalledOnce()
+    expect(track.restartTrack).toHaveBeenLastCalledWith(
+      expect.objectContaining({ noiseSuppression: true }),
+    )
+    expect(mode()).toHaveTextContent('standard')
+  })
+
+  it('falls back to the standard suppression when RNNoise cannot run', async () => {
+    rnnoise.attachRnnoise.mockRejectedValue(new Error('AudioWorklet is not available'))
+    const room = await renderNoise()
+
+    await userEvent.click(screen.getByRole('button', { name: 'enhanced' }))
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole('status', { name: 'unavailable' })).toHaveTextContent('true')
+    })
+    expect(mode()).toHaveTextContent('standard')
+    expect(room.microphoneTrack?.restartTrack).toHaveBeenLastCalledWith(
+      expect.objectContaining({ noiseSuppression: true }),
+    )
+    expect(localStorage.getItem('orbit.voice.enhanced-noise-suppression')).toBe('false')
   })
 })

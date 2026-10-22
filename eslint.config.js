@@ -97,6 +97,10 @@ export default defineConfig([
     },
     settings: {
       'import-x/resolver-next': [createTypeScriptImportResolver()],
+      // AudioWorklet processors are loaded by URL (`?url`), not imported: they have no exports to check.
+      'import-x/ignore': [
+        String.raw`web-noise-suppressor[\\/]dist[\\/].+[\\/]workletProcessor\.(d\.ts|js)$`,
+      ],
     },
     rules: {
       '@typescript-eslint/consistent-type-imports': 'error',

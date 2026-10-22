@@ -11,6 +11,9 @@ importers:
       '@matrix-org/olm':
         specifier: ^3.2.15
         version: 3.2.15
+      '@sapphi-red/web-noise-suppressor':
+        specifier: 0.4.1
+        version: 0.4.1
       '@tanstack/react-query':
         specifier: ^5.104.2
         version: 5.104.2(react@19.3.1)
@@ -1279,6 +1282,9 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
+
+  '@sapphi-red/web-noise-suppressor@0.4.1':
+    resolution: {integrity: sha512-hy2GnF079+zi4n9BZUf+GGIQ1IofApAk6rgGMyMQ3soHfz/GKu1pcCsmePyIHVvUuv1LrFudw9BmmBqoOKay5w==}
 
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
@@ -4967,6 +4973,8 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.0.1': {}
+
+  '@sapphi-red/web-noise-suppressor@0.4.1': {}
 
   '@sindresorhus/merge-streams@4.0.0': {}
 

@@ -69,6 +69,10 @@ export interface FakeMicrophoneTrack {
   isMuted: boolean
   mute: () => Promise<void>
   restartTrack: (options?: Record<string, unknown>) => Promise<void>
+  /** Only `name` matters to the app; tests that attach one set it through `processor`. */
+  processor: { name: string } | undefined
+  getProcessor: () => { name: string } | undefined
+  stopProcessor: () => Promise<void>
 }
 
 const fakeMicrophoneTrack = (): FakeMicrophoneTrack => {
@@ -80,6 +84,12 @@ const fakeMicrophoneTrack = (): FakeMicrophoneTrack => {
       return Promise.resolve()
     }),
     restartTrack: vi.fn(() => Promise.resolve()),
+    processor: undefined,
+    getProcessor: vi.fn(() => track.processor),
+    stopProcessor: vi.fn(() => {
+      track.processor = undefined
+      return Promise.resolve()
+    }),
   }
   return track
 }
