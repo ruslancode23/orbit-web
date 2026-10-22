@@ -78,7 +78,7 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
     }
   })
 
-  await owner.getByLabel('Сообщение').fill(plaintext)
+  await owner.getByLabel('Сообщение', { exact: true }).fill(plaintext)
   await owner.getByRole('button', { name: 'Отправить' }).click()
   await expect(owner.getByText(plaintext)).toBeVisible()
 
@@ -98,7 +98,7 @@ test('two devices talk in a secret chat: ciphertext only, timer deletes on both'
   // A timer: five seconds after the peer reads it, the message is gone there.
   await owner.getByRole('button', { name: 'Таймер самоуничтожения' }).click()
   await owner.getByRole('menuitemradio', { name: '5 секунд' }).click()
-  await owner.getByLabel('Сообщение').fill('это исчезнет')
+  await owner.getByLabel('Сообщение', { exact: true }).fill('это исчезнет')
   await owner.getByRole('button', { name: 'Отправить' }).click()
 
   await expect(peer.getByText('это исчезнет')).toBeVisible()
