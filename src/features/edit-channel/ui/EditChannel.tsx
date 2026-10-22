@@ -16,6 +16,9 @@ import { XIcon } from '@/shared/ui/icon'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Switch } from '@/shared/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
+
+import { ChannelOverrides } from './ChannelOverrides'
 
 interface EditChannelProps {
   workspaceId: string
@@ -31,8 +34,8 @@ interface ChannelValues {
 }
 
 /**
- * Renaming a channel, setting its topic and making it read-only. Only what
- * changed is sent; deleting asks for a second press and drops the reader back
+ * Renaming a channel, setting its topic and making it read-only, and on the
+ * «Права» tab what each role may do here. Only what changed is sent; deleting asks for a second press and drops the reader back
  * to the server, since the channel they were reading is gone.
  */
 export const EditChannel = ({ workspaceId, channel, open, onOpenChange }: EditChannelProps) => {
@@ -90,13 +93,11 @@ export const EditChannel = ({ workspaceId, channel, open, onOpenChange }: EditCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[90dvh] max-w-md overflow-y-auto">
         <div className="flex items-start gap-3">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <DialogTitle>Настройки канала</DialogTitle>
-            <DialogDescription>
-              Название, тема и то, может ли писать кто угодно, кроме администраторов.
-            </DialogDescription>
+            <DialogDescription>Название, тема и права ролей в этом канале.</DialogDescription>
           </div>
           <DialogClose asChild>
             <button
@@ -110,108 +111,120 @@ export const EditChannel = ({ workspaceId, channel, open, onOpenChange }: EditCh
           </DialogClose>
         </div>
 
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(event) => {
-            void submit(event)
-          }}
-        >
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={nameId}>Название канала</Label>
-            <Input
-              id={nameId}
-              maxLength={64}
-              aria-invalid={formState.errors.name ? true : undefined}
-              {...register('name', {
-                validate: (value) => value.trim().length > 0 || 'Название не может быть пустым.',
-              })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={topicId}>Тема</Label>
-            <Input
-              id={topicId}
-              maxLength={500}
-              placeholder="О чём этот канал"
-              {...register('topic')}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor={readOnlyId}>Пишут только администраторы</Label>
-            <Controller
-              control={control}
-              name="isReadOnly"
-              render={({ field }) => (
-                <Switch
-                  id={readOnlyId}
-                  ref={field.ref}
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  onBlur={field.onBlur}
+        <Tabs defaultValue="general" className="flex flex-col gap-3">
+          <TabsList aria-label="Разделы настроек канала">
+            <TabsTrigger value="general">Общее</TabsTrigger>
+            <TabsTrigger value="permissions">Права</TabsTrigger>
+          </TabsList>
+          <TabsContent value="permissions">
+            <ChannelOverrides workspaceId={workspaceId} channel={channel} />
+          </TabsContent>
+          <TabsContent value="general">
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(event) => {
+                void submit(event)
+              }}
+            >
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={nameId}>Название канала</Label>
+                <Input
+                  id={nameId}
+                  maxLength={64}
+                  aria-invalid={formState.errors.name ? true : undefined}
+                  {...register('name', {
+                    validate: (value) =>
+                      value.trim().length > 0 || 'Название не может быть пустым.',
+                  })}
                 />
-              )}
-            />
-          </div>
-
-          {error && (
-            <p role="alert" className="text-sm text-danger">
-              {describeError(error)}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {!confirming ? (
-              <Button
-                type="button"
-                variant="danger"
-                onClick={() => {
-                  setConfirming(true)
-                }}
-              >
-                Удалить канал
-              </Button>
-            ) : (
-              <div
-                role="group"
-                aria-label="Подтверждение удаления канала"
-                className="flex flex-wrap items-center gap-1"
-              >
-                <span className="text-xs text-fg-muted">Удалить канал навсегда?</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="danger"
-                  disabled={remove.isPending}
-                  onClick={() => {
-                    void deleteChannel()
-                  }}
-                >
-                  Удалить
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setConfirming(false)
-                  }}
-                >
-                  Отмена
-                </Button>
               </div>
-            )}
-            <div className="flex gap-2">
-              <DialogClose asChild>
-                <Button type="button" variant="ghost">
-                  Закрыть
-                </Button>
-              </DialogClose>
-              <Button type="submit" disabled={update.isPending}>
-                Сохранить
-              </Button>
-            </div>
-          </div>
-        </form>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={topicId}>Тема</Label>
+                <Input
+                  id={topicId}
+                  maxLength={500}
+                  placeholder="О чём этот канал"
+                  {...register('topic')}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor={readOnlyId}>Пишут только администраторы</Label>
+                <Controller
+                  control={control}
+                  name="isReadOnly"
+                  render={({ field }) => (
+                    <Switch
+                      id={readOnlyId}
+                      ref={field.ref}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
+                  )}
+                />
+              </div>
+
+              {error && (
+                <p role="alert" className="text-sm text-danger">
+                  {describeError(error)}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {!confirming ? (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => {
+                      setConfirming(true)
+                    }}
+                  >
+                    Удалить канал
+                  </Button>
+                ) : (
+                  <div
+                    role="group"
+                    aria-label="Подтверждение удаления канала"
+                    className="flex flex-wrap items-center gap-1"
+                  >
+                    <span className="text-xs text-fg-muted">Удалить канал навсегда?</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="danger"
+                      disabled={remove.isPending}
+                      onClick={() => {
+                        void deleteChannel()
+                      }}
+                    >
+                      Удалить
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setConfirming(false)
+                      }}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <DialogClose asChild>
+                    <Button type="button" variant="ghost">
+                      Закрыть
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={update.isPending}>
+                    Сохранить
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

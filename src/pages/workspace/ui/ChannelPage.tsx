@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
-import { useChannels, type Channel } from '@/entities/channel'
+import { channelAllows, useChannels, type Channel } from '@/entities/channel'
 import { ParticipantTile } from '@/entities/participant'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { can, hasPermission, useWorkspace } from '@/entities/workspace'
@@ -75,7 +75,8 @@ const ChannelPage = () => {
                 ? {}
                 : { channelName: channel.name, channelTopic: channel.topic })}
               canWrite={channel?.canWrite ?? false}
-              canAttach={can(membership, 'canAttachFiles')}
+              canAttach={channelAllows(channel, 'attachFiles', can(membership, 'canAttachFiles'))}
+              canModerate={channelAllows(channel, 'manageMessages', false)}
             />
             <MemberList workspaceId={workspaceId} />
           </div>

@@ -50,10 +50,26 @@ export function outranks(
   return rankOf(me, roles) > rankOf(target, roles)
 }
 
-/** The highest hoisted role a member holds, which decides their group and colour. */
-export function displayRoleOf(
+/**
+ * The highest role a member holds that is shown apart: their group in the
+ * member column. Undefined puts them with everyone else.
+ */
+export function groupRoleOf(
   member: WorkspaceMember,
   roles: readonly Role[] | undefined,
 ): Role | undefined {
-  return (roles ?? []).find((role) => !role.isDefault && member.roleIds?.includes(role.id))
+  // Roles come highest first, so the first match is the highest.
+  return (roles ?? []).find(
+    (role) => !role.isDefault && role.hoist && member.roleIds?.includes(role.id),
+  )
+}
+
+/** The highest role a member holds that has a colour: the colour of their name. */
+export function colorRoleOf(
+  member: WorkspaceMember,
+  roles: readonly Role[] | undefined,
+): Role | undefined {
+  return (roles ?? []).find(
+    (role) => !role.isDefault && role.color !== undefined && member.roleIds?.includes(role.id),
+  )
 }

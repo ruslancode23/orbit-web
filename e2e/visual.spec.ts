@@ -159,7 +159,7 @@ test.describe('visual snapshots', () => {
     // presence dot: wait for the loaded row, or a screenshot could catch
     // skeletons or a dotless avatar depending on the network.
     const members = page.getByRole('complementary', { name: 'Участники' })
-    await expect(members.getByRole('region', { name: 'Владелец' })).toBeVisible()
+    await expect(members.getByRole('heading', { name: /^Участники — / })).toBeVisible()
     await expect(members.getByRole('img', { name: 'В сети' })).toBeVisible()
 
     const masks = dynamicParts(page, nickname)

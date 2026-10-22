@@ -18,6 +18,7 @@ import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 import { MessageRow } from './MessageRow'
+import { useAuthorClasses } from './useAuthorClasses'
 import { useChannelHistory } from './useChannelHistory'
 
 interface ChannelChatProps {
@@ -34,6 +35,8 @@ interface ChannelChatProps {
   canWrite: boolean
   /** False when the server does not let this member attach files. */
   canAttach: boolean
+  /** manageMessages in this channel: other people's messages may be deleted. */
+  canModerate?: boolean
   /**
    * Drawn instead of the composer when the reader cannot write here at all,
    * such as a dialogue with a blocked person. The chat stays readable.
@@ -63,10 +66,12 @@ export const ChannelChat = ({
   mentionPeople,
   canWrite,
   canAttach,
+  canModerate = false,
   writeBlocked,
   onWriteUnavailable,
 }: ChannelChatProps) => {
   const { user } = useSession()
+  const authorClasses = useAuthorClasses(workspaceId)
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useChannelHistory(channelId)
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -312,6 +317,8 @@ export const ChannelChat = ({
                     mentionsMe={user ? message.mentions.includes(user.id) : false}
                     myNickname={user?.nickname}
                     canWrite={canWrite}
+                    canModerate={canModerate}
+                    authorClass={message.author ? authorClasses.get(message.author.id) : undefined}
                     replyTo={replyTarget}
                     editing={editingId === message.id}
                     highlighted={highlightedId === message.id}

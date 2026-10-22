@@ -16,6 +16,8 @@ interface MessageActionsProps {
   message: Message
   /** Replying is writing; a read-only channel offers no reply. */
   canWrite: boolean
+  /** manageMessages in this channel: deleting somebody else's message too. */
+  canModerate?: boolean
   onReply: () => void
   onEdit: () => void
 }
@@ -23,10 +25,16 @@ interface MessageActionsProps {
 /**
  * What may be done with one message, as pictures in a panel that shows on hover
  * or when the keyboard reaches the row: react, answer, rewrite or delete one's
- * own. The buttons follow the rules the server enforces — the server checks
+ * own — and delete anybody's for a moderator. The buttons follow the rules the server enforces — the server checks
  * them again, so hiding an action is a convenience, never the protection.
  */
-export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageActionsProps) => {
+export const MessageActions = ({
+  message,
+  canWrite,
+  canModerate = false,
+  onReply,
+  onEdit,
+}: MessageActionsProps) => {
   const { user } = useSession()
   const queryClient = useQueryClient()
   const [picking, setPicking] = useState(false)
@@ -54,7 +62,8 @@ export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageAc
   }
 
   const own = message.author !== undefined && message.author.id === user?.id
-  const nothingToShow = !canWrite && !own
+  const canDelete = own || canModerate
+  const nothingToShow = !canWrite && !canDelete
   if (nothingToShow) {
     return null
   }
@@ -98,7 +107,7 @@ export const MessageActions = ({ message, canWrite, onReply, onEdit }: MessageAc
             <EditIcon />
           </IconButton>
         )}
-        {own && (
+        {canDelete && (
           <IconButton
             label="Удалить"
             size="sm"

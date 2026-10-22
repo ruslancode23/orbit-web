@@ -9,6 +9,7 @@ import {
 import { ClaimGuest } from '@/features/claim-guest'
 import { EditMessageForm, MessageActions, ReactionBar } from '@/features/message-actions'
 import { UserCard } from '@/features/user-card'
+import { cn } from '@/shared/lib/cn'
 
 interface MessageRowProps {
   message: Message
@@ -21,6 +22,10 @@ interface MessageRowProps {
   mentionsMe: boolean
   myNickname?: string
   canWrite: boolean
+  /** manageMessages here: deleting other people's messages. */
+  canModerate: boolean
+  /** The colour of the author's highest coloured role, as a text class. */
+  authorClass?: string | undefined
   /** The answered message, when it is still in the loaded history. */
   replyTo?: Message
   editing: boolean
@@ -40,6 +45,8 @@ export const MessageRow = ({
   mentionsMe,
   myNickname,
   canWrite,
+  canModerate,
+  authorClass,
   replyTo,
   editing,
   highlighted,
@@ -71,7 +78,7 @@ export const MessageRow = ({
             triggerClassName={
               part === 'avatar'
                 ? 'inline-flex shrink-0'
-                : 'inline-flex text-left text-sm font-semibold leading-5'
+                : cn('inline-flex text-left text-sm leading-5 font-semibold', authorClass)
             }
           >
             {content}
@@ -88,6 +95,7 @@ export const MessageRow = ({
         <MessageActions
           message={message}
           canWrite={canWrite}
+          canModerate={canModerate}
           onReply={onReply}
           onEdit={onStartEdit}
         />
