@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { copyText } from '@/shared/lib/clipboard'
 import { CopyIcon } from '@/shared/ui/icon'
 import { useToast } from '@/shared/ui/toast'
-
-import { copyText } from '../model/clipboard'
 
 const COPIED_MS = 1500
 

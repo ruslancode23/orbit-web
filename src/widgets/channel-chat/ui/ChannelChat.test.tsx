@@ -415,6 +415,56 @@ it("lets a moderator delete someone else's message", async () => {
   })
 })
 
+describe('context menu', () => {
+  it('answers, rewrites and deletes from a right click', async () => {
+    const calls = stubApi()
+    renderChat()
+    await screen.findByText('первое')
+
+    fireEvent.contextMenu(screen.getByText('первое'))
+    const menu = screen.getByRole('menu', { name: 'Действия с сообщением' })
+    expect(within(menu).getByRole('menuitem', { name: 'Изменить' })).toBeInTheDocument()
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Ответить' }))
+    expect(screen.getByText(/Ответ на сообщение Anna: первое/)).toBeInTheDocument()
+
+    fireEvent.contextMenu(screen.getByText('первое'))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Удалить сообщение' }))
+    const dialog = screen.getByRole('dialog', { name: 'Удалить сообщение?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+
+    expect(await screen.findByText('Сообщение удалено')).toBeInTheDocument()
+    expect(calls.deleted).toEqual(['m-1'])
+  })
+
+  it('copies the text of a message', async () => {
+    stubApi()
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderChat()
+    await screen.findByText('первое')
+
+    fireEvent.contextMenu(screen.getByText('первое'))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Копировать текст' }))
+
+    expect(writeText).toHaveBeenCalledWith('первое')
+    expect(await screen.findByText('Текст скопирован')).toBeInTheDocument()
+  })
+
+  it("offers only answering and copying on someone else's message", async () => {
+    stubApi([second, makeMessage({ id: 'm-3', seq: 3n, content: 'чужое', author: boris })])
+    renderChat()
+    await screen.findByText('чужое')
+
+    fireEvent.contextMenu(screen.getByText('чужое'))
+    const items = within(screen.getByRole('menu')).getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Реакция›',
+      'Ответить',
+      'Копировать текст',
+    ])
+  })
+})
+
 // The name takes the colour of the author's highest coloured role.
 it("paints an author's name in their role's colour", async () => {
   stubApi([second, makeMessage({ id: 'm-3', seq: 3n, content: 'чужое', author: boris })])

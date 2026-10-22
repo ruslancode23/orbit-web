@@ -6,6 +6,7 @@ import {
   getConversationUnreadOptions,
   getConversationUnreadQueryKey,
   listConversationsQueryKey,
+  listMessagesOptions,
   listUnreadOptions,
   listUnreadQueryKey,
   markChannelReadMutation,
@@ -150,4 +151,51 @@ export function useReadOnView({ workspaceId, channelId, newestSeq, viewing }: Re
 
   // A dialogue has no divider: everything in it is the unread part on arrival.
   return { lastReadSeq: workspaceId === undefined ? undefined : lastReadSeq }
+}
+
+/**
+ * «Отметить прочитанным» for one or more channels of a server, from a menu.
+ *
+ * The server keeps the cursor where it is told and never caps it at the
+ * newest message, so a far-ahead `seq` would swallow messages yet to come.
+ * Each channel's newest message is therefore read first, and the cursor moves
+ * exactly up to it. Channels with nothing unread are skipped.
+ */
+export function useMarkChannelsRead(workspaceId: string) {
+  const queryClient = useQueryClient()
+  const { mutateAsync } = useMutation(markChannelReadMutation())
+
+  return useMutation({
+    mutationFn: async (channelIds: readonly string[]) => {
+      const counts = queryClient.getQueryData<ChannelUnread[]>(
+        listUnreadQueryKey({ path: { workspaceId } }),
+      )
+      const pending = channelIds.filter((channelId) => {
+        const state = counts?.find((item) => item.channelId === channelId)
+        return state === undefined || state.unread > 0 || state.mentions > 0
+      })
+      return Promise.all(
+        pending.map(async (channelId) => {
+          const page = await queryClient.query({
+            ...listMessagesOptions({ path: { channelId }, query: { limit: 1 } }),
+            staleTime: 0,
+          })
+          const newest = page.messages[0]
+          if (newest === undefined) {
+            return undefined
+          }
+          return mutateAsync({ path: { channelId }, body: { seq: newest.seq } })
+        }),
+      )
+    },
+    onSuccess: (states) => {
+      queryClient.setQueryData<ChannelUnread[]>(
+        listUnreadQueryKey({ path: { workspaceId } }),
+        (channels) =>
+          channels?.map(
+            (channel) => states.find((state) => state?.channelId === channel.channelId) ?? channel,
+          ),
+      )
+    },
+  })
 }

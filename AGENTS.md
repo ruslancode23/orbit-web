@@ -90,6 +90,12 @@ src/shared    → ui, lib, api, config — без бизнес-логики
 - Иконки — `shared/ui/icon` (24×24, stroke 2, `aria-hidden`). Кнопка-иконка — `IconButton` из
   `shared/ui/icon-button`: обязательный `label` (идёт в `aria-label` и Tooltip), варианты `ghost | subtle | danger`,
   размеры `sm | md`, `pressed` для тогглов. Текстовая кнопка остаётся там, где слово яснее картинки.
+- Контекстное меню — `shared/ui/context-menu` (Radix ContextMenu: правый клик и долгое нажатие). Это ярлык,
+  а не единственный путь: каждое действие из меню должно быть доступно и кнопкой. Меню есть у сообщения
+  (`MessageContextMenu` в `features/message-actions`), канала и сервера в рельсе (`widgets/app-shell`) и
+  участника (`widgets/member-list`). «Отметить прочитанным» — `useMarkChannelsRead` из `entities/unread`:
+  сервер не ограничивает `seq` сверху, поэтому хук сначала берёт последнее сообщение канала (`limit=1`).
+  Копирование в буфер — `copyText` из `shared/lib/clipboard`.
 - Тост — `shared/ui/toast`: `useToast()` под `ToastProvider` (он смонтирован в `App` и в `renderWithProviders`).
 - Раскладка — три колонки: серверы 64px, каналы 256px, канал, участники 240px. Корень — `h-dvh overflow-hidden`,
   у каждой колонки свой скролл; документ не прокручивается никогда.

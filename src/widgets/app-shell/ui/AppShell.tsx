@@ -143,11 +143,11 @@ const Shell = () => {
           </NavLink>
         </Tooltip>
         <span aria-hidden="true" className="h-px w-8 shrink-0 bg-border" />
-        {memberships?.map(({ workspace }) => (
+        {memberships?.map((item) => (
           <ServerLink
-            key={workspace.id}
-            workspace={workspace}
-            watched={workspace.id === workspaceId}
+            key={item.workspace.id}
+            membership={item}
+            watched={item.workspace.id === workspaceId}
           />
         ))}
         <span aria-hidden="true" className="h-px w-8 shrink-0 bg-border" />

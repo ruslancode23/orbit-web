@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
@@ -448,4 +448,111 @@ it('offers «Добавить фото» in the status menu only while there is 
   expect(screen.queryByRole('button', { name: 'Добавить фото профиля' })).not.toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: /Статус:/ }))
   expect(screen.queryByRole('menuitem', { name: 'Добавить фото' })).not.toBeInTheDocument()
+})
+
+describe('context menus', () => {
+  /** On top of `stubApi`: the newest message of each channel and the read cursor. */
+  const stubReading = (unread: { current: Counts }) => {
+    const base = globalThis.fetch
+    const read: { channelId: string; seq: unknown }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: Request) => {
+        const url = new URL(input.url)
+        const json = (body: unknown) =>
+          new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } })
+        const match = /\/channels\/([^/]+)\/(messages|read)$/.exec(url.pathname)
+        if (match?.[2] === 'messages' && input.method === 'GET') {
+          return json({
+            messages: [
+              {
+                id: '44444444-4444-4444-8444-444444444444',
+                channelId: match[1],
+                seq: 7,
+                kind: 'user',
+                content: 'новое',
+                mentions: [],
+                reactions: [],
+                createdAt: '2026-10-22T10:00:00Z',
+              },
+            ],
+          })
+        }
+        if (match?.[2] === 'read') {
+          const { seq } = (await input.clone().json()) as { seq: unknown }
+          read.push({ channelId: match[1] ?? '', seq })
+          unread.current = unread.current.map((item) =>
+            item.channelId === match[1]
+              ? { ...item, lastReadSeq: 7, unread: 0, mentions: 0 }
+              : item,
+          )
+          return json({ channelId: match[1], lastReadSeq: 7, unread: 0, mentions: 0 })
+        }
+        return base(input)
+      }),
+    )
+    return read
+  }
+
+  it('marks one channel read from its row', async () => {
+    const unread = {
+      current: [
+        { channelId, lastReadSeq: 0, unread: 0, mentions: 0 },
+        { channelId: otherChannelId, lastReadSeq: 0, unread: 3, mentions: 1 },
+      ],
+    }
+    stubApi('member', unread)
+    const read = stubReading(unread)
+    renderShell()
+
+    const row = await screen.findByRole('link', { name: '# флуд, 3 непрочитанных, 1 упоминание' })
+    fireEvent.contextMenu(row)
+    const menu = screen.getByRole('menu', { name: 'Действия с каналом флуд' })
+    // A member without the rights sees no invite and no settings.
+    expect(within(menu).queryByRole('menuitem', { name: 'Настройки канала' })).toBeNull()
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Отметить прочитанным' }))
+
+    expect(await screen.findByRole('link', { name: '# флуд' })).toBeInTheDocument()
+    expect(read).toEqual([{ channelId: otherChannelId, seq: 7 }])
+  })
+
+  it('offers channel settings to an admin', async () => {
+    stubApi('admin')
+    renderShell()
+
+    fireEvent.contextMenu(await screen.findByRole('link', { name: '# флуд' }))
+    const menu = screen.getByRole('menu', { name: 'Действия с каналом флуд' })
+    expect(within(menu).getByRole('menuitem', { name: 'Отметить прочитанным' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Настройки канала' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('reads a whole server from the rail', async () => {
+    const unread = {
+      current: [
+        { channelId, lastReadSeq: 0, unread: 2, mentions: 0 },
+        { channelId: otherChannelId, lastReadSeq: 0, unread: 3, mentions: 1 },
+      ],
+    }
+    stubApi('member', unread)
+    const read = stubReading(unread)
+    renderShell()
+
+    const rail = screen.getByRole('navigation', { name: 'Серверы' })
+    fireEvent.contextMenu(
+      await within(rail).findByRole('link', {
+        name: 'Команда Orbit, 5 непрочитанных, 1 упоминание',
+      }),
+    )
+    const menu = screen.getByRole('menu', { name: 'Действия с сервером Команда Orbit' })
+    expect(within(menu).queryByRole('menuitem', { name: 'Настройки сервера' })).toBeNull()
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Отметить прочитанным' }))
+
+    expect(await within(rail).findByRole('link', { name: 'Команда Orbit' })).toBeInTheDocument()
+    expect(read.map((item) => item.channelId).sort()).toEqual([channelId, otherChannelId].sort())
+  })
 })

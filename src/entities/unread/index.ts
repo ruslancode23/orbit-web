@@ -2,6 +2,7 @@ export {
   describeUnread,
   totalUnread,
   useConversationUnreadTotal,
+  useMarkChannelsRead,
   useReadOnView,
   useWorkspaceUnread,
   type ChannelUnread,
