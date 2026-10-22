@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router'
 import { useChannels, type Channel } from '@/entities/channel'
 import { ParticipantTile } from '@/entities/participant'
 import { useVoiceRoom } from '@/entities/voice-room'
-import { atLeast, can, useWorkspace } from '@/entities/workspace'
+import { can, hasPermission, useWorkspace } from '@/entities/workspace'
 import { ClaimGuest } from '@/features/claim-guest'
 import { useVoiceChannel } from '@/features/join-voice-channel'
 import { ManageInvites } from '@/features/manage-invites'
@@ -50,7 +50,7 @@ const ChannelPage = () => {
   }
 
   const canInvite = can(membership, 'canInvite')
-  const canManage = atLeast(membership?.role, 'admin')
+  const canManage = hasPermission(membership, 'manageServer')
   const openInvites = () => {
     setInvitesOpen(true)
   }

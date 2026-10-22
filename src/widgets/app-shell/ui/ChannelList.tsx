@@ -23,7 +23,10 @@ interface ChannelListProps {
   workspaceId: string
   /** The text channel the reader is in; its own count would only flicker. */
   activeChannelId: string | undefined
+  /** Channel settings on each row: manageChannels. */
   canManage: boolean
+  /** The list of invite links: manageServer. */
+  canManageInvites: boolean
   canInvite: boolean
 }
 
@@ -55,6 +58,7 @@ export const ChannelList = ({
   workspaceId,
   activeChannelId,
   canManage,
+  canManageInvites,
   canInvite,
 }: ChannelListProps) => {
   const { data: channels } = useChannels(workspaceId)
@@ -65,6 +69,13 @@ export const ChannelList = ({
   const [voiceOpen, setVoiceOpen] = useState(() => readGroupOpen(VOICE_GROUP_KEY))
   const [editing, setEditing] = useState<Channel | undefined>(undefined)
   const [invitesOpen, setInvitesOpen] = useState(false)
+  // A channel may be managed by an override even when the server says no, and
+  // the other way round; a server that sends no permissions falls back.
+  const managesChannel = (channel: Channel) =>
+    channel.permissions
+      ? channel.permissions.includes('manageChannels') ||
+        channel.permissions.includes('administrator')
+      : canManage
 
   const textChannels = channels?.filter((channel) => channel.kind === 'text') ?? []
   const voiceChannels = channels?.filter((channel) => channel.kind === 'voice') ?? []
@@ -139,7 +150,7 @@ export const ChannelList = ({
                         <span className="min-w-0 flex-1 truncate">{channel.name}</span>
                         <UnreadBadge unread={shown.unread} mentions={shown.mentions} />
                       </NavLink>
-                      {(canInvite || canManage) && (
+                      {(canInvite || managesChannel(channel)) && (
                         <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 rounded bg-surface-hover opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100">
                           {canInvite && (
                             <IconButton
@@ -153,7 +164,7 @@ export const ChannelList = ({
                               <LinkIcon className="size-3.5" />
                             </IconButton>
                           )}
-                          {canManage && (
+                          {managesChannel(channel) && (
                             <IconButton
                               label={`Настройки канала ${channel.name}`}
                               size="sm"
@@ -200,7 +211,7 @@ export const ChannelList = ({
                   return (
                     <li key={channel.id} className="group/row relative">
                       <VoiceChannelButton channel={channel} members={members} />
-                      {canManage && (
+                      {managesChannel(channel) && (
                         <div className="absolute top-0.5 right-1 opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100">
                           <IconButton
                             label={`Настройки канала ${channel.name}`}
@@ -238,7 +249,7 @@ export const ChannelList = ({
       <ManageInvites
         workspaceId={workspaceId}
         canInvite={canInvite}
-        canManage={canManage}
+        canManage={canManageInvites}
         open={invitesOpen}
         onOpenChange={setInvitesOpen}
       />

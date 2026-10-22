@@ -54,6 +54,7 @@ const SERVER_EVENTS: LiveEvent[] = [
   },
   { type: 'workspace.updated', workspaceId, payload: {} },
   { type: 'workspace.deleted', workspaceId, payload: { workspaceId } },
+  { type: 'roles.changed', workspaceId },
   {
     type: 'user.updated',
     payload: {

@@ -4,8 +4,10 @@
  */
 export {
   describeMemberActionError,
+  mayBan,
   mayChangeRole,
-  mayModerate,
+  mayKick,
   ROLE_NAME,
   useMemberModeration,
+  type Standing,
 } from '@/entities/workspace'

@@ -1,7 +1,8 @@
 export {
   describeMemberActionError,
+  mayBan,
   mayChangeRole,
-  mayModerate,
+  mayKick,
   ROLE_NAME,
   useMemberModeration,
 } from './model/moderation'
