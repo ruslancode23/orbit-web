@@ -225,3 +225,9 @@ describe('web platform: install', () => {
     Reflect.deleteProperty(window, 'matchMedia')
   })
 })
+
+describe('web platform: system', () => {
+  it('describes itself by the browser user agent', () => {
+    expect(createWebPlatform().system.describe()).toBe(navigator.userAgent)
+  })
+})

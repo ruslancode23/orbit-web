@@ -5,7 +5,7 @@ import { useSession } from '@/entities/session'
 import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { DeviceMenu } from '@/features/select-device'
-import { EditProfileDialog, SetStatusDialog } from '@/features/user-card'
+import { EditProfileDialog, ReportBugDialog, SetStatusDialog } from '@/features/user-card'
 import { Avatar } from '@/shared/ui/avatar'
 import {
   HeadphonesIcon,
@@ -42,6 +42,7 @@ export const UserPanel = () => {
   const [settingsTab, setSettingsTab] = useState('profile')
   const [editOpen, setEditOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   // A guest cannot upload a picture before claiming the account, and a full
   // account with a picture has nothing to be reminded about.
   const needsPhoto = user !== undefined && !user.isGuest && user.avatarUrl === undefined
@@ -111,6 +112,9 @@ export const UserPanel = () => {
                 onStatusChange={choose}
                 onSetStatus={() => {
                   setStatusOpen(true)
+                }}
+                onReportBug={() => {
+                  setReportOpen(true)
                 }}
                 {...(user.isGuest
                   ? {}
@@ -203,6 +207,14 @@ export const UserPanel = () => {
           profile={user}
           onClose={() => {
             setEditOpen(false)
+          }}
+        />
+      )}
+
+      {user && reportOpen && (
+        <ReportBugDialog
+          onClose={() => {
+            setReportOpen(false)
           }}
         />
       )}

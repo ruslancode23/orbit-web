@@ -25,6 +25,11 @@ function positiveInteger(name: string, fallback: number): number {
   return parsed
 }
 
+/** What the running build is, for bug reports and «О бете». */
+export const build = {
+  version: __APP_VERSION__,
+} as const
+
 export const env = {
   apiUrl: required('VITE_API_URL'),
   /**
