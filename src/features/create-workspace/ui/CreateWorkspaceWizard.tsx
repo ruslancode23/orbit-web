@@ -11,6 +11,8 @@ import {
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/button'
 
+import { StarterRolesFields } from './StarterRolesFields'
+import { ADMIN_ROLE, MODERATOR_ROLE } from '../config/starter-roles'
 import { CHANNEL_TEMPLATES } from '../config/templates'
 import {
   useCreateWorkspaceFlow,
@@ -18,11 +20,23 @@ import {
   type CreationStage,
 } from '../model/useCreateWorkspaceFlow'
 
+import type { FieldPath } from 'react-hook-form'
+
 const STEPS = [
   { title: 'Профиль', heading: 'Как назовём сервер?' },
   { title: 'Каналы', heading: 'С каких каналов начать?' },
-  { title: 'Права', heading: 'Что можно участникам?' },
+  { title: 'Роли', heading: 'Кто что может?' },
 ] as const
+
+/**
+ * The fields each step owns. «Далее» checks only these: a field from another
+ * step must not hold a step back with an error the person cannot see.
+ */
+const STEP_FIELDS: readonly (readonly FieldPath<CreateWorkspaceValues>[])[] = [
+  ['name', 'description', 'icon'],
+  ['template'],
+  ['canInvite', 'canCreateChannels', 'canAttachFiles', 'roles'],
+]
 
 const LAST_STEP = STEPS.length - 1
 
@@ -30,15 +44,19 @@ const STAGE_TEXT: Record<Exclude<CreationStage, 'idle'>, string> = {
   workspace: 'Создаём сервер…',
   icon: 'Загружаем аватар…',
   channels: 'Создаём каналы…',
+  roles: 'Создаём роли…',
 }
 
 /**
- * Creating a server in three steps: profile, starting channels, member
- * permissions. One form holds all of them, so going back loses nothing, and
- * every step is a plain form: Enter goes on, Tab reaches every control.
+ * Creating a server in three steps: profile, starting channels, then what
+ * everyone may do and the starter roles. One form holds all of them, so going
+ * back loses nothing, and every step is a plain form: Enter goes on, Tab
+ * reaches every control. Each step is checked by the server's rules before the
+ * next one, so nothing is refused only at the very end.
  */
 export const CreateWorkspaceWizard = () => {
   const headingId = useId()
+  const everyoneId = useId()
   const headingRef = useRef<HTMLHeadingElement | null>(null)
   const firstStepShownRef = useRef(false)
   const [step, setStep] = useState(0)
@@ -51,9 +69,13 @@ export const CreateWorkspaceWizard = () => {
       icon: { kind: 'keep' },
       template: 'team',
       ...DEFAULT_MEMBER_PERMISSIONS,
+      roles: {
+        admin: { enabled: true, name: ADMIN_ROLE.name },
+        moderator: { enabled: true, name: MODERATOR_ROLE.name },
+      },
     },
   })
-  const { handleSubmit, register, setError, setFocus } = form
+  const { handleSubmit, register, setError, setFocus, trigger } = form
   const busy = stage !== 'idle'
   const current = STEPS[step] ?? STEPS[0]
 
@@ -68,11 +90,7 @@ export const CreateWorkspaceWizard = () => {
     headingRef.current?.focus()
   }, [step, setFocus])
 
-  const submit = handleSubmit(async (values) => {
-    if (step < LAST_STEP) {
-      setStep(step + 1)
-      return
-    }
+  const create = handleSubmit(async (values) => {
     setFormError(null)
     await run(values).catch((error: unknown) => {
       const { field, message } = describeWorkspaceError(error, 'Не получилось создать сервер.')
@@ -86,6 +104,17 @@ export const CreateWorkspaceWizard = () => {
     })
   })
 
+  const submit = async () => {
+    if (step < LAST_STEP) {
+      // Only this step's fields: the person fixes what they can see.
+      if (await trigger(STEP_FIELDS[step], { shouldFocus: true })) {
+        setStep(step + 1)
+      }
+      return
+    }
+    await create()
+  }
+
   return (
     <FormProvider {...form}>
       <form
@@ -93,7 +122,8 @@ export const CreateWorkspaceWizard = () => {
         noValidate
         className="flex w-full max-w-lg flex-col gap-6"
         onSubmit={(event) => {
-          void submit(event)
+          event.preventDefault()
+          void submit()
         }}
       >
         <ol aria-label="Шаги" className="flex gap-2 text-sm">
@@ -151,7 +181,17 @@ export const CreateWorkspaceWizard = () => {
           </fieldset>
         )}
 
-        {step === 2 && <MemberPermissionsFields />}
+        {step === 2 && (
+          <div className="flex flex-col gap-6">
+            <section aria-labelledby={everyoneId} className="flex flex-col gap-3">
+              <h3 id={everyoneId} className="text-sm font-semibold text-fg">
+                Все участники
+              </h3>
+              <MemberPermissionsFields />
+            </section>
+            <StarterRolesFields />
+          </div>
+        )}
 
         {formError && (
           <p role="alert" className="text-sm text-danger">

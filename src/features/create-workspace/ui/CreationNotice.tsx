@@ -5,8 +5,8 @@ import { Button } from '@/shared/ui/button'
 import { isCreationState, type CreationProblems } from '../model/creation-notice'
 
 /**
- * Says, in the server just created, what did not work out — the icon or some
- * channels — and that it can be finished later. Nothing to say, nothing shown.
+ * Says, in the server just created, what did not work out — the icon, some
+ * channels or roles — and that it can be finished later. Nothing to say, nothing shown.
  */
 export const CreationNotice = () => {
   const location = useLocation()
@@ -35,7 +35,7 @@ export const CreationNotice = () => {
   )
 }
 
-const describe = ({ iconFailed, failedChannels }: CreationProblems): string => {
+const describe = ({ iconFailed, failedChannels, failedRoles }: CreationProblems): string => {
   const parts: string[] = []
   if (iconFailed) {
     parts.push('не загрузился аватар — его можно добавить в настройках сервера')
@@ -44,6 +44,14 @@ const describe = ({ iconFailed, failedChannels }: CreationProblems): string => {
     const names = failedChannels.map((name) => `#${name}`).join(', ')
     parts.push(
       failedChannels.length === 1 ? `не создался канал ${names}` : `не создались каналы ${names}`,
+    )
+  }
+  if (failedRoles.length) {
+    const names = failedRoles.map((name) => `«${name}»`).join(', ')
+    parts.push(
+      failedRoles.length === 1
+        ? `не создалась роль ${names} — её можно добавить в настройках сервера`
+        : `не создались роли ${names} — их можно добавить в настройках сервера`,
     )
   }
   return `Сервер создан, но ${parts.join('; ')}.`
