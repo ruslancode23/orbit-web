@@ -15,7 +15,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { readDevicePreferences } from '@/shared/lib/device-preference'
 import { getPlatform } from '@/shared/platform'
 
-import { DEAFENED_ATTRIBUTE, useAudioControls, useParticipantsWithAudio } from './audio-controls'
+import {
+  DEAFENED_ATTRIBUTE,
+  PUSH_TO_TALK_ATTRIBUTE,
+  useAudioControls,
+  useParticipantsWithAudio,
+} from './audio-controls'
 import { useAudioProcessing } from './audio-processing'
 import {
   VoiceRoomContext,
@@ -60,9 +65,17 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
   const {
     isMicrophoneMuted,
     isDeafened,
+    inputMode,
+    pushToTalkKey,
+    isPushToTalkHeld,
     volumes,
+    publishMicrophone,
     setDeafened,
     setMicrophoneMuted,
+    setInputMode,
+    setPushToTalkKey,
+    pressPushToTalk,
+    releasePushToTalk,
     setParticipantVolume,
   } = useAudioControls(room)
   const { audioProcessing, setAudioProcessing } = useAudioProcessing(room)
@@ -190,7 +203,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         await next.connect(url, token)
         // Called from the join click, so the browser allows audio playback.
         await next.startAudio()
-        await next.localParticipant.setMicrophoneEnabled(!isMicrophoneMuted)
+        await publishMicrophone(next)
         sync()
         setRoom(next)
         joined = true
@@ -203,7 +216,7 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
         setStatus('error')
       }
     },
-    [reset, isMicrophoneMuted, audioProcessing],
+    [reset, publishMicrophone, audioProcessing],
   )
 
   const leave = useCallback(async () => {
@@ -246,6 +259,13 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       setParticipantVolume,
       audioProcessing,
       setAudioProcessing,
+      inputMode,
+      setInputMode,
+      pushToTalkKey,
+      setPushToTalkKey,
+      isPushToTalkHeld,
+      pressPushToTalk,
+      releasePushToTalk,
     }),
     [
       status,
@@ -265,6 +285,13 @@ export const VoiceRoomProvider = ({ children }: { children: ReactNode }) => {
       setParticipantVolume,
       audioProcessing,
       setAudioProcessing,
+      inputMode,
+      setInputMode,
+      pushToTalkKey,
+      setPushToTalkKey,
+      isPushToTalkHeld,
+      pressPushToTalk,
+      releasePushToTalk,
     ],
   )
 
@@ -298,7 +325,9 @@ const toVoiceParticipant = (participant: Participant, isLocal: boolean): VoicePa
     name: displayName(participant),
     isLocal,
     isSpeaking: participant.isSpeaking,
-    isMicrophoneMuted: !participant.isMicrophoneEnabled,
+    // A push-to-talk track is muted between phrases; that is quiet, not a choice to be muted.
+    isMicrophoneMuted:
+      !participant.isMicrophoneEnabled && participant.attributes[PUSH_TO_TALK_ATTRIBUTE] !== 'true',
     isDeafened: participant.attributes[DEAFENED_ATTRIBUTE] === 'true',
     volume: 1,
   }

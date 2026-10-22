@@ -39,6 +39,7 @@ import {
   useChannelSidebarOpen,
 } from '../model/channel-sidebar'
 import { useLeaveLostWorkspace } from '../model/use-leave-lost-workspace'
+import { usePushToTalk } from '../model/use-push-to-talk'
 import { useVoiceShortcuts } from '../model/use-voice-shortcuts'
 
 /**
@@ -90,6 +91,7 @@ const Shell = () => {
   useFriendNotifications()
   useSecretNotifications()
   useVoiceShortcuts()
+  usePushToTalk()
   useLeaveLostWorkspace(workspaceId)
 
   // A narrow screen closes the sliding channel column on Esc and after a move.

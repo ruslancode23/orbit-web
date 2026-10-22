@@ -1,10 +1,33 @@
-import { RoomEvent, Track, type RemoteParticipant, type Room } from 'livekit-client'
+import {
+  createLocalAudioTrack,
+  RoomEvent,
+  Track,
+  type RemoteParticipant,
+  type Room,
+} from 'livekit-client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import {
+  readInputMode,
+  readPushToTalkKey,
+  saveInputMode,
+  savePushToTalkKey,
+  type InputMode,
+} from './voice-preferences'
 
 import type { VoiceParticipant } from './context'
 
 /** Participant attribute other clients read to show that someone hears nobody. */
 export const DEAFENED_ATTRIBUTE = 'deafened'
+
+/**
+ * Set while the participant talks by holding a key and has not muted. Their
+ * track is muted between phrases, and others should read that as quiet, not muted.
+ */
+export const PUSH_TO_TALK_ATTRIBUTE = 'push-to-talk'
+
+/** How long the microphone stays open after the key is let go, so the end of a word is not cut. */
+export const PUSH_TO_TALK_RELEASE_MS = 200
 
 /**
  * Mute and deafen are choices about the person, not about the room: they are
@@ -31,16 +54,26 @@ const writeFlag = (key: string, value: boolean): void => {
 }
 
 /**
- * Mute, deafen and per-participant volume. The state lives here even before a
- * room exists, so the user panel can be used first and connect later.
+ * Mute, deafen, push-to-talk and per-participant volume. The state lives here
+ * even before a room exists, so the user panel can be used first and connect later.
  * Deafen is local playback at zero plus the `deafened` attribute, so others can see it.
+ *
+ * With push-to-talk the microphone is published muted as soon as it may be
+ * used, and holding the key only unmutes it: opening a device on the first
+ * press would cut the start of every phrase, and publishing it open for a
+ * moment would send what the person did not mean to say.
  */
 export function useAudioControls(room: Room | null) {
   const [isMicrophoneMuted, setIsMicrophoneMuted] = useState(() => readFlag(MICROPHONE_MUTED_KEY))
   const [isDeafened, setIsDeafened] = useState(() => readFlag(DEAFENED_KEY))
+  const [inputMode, setInputModeState] = useState(readInputMode)
+  const [pushToTalkKey, setPushToTalkKeyState] = useState(readPushToTalkKey)
+  const [isPushToTalkHeld, setIsPushToTalkHeld] = useState(false)
   const [volumes, setVolumes] = useState<ReadonlyMap<string, number>>(new Map())
   const [stateRoom, setStateRoom] = useState(room)
   const mutedBeforeDeafenRef = useRef(false)
+  const heldRef = useRef(false)
+  const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // A new room (or leaving) starts with everyone audible.
   if (room !== stateRoom) {
@@ -67,20 +100,26 @@ export function useAudioControls(room: Room | null) {
     }
   }, [room, isDeafened, volumes])
 
+  const talksByKey = inputMode === 'push-to-talk' && !isMicrophoneMuted
+
   useEffect(() => {
     if (!room) {
       return
     }
+    const wanted = {
+      [DEAFENED_ATTRIBUTE]: String(isDeafened),
+      [PUSH_TO_TALK_ATTRIBUTE]: String(talksByKey),
+    }
     const publish = () => {
-      const { localParticipant } = room
-      const published = localParticipant.attributes[DEAFENED_ATTRIBUTE] === 'true'
-      if (published === isDeafened) {
+      const { attributes } = room.localParticipant
+      const same = Object.entries(wanted).every(
+        ([name, value]) => (attributes[name] ?? 'false') === value,
+      )
+      if (same) {
         return
       }
       // Without the permission in the token others just do not see it; local deafen still works.
-      localParticipant
-        .setAttributes({ [DEAFENED_ATTRIBUTE]: String(isDeafened) })
-        .catch(() => undefined)
+      room.localParticipant.setAttributes(wanted).catch(() => undefined)
     }
     publish()
     // A full reconnect is a new session on the server, without the attributes.
@@ -88,7 +127,29 @@ export function useAudioControls(room: Room | null) {
     return () => {
       room.off(RoomEvent.Reconnected, publish)
     }
-  }, [room, isDeafened])
+  }, [room, isDeafened, talksByKey])
+
+  useEffect(
+    () => () => {
+      clearTimeout(releaseTimerRef.current)
+    },
+    [],
+  )
+
+  /** Puts the microphone of `target` where the person wants it: open, muted or ready for the key. */
+  const applyMicrophone = useCallback(async (target: Room, muted: boolean, mode: InputMode) => {
+    if (!muted && mode === 'push-to-talk' && !heldRef.current) {
+      await publishMuted(target)
+      return
+    }
+    await target.localParticipant.setMicrophoneEnabled(!muted)
+  }, [])
+
+  /** Called once the room is connected, from the join click. */
+  const publishMicrophone = useCallback(
+    (target: Room) => applyMicrophone(target, isMicrophoneMuted, inputMode),
+    [applyMicrophone, isMicrophoneMuted, inputMode],
+  )
 
   const setDeafened = useCallback(
     async (deafened: boolean) => {
@@ -106,10 +167,10 @@ export function useAudioControls(room: Room | null) {
       setIsMicrophoneMuted(muted)
       writeFlag(MICROPHONE_MUTED_KEY, muted)
       if (room) {
-        await room.localParticipant.setMicrophoneEnabled(!muted)
+        await applyMicrophone(room, muted, inputMode)
       }
     },
-    [room, isMicrophoneMuted],
+    [room, isMicrophoneMuted, inputMode, applyMicrophone],
   )
 
   const setMicrophoneMuted = useCallback(
@@ -122,10 +183,63 @@ export function useAudioControls(room: Room | null) {
         writeFlag(DEAFENED_KEY, false)
       }
       if (room) {
-        await room.localParticipant.setMicrophoneEnabled(!muted)
+        await applyMicrophone(room, muted, inputMode)
       }
     },
-    [room],
+    [room, inputMode, applyMicrophone],
+  )
+
+  const setInputMode = useCallback(
+    async (mode: InputMode) => {
+      setInputModeState(mode)
+      saveInputMode(mode)
+      clearTimeout(releaseTimerRef.current)
+      heldRef.current = false
+      setIsPushToTalkHeld(false)
+      if (room) {
+        await applyMicrophone(room, isMicrophoneMuted, mode)
+      }
+    },
+    [room, isMicrophoneMuted, applyMicrophone],
+  )
+
+  const setPushToTalkKey = useCallback((code: string) => {
+    setPushToTalkKeyState(code)
+    savePushToTalkKey(code)
+  }, [])
+
+  const pressPushToTalk = useCallback(() => {
+    clearTimeout(releaseTimerRef.current)
+    if (heldRef.current) {
+      return
+    }
+    heldRef.current = true
+    setIsPushToTalkHeld(true)
+    if (room && inputMode === 'push-to-talk' && !isMicrophoneMuted) {
+      room.localParticipant.setMicrophoneEnabled(true).catch(() => undefined)
+    }
+  }, [room, inputMode, isMicrophoneMuted])
+
+  const releasePushToTalk = useCallback(
+    (immediately = false) => {
+      if (!heldRef.current) {
+        return
+      }
+      clearTimeout(releaseTimerRef.current)
+      const release = () => {
+        heldRef.current = false
+        setIsPushToTalkHeld(false)
+        if (room && inputMode === 'push-to-talk') {
+          room.localParticipant.setMicrophoneEnabled(false).catch(() => undefined)
+        }
+      }
+      if (immediately) {
+        release()
+        return
+      }
+      releaseTimerRef.current = setTimeout(release, PUSH_TO_TALK_RELEASE_MS)
+    },
+    [room, inputMode],
   )
 
   const setParticipantVolume = useCallback((identity: string, volume: number) => {
@@ -135,11 +249,34 @@ export function useAudioControls(room: Room | null) {
   return {
     isMicrophoneMuted,
     isDeafened,
+    inputMode,
+    pushToTalkKey,
+    isPushToTalkHeld,
     volumes,
+    publishMicrophone,
     setDeafened,
     setMicrophoneMuted,
+    setInputMode,
+    setPushToTalkKey,
+    pressPushToTalk,
+    releasePushToTalk,
     setParticipantVolume,
   }
+}
+
+/**
+ * The microphone published but silent: unmuting a published track is instant,
+ * while opening the device takes a moment. A track already published is only muted.
+ */
+const publishMuted = async (room: Room): Promise<void> => {
+  const { localParticipant } = room
+  if (localParticipant.getTrackPublication(Track.Source.Microphone)) {
+    await localParticipant.setMicrophoneEnabled(false)
+    return
+  }
+  const track = await createLocalAudioTrack(room.options.audioCaptureDefaults)
+  await track.mute()
+  await localParticipant.publishTrack(track, { source: Track.Source.Microphone })
 }
 
 /** Adds what only this client knows: its own deafen state and the chosen volumes. */

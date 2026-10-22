@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 
-import { useVoiceRoom, type VoiceRoomStatus } from '@/entities/voice-room'
+import { describeKey, useVoiceRoom, type VoiceRoomStatus } from '@/entities/voice-room'
 import { useVoiceChannel } from '@/features/join-voice-channel'
 import { ShareScreenButton } from '@/features/share-screen'
 import { cn } from '@/shared/lib/cn'
@@ -25,7 +25,15 @@ const SIGNAL: Record<VoiceRoomStatus, { text: string; className: string }> = {
 export const VoicePanel = () => {
   const { activeChannel, status, error, leave, reconnect, connecting, connectionLoss } =
     useVoiceChannel()
-  const { isSharingScreen } = useVoiceRoom()
+  const {
+    isSharingScreen,
+    inputMode,
+    pushToTalkKey,
+    isPushToTalkHeld,
+    isMicrophoneMuted,
+    pressPushToTalk,
+    releasePushToTalk,
+  } = useVoiceRoom()
 
   if (!activeChannel) {
     return null
@@ -62,6 +70,48 @@ export const VoicePanel = () => {
           <PhoneOffIcon />
         </IconButton>
       </div>
+
+      {inputMode === 'push-to-talk' && status === 'connected' && (
+        <Button
+          size="sm"
+          variant={isPushToTalkHeld && !isMicrophoneMuted ? 'primary' : 'secondary'}
+          aria-pressed={isPushToTalkHeld}
+          disabled={isMicrophoneMuted}
+          title={`Или зажмите клавишу ${describeKey(pushToTalkKey)}`}
+          className="touch-none select-none"
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId)
+            pressPushToTalk()
+          }}
+          onPointerUp={() => {
+            releasePushToTalk()
+          }}
+          onPointerCancel={() => {
+            releasePushToTalk(true)
+          }}
+          onKeyDown={(event) => {
+            if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
+              event.preventDefault()
+              pressPushToTalk()
+            }
+          }}
+          onKeyUp={(event) => {
+            if (event.key === ' ' || event.key === 'Enter') {
+              event.preventDefault()
+              releasePushToTalk()
+            }
+          }}
+          onBlur={() => {
+            releasePushToTalk(true)
+          }}
+        >
+          {isMicrophoneMuted
+            ? 'Микрофон выключен'
+            : isPushToTalkHeld
+              ? 'Говорите…'
+              : 'Удерживайте, чтобы говорить'}
+        </Button>
+      )}
 
       {error && (
         <p role="alert" className="text-xs text-danger">

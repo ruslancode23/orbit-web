@@ -40,6 +40,9 @@ export function fakeRemoteParticipant(
   }
 }
 
+const isFakeMicrophoneTrack = (track: unknown): track is FakeMicrophoneTrack =>
+  typeof track === 'object' && track !== null && 'kind' in track && track.kind === 'audio'
+
 export const fakeLiveKit = {
   rooms: [] as FakeRoom[],
   /** Makes the next microphone publish fail. */
@@ -64,8 +67,31 @@ export const fakeLiveKit = {
 export interface FakeMicrophoneTrack {
   kind: 'audio'
   isMuted: boolean
+  mute: () => Promise<void>
   restartTrack: (options?: Record<string, unknown>) => Promise<void>
 }
+
+const fakeMicrophoneTrack = (): FakeMicrophoneTrack => {
+  const track: FakeMicrophoneTrack = {
+    kind: 'audio',
+    isMuted: false,
+    mute: vi.fn(() => {
+      track.isMuted = true
+      return Promise.resolve()
+    }),
+    restartTrack: vi.fn(() => Promise.resolve()),
+  }
+  return track
+}
+
+/**
+ * Stands in for livekit-client's `createLocalAudioTrack`, which push-to-talk
+ * uses to publish the microphone muted. Mock it next to `Room`:
+ * `createLocalAudioTrack: (await import('@/shared/lib/test')).fakeCreateLocalAudioTrack`.
+ */
+export const fakeCreateLocalAudioTrack = vi.fn((_options?: unknown) =>
+  Promise.resolve(fakeMicrophoneTrack()),
+)
 
 export class FakeRoom {
   private handlers = new Map<string, Handler[]>()
@@ -94,11 +120,7 @@ export class FakeRoom {
       }
       this.localParticipant.isMicrophoneEnabled = enabled
       if (enabled && !this.microphoneTrack) {
-        this.microphoneTrack = {
-          kind: 'audio',
-          isMuted: false,
-          restartTrack: vi.fn(() => Promise.resolve()),
-        }
+        this.microphoneTrack = fakeMicrophoneTrack()
       }
       if (this.microphoneTrack) {
         this.microphoneTrack.isMuted = !enabled
@@ -123,12 +145,16 @@ export class FakeRoom {
       this.emit(enabled ? 'localTrackPublished' : 'localTrackUnpublished', publication)
       return Promise.resolve()
     }),
-    publishTrack: vi.fn((_track: unknown, { source }: { source: string }) => {
+    publishTrack: vi.fn((track: unknown, { source }: { source: string }) => {
       if (fakeLiveKit.publishError) {
         return Promise.reject(fakeLiveKit.publishError)
       }
       if (source === 'screen_share') {
         this.localParticipant.isScreenShareEnabled = true
+      }
+      if (source === 'microphone' && isFakeMicrophoneTrack(track)) {
+        this.microphoneTrack = track
+        this.localParticipant.isMicrophoneEnabled = !track.isMuted
       }
       const publication: FakeLocalTrackPublication = { source }
       this.emit('localTrackPublished', publication)
