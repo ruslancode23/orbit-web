@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router'
 
-import { useChannels, type Channel } from '@/entities/channel'
+import { channelAllows, useChannels, type Channel } from '@/entities/channel'
 import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
 import { useVoicePresence } from '@/entities/voice-presence'
 import { useVoiceRoom } from '@/entities/voice-room'
@@ -69,13 +69,8 @@ export const ChannelList = ({
   const [voiceOpen, setVoiceOpen] = useState(() => readGroupOpen(VOICE_GROUP_KEY))
   const [editing, setEditing] = useState<Channel | undefined>(undefined)
   const [invitesOpen, setInvitesOpen] = useState(false)
-  // A channel may be managed by an override even when the server says no, and
-  // the other way round; a server that sends no permissions falls back.
-  const managesChannel = (channel: Channel) =>
-    channel.permissions
-      ? channel.permissions.includes('manageChannels') ||
-        channel.permissions.includes('administrator')
-      : canManage
+  // A channel may be managed by an override even when the server says no.
+  const managesChannel = (channel: Channel) => channelAllows(channel, 'manageChannels', canManage)
 
   const textChannels = channels?.filter((channel) => channel.kind === 'text') ?? []
   const voiceChannels = channels?.filter((channel) => channel.kind === 'voice') ?? []

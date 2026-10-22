@@ -29,7 +29,26 @@ const boris = {
 }
 const members = [
   { user: anna, role: 'owner', joinedAt: '2026-10-18T10:00:00Z' },
-  { user: boris, role: 'member', joinedAt: '2026-10-18T10:00:00Z' },
+  { user: boris, role: 'member', joinedAt: '2026-10-18T10:00:00Z', roleIds: ['r-mod'] },
+]
+const roles = [
+  {
+    id: 'r-mod',
+    name: 'Модератор',
+    color: 'red',
+    hoist: true,
+    position: 1,
+    permissions: ['manageMessages'],
+    isDefault: false,
+  },
+  {
+    id: 'r-everyone',
+    name: '@everyone',
+    hoist: false,
+    position: 0,
+    permissions: ['viewChannel', 'sendMessages'],
+    isDefault: true,
+  },
 ]
 
 const makeMessage = (
@@ -81,6 +100,9 @@ const stubApi = (initial: Message[] = [second, first], { lastReadSeq = 0 } = {})
       }
       if (url.pathname.endsWith('/members')) {
         return json(members)
+      }
+      if (url.pathname.endsWith('/roles')) {
+        return json(roles)
       }
       if (url.pathname.endsWith('/unread')) {
         return json([{ channelId, lastReadSeq, unread: 0, mentions: 0 }])
@@ -185,6 +207,7 @@ const renderChat = (
   canWrite = true,
   canAttach = true,
   mentionPeople: { id: string; nickname: string }[] = [],
+  canModerate = false,
 ) => {
   giveViewportSize()
   return renderWithProviders(
@@ -194,6 +217,7 @@ const renderChat = (
       canWrite={canWrite}
       canAttach={canAttach}
       mentionPeople={mentionPeople}
+      canModerate={canModerate}
     />,
     { route: '/' },
   )
@@ -368,6 +392,43 @@ it("offers no edit or delete on someone else's message", async () => {
   expect(within(article).queryByRole('button', { name: 'Изменить' })).not.toBeInTheDocument()
   expect(within(article).queryByRole('button', { name: 'Удалить' })).not.toBeInTheDocument()
   expect(within(article).getByRole('button', { name: 'Ответить' })).toBeInTheDocument()
+})
+
+// manageMessages in the channel: a moderator deletes anybody's message, but
+// still rewrites only their own.
+it("lets a moderator delete someone else's message", async () => {
+  const calls = stubApi([
+    second,
+    makeMessage({ id: 'm-3', seq: 3n, content: 'чужое', author: boris }),
+  ])
+  renderChat(true, true, [], true)
+  await screen.findByText('чужое')
+
+  const article = articleOf('чужое')
+  expect(within(article).queryByRole('button', { name: 'Изменить' })).not.toBeInTheDocument()
+  await userEvent.click(within(article).getByRole('button', { name: 'Удалить' }))
+  const confirmation = screen.getByRole('group', { name: 'Подтверждение удаления' })
+  await userEvent.click(within(confirmation).getByRole('button', { name: 'Удалить' }))
+
+  await waitFor(() => {
+    expect(calls.deleted).toContain('m-3')
+  })
+})
+
+// The name takes the colour of the author's highest coloured role.
+it("paints an author's name in their role's colour", async () => {
+  stubApi([second, makeMessage({ id: 'm-3', seq: 3n, content: 'чужое', author: boris })])
+  renderChat()
+  await screen.findByText('чужое')
+
+  await waitFor(() => {
+    expect(within(articleOf('чужое')).getByText('Boris').closest('button')).toHaveClass(
+      'text-profile-red',
+    )
+  })
+  expect(within(articleOf('второе')).getByText('Anna').closest('button')).not.toHaveClass(
+    'text-profile-red',
+  )
 })
 
 it('answers a message and sends its id', async () => {

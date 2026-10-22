@@ -4,10 +4,16 @@ import { useChannels } from '@/entities/channel'
 import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoicePresence } from '@/entities/voice-presence'
 import { useVoiceRoom } from '@/entities/voice-room'
-import { useWorkspaceMembers, type WorkspaceMember, type WorkspaceRole } from '@/entities/workspace'
+import {
+  colorRoleOf,
+  useRoles,
+  useWorkspaceMembers,
+  type WorkspaceMember,
+} from '@/entities/workspace'
 import { ClaimGuest } from '@/features/claim-guest'
 import { membersFromPresence, membersFromRoom } from '@/features/join-voice-channel'
 import { UserCard } from '@/features/user-card'
+import { accentOf } from '@/shared/lib/accent'
 import { cn } from '@/shared/lib/cn'
 import { Avatar } from '@/shared/ui/avatar'
 import {
@@ -22,6 +28,7 @@ import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Slider } from '@/shared/ui/slider'
 
+import { groupMembers } from '../model/groups'
 import { setMemberPanelOpen, useMemberPanelOpen } from '../model/member-panel'
 
 /** Where a member is in voice and what they are doing there. */
@@ -36,20 +43,15 @@ interface VoiceState {
   speaking: boolean
 }
 
-const ROLE_GROUPS: { role: WorkspaceRole; title: string }[] = [
-  { role: 'owner', title: 'Владелец' },
-  { role: 'admin', title: 'Администраторы' },
-  { role: 'member', title: 'Участники' },
-]
-
 /**
  * The people of the server, on the right where Discord keeps them: who is in
- * voice, then everyone by role. A click opens a card with the person's voice
+ * voice, then everyone by the roles shown apart. A click opens a card with the person's voice
  * state, their volume here, and the moderation an admin may do.
  */
 export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
   const open = useMemberPanelOpen()
   const { data: members } = useWorkspaceMembers(workspaceId)
+  const { data: roles } = useRoles(workspaceId)
   const { data: channels } = useChannels(workspaceId)
   const { data: presence } = useVoicePresence(workspaceId)
   const { activeChannel, participants, screenShares, setParticipantVolume } = useVoiceRoom()
@@ -200,6 +202,9 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
                           <MemberRow
                             member={member}
                             name={member ? userDisplayName(member.user) : state.name}
+                            nameClass={
+                              member ? accentOf(colorRoleOf(member, roles)?.color)?.text : undefined
+                            }
                             voice={state}
                             userId={state.identity}
                             workspaceId={workspaceId}
@@ -224,39 +229,32 @@ export const MemberList = ({ workspaceId }: { workspaceId: string }) => {
             ))}
           </div>
         ) : (
-          ROLE_GROUPS.map((group) => {
-            const rows = members
-              .filter((member) => member.role === group.role)
-              .sort((a, b) => userDisplayName(a.user).localeCompare(userDisplayName(b.user), 'ru'))
-            if (rows.length === 0) {
-              return null
-            }
-            return (
-              <section
-                key={group.role}
-                aria-label={group.title}
-                className="flex flex-col gap-0.5 p-2 pb-0 last:pb-2"
-              >
-                <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
-                  {group.title} — {rows.length}
-                </h2>
-                <ul>
-                  {rows.map((member) => (
-                    <li key={member.user.id}>
-                      <MemberRow
-                        member={member}
-                        name={userDisplayName(member.user)}
-                        voice={voiceStates.get(member.user.id)}
-                        userId={member.user.id}
-                        workspaceId={workspaceId}
-                        {...volumeProps(member.user.id)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )
-          })
+          groupMembers(members, roles).map((group) => (
+            <section
+              key={group.key}
+              aria-label={group.title}
+              className="flex flex-col gap-0.5 p-2 pb-0 last:pb-2"
+            >
+              <h2 className="px-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
+                {group.title} — {group.rows.length}
+              </h2>
+              <ul>
+                {group.rows.map((member) => (
+                  <li key={member.user.id}>
+                    <MemberRow
+                      member={member}
+                      name={userDisplayName(member.user)}
+                      nameClass={accentOf(colorRoleOf(member, roles)?.color)?.text}
+                      voice={voiceStates.get(member.user.id)}
+                      userId={member.user.id}
+                      workspaceId={workspaceId}
+                      {...volumeProps(member.user.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
         )}
       </aside>
     </>
@@ -267,6 +265,8 @@ interface MemberRowProps {
   userId: string
   member: WorkspaceMember | undefined
   name: string
+  /** The colour of the member's highest coloured role, as a text class. */
+  nameClass: string | undefined
   voice: VoiceState | undefined
   workspaceId: string
   /** Set for someone in the room this client is in: their volume is local. */
@@ -283,6 +283,7 @@ const MemberRow = ({
   userId,
   member,
   name,
+  nameClass,
   voice,
   workspaceId,
   volume,
@@ -342,7 +343,12 @@ const MemberRow = ({
           className={cn('ring-2 ring-transparent', voice?.speaking && 'ring-success')}
         />
       )}
-      <span className="min-w-0 flex-1 truncate">{name}</span>
+      <span className={cn('min-w-0 flex-1 truncate', nameClass)}>{name}</span>
+      {member?.role === 'owner' && (
+        <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
+          владелец
+        </span>
+      )}
       {member?.user.isGuest === true && (
         <span className="rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
           гость

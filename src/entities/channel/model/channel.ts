@@ -56,3 +56,19 @@ export function useDeleteChannel(workspaceId: string) {
     },
   })
 }
+
+/**
+ * Whether the reader may do something in one channel, overrides applied. A
+ * channel may allow what the server does not, and the other way round; a
+ * server that sends no channel permissions falls back to `fallback`.
+ */
+export function channelAllows(
+  channel: Channel | undefined,
+  permission: NonNullable<Channel['permissions']>[number],
+  fallback: boolean,
+): boolean {
+  if (!channel?.permissions) {
+    return fallback
+  }
+  return channel.permissions.includes(permission) || channel.permissions.includes('administrator')
+}
