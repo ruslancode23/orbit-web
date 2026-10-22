@@ -272,7 +272,11 @@ export const ChannelChat = ({
               >
                 <HashIcon className="size-8 text-fg-muted" />
               </span>
-              <p className="text-lg font-semibold">Это начало #{channelName ?? 'канала'}</p>
+              <p className="text-lg font-semibold">
+                {workspaceId === undefined
+                  ? `Это начало переписки${channelName ? `: ${channelName}` : ''}`
+                  : `Это начало #${channelName ?? 'канала'}`}
+              </p>
               {channelTopic && <p className="max-w-md text-sm text-fg-muted">{channelTopic}</p>}
               <p className="text-sm text-fg-muted">Здесь пока ничего не написано.</p>
             </div>

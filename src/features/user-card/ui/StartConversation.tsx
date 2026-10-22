@@ -193,7 +193,12 @@ const StartConversationDialog = ({ onClose }: { onClose: () => void }) => {
     }
   }
 
+  // Leaving for the new dialogue: the focus must not go back to the trigger,
+  // or the first keys typed land nowhere and Enter opens this dialog again.
+  const [leaving, setLeaving] = useState(false)
+
   const openConversation = (conversationId: string) => {
+    setLeaving(true)
     onClose()
     void navigate(`/me/${conversationId}`)
   }
@@ -235,6 +240,11 @@ const StartConversationDialog = ({ onClose }: { onClose: () => void }) => {
       onOpenAutoFocus={(event) => {
         event.preventDefault()
         inputRef.current?.focus()
+      }}
+      onCloseAutoFocus={(event) => {
+        if (leaving) {
+          event.preventDefault()
+        }
       }}
     >
       <div className="flex items-start gap-3">

@@ -116,7 +116,7 @@ test('creates a group, renames it, adds a member and lets one participant leave'
   await ownerPage.goto('/me')
   await skipProfileOnboarding(ownerPage)
 
-  await ownerPage.getByRole('button', { name: 'Новый диалог' }).click()
+  await ownerPage.getByRole('button', { name: 'Новое сообщение' }).click()
   const create = ownerPage.getByRole('dialog', { name: 'Новое сообщение' })
   await expect(create).toBeVisible()
 
