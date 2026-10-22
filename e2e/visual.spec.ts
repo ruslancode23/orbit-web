@@ -163,6 +163,14 @@ test.describe('visual snapshots', () => {
     await expect(members.getByRole('img', { name: 'В сети' })).toBeVisible()
 
     const masks = dynamicParts(page, nickname)
+    // The composer takes the keyboard when a chat opens with nothing else
+    // focused, which depends on how the onboarding step closed: the picture
+    // is of the layout, so no field holds the focus when it is taken.
+    await page.evaluate(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+    })
 
     await expect(page).toHaveScreenshot('chat.png', {
       mask: masks,
