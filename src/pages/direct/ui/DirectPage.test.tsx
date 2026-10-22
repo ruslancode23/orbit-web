@@ -208,7 +208,7 @@ it('opens a pair dialogue with the peer and the usual composer', async () => {
   expect(await screen.findByRole('heading', { name: 'Боб', level: 1 })).toBeInTheDocument()
   expect(screen.getByRole('region', { name: 'Чат' })).toBeInTheDocument()
   const composer = screen.getByLabelText('Сообщение')
-  expect(composer).toHaveAttribute('placeholder', 'Написать в #Боб')
+  expect(composer).toHaveAttribute('placeholder', 'Сообщение для Боб')
   expect(screen.getByRole('button', { name: 'Прикрепить файл' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Добавить людей' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Действия с группой' })).not.toBeInTheDocument()
@@ -269,7 +269,7 @@ it('names a group by its title and offers the group actions', async () => {
   const add = screen.getByRole('button', { name: 'Добавить людей' })
   expect(add).toBeEnabled()
   expect(screen.getByRole('button', { name: 'Действия с группой' })).toBeInTheDocument()
-  expect(screen.getByLabelText('Сообщение')).toHaveAttribute('placeholder', 'Написать в #Планы')
+  expect(screen.getByLabelText('Сообщение')).toHaveAttribute('placeholder', 'Сообщение для Планы')
 })
 
 it('suggests the group members after @', async () => {
