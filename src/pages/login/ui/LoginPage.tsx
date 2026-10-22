@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 import { LoginForm } from '@/features/auth'
 import { Logo } from '@/shared/ui/logo'
 
@@ -11,6 +13,9 @@ const LoginPage = () => {
       <div className="w-full max-w-sm rounded-panel border border-border bg-surface p-6 shadow-popover">
         <LoginForm />
       </div>
+      <Link to="/beta" className="text-xs text-fg-muted underline underline-offset-2 hover:text-fg">
+        О закрытой бете: что есть, чего нет и какие данные мы храним
+      </Link>
     </main>
   )
 }

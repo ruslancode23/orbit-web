@@ -143,6 +143,14 @@ export const UserSettings = ({
                 офлайн.
               </p>
               <InstallApp />
+              <a
+                href="/beta"
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-accent underline underline-offset-2"
+              >
+                О закрытой бете
+              </a>
             </TabsContent>
 
             <TabsContent value="account" className="flex flex-col gap-4">
