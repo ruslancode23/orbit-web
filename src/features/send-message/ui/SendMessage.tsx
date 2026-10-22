@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -30,7 +31,10 @@ interface SendMessageProps {
   /** The people `@` suggests; overrides the members of the server. */
   mentionPeople?: readonly MentionPerson[]
   channelId: string
-  /** The text after the hash in the placeholder: «Написать в #общий». */
+  /**
+   * The text after the hash in the placeholder: «Написать в #общий». In a
+   * dialogue (no `workspaceId`) there is no hash: «Сообщение для Аня».
+   */
   channelName?: string
   /** The message the new one answers, if the reader chose one. */
   replyTo?: Message
@@ -176,6 +180,16 @@ export const SendMessage = ({
     field.focus()
     field.setSelectionRange(position, position)
   })
+
+  // A freshly opened chat takes the keyboard when nothing else holds it — for
+  // one, right after «Новое сообщение» opened a dialogue. A click on a channel
+  // in the sidebar keeps the focus where the reader put it.
+  useEffect(() => {
+    const active = document.activeElement
+    if (active === null || active === document.body) {
+      fieldRef.current?.focus()
+    }
+  }, [channelId])
 
   const submit = (attempt: Attempt) => {
     setFailed(null)
@@ -361,7 +375,13 @@ export const SendMessage = ({
               registerContent(element)
               fieldRef.current = element
             }}
-            placeholder={channelName ? `Написать в #${channelName}` : 'Написать сообщение'}
+            placeholder={
+              !channelName
+                ? 'Написать сообщение'
+                : workspaceId === undefined
+                  ? `Сообщение для ${channelName}`
+                  : `Написать в #${channelName}`
+            }
             maxLength={4000}
             aria-autocomplete="list"
             aria-controls={open ? listId : undefined}

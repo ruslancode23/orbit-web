@@ -348,7 +348,7 @@ export const DirectSidebar = ({ className }: DirectSidebarProps) => {
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">Личные сообщения</h2>
-        <StartConversation iconOnly label="Новый диалог" />
+        <StartConversation iconOnly label="Новое сообщение" />
       </header>
 
       <div className="shrink-0 px-2 pt-2">
