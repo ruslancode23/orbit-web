@@ -1,4 +1,5 @@
 import { isApiError, type AccentColor, type ProfileUpdate, type UserProfile } from '@/shared/api'
+import { ACCENTS, type AccentOption } from '@/shared/lib/accent'
 
 /** The same limits the profile endpoint keeps. */
 export const DISPLAY_NAME_MAX = 32
@@ -25,25 +26,10 @@ export interface ProfileValues {
 }
 
 /** One swatch of the accent palette; labels are the names a screen reader says. */
-export interface AccentOption {
-  value: AccentColor
-  label: string
-  /** A literal Tailwind class, so the token survives the build. */
-  swatch: string
-}
+export type { AccentOption }
 
 /** Builds the palette from the same tokens `UserAvatar` uses for initials. */
-export const ACCENT_OPTIONS: readonly AccentOption[] = [
-  { value: 'slate', label: 'Графит', swatch: 'bg-profile-slate' },
-  { value: 'red', label: 'Красный', swatch: 'bg-profile-red' },
-  { value: 'amber', label: 'Янтарный', swatch: 'bg-profile-amber' },
-  { value: 'green', label: 'Зелёный', swatch: 'bg-profile-green' },
-  { value: 'teal', label: 'Бирюзовый', swatch: 'bg-profile-teal' },
-  { value: 'sky', label: 'Небесный', swatch: 'bg-profile-sky' },
-  { value: 'indigo', label: 'Индиго', swatch: 'bg-profile-indigo' },
-  { value: 'violet', label: 'Фиолетовый', swatch: 'bg-profile-violet' },
-  { value: 'pink', label: 'Розовый', swatch: 'bg-profile-pink' },
-]
+export const ACCENT_OPTIONS: readonly AccentOption[] = ACCENTS
 
 /** A profile that may predate the full one, e.g. an old session payload. */
 type ProfileDefaults = Pick<UserProfile, 'nickname'> &

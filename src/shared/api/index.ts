@@ -103,6 +103,7 @@ export type {
   WorkspaceRole,
   Permission,
   Role,
+  RoleUpdateRequest,
   ChannelOverride,
   WorkspaceUpdateRequest,
 } from './generated/types.gen'

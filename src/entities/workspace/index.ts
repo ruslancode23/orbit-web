@@ -23,6 +23,9 @@ export {
   type Standing,
 } from './model/moderation'
 export { displayRoleOf, outranks, rankOf, useRoles, type Role } from './model/roles'
+export { PERMISSION_GROUPS, PERMISSIONS, type PermissionInfo } from './model/permission-info'
+export { useMemberRoles, useRoleEditing } from './model/role-editing'
+export { describeRoleError } from './model/role-errors'
 export {
   atLeast,
   can,

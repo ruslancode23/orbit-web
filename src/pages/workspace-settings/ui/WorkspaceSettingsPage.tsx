@@ -2,15 +2,20 @@ import { Link, Navigate, useParams } from 'react-router'
 
 import { hasPermission, useWorkspace } from '@/entities/workspace'
 import { DeleteWorkspace } from '@/features/delete-workspace'
-import { MemberPermissionsForm, WorkspaceOverviewForm } from '@/features/edit-workspace'
+import {
+  MemberPermissionsForm,
+  RolesSettings,
+  WorkspaceOverviewForm,
+} from '@/features/edit-workspace'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 import type { ReactNode } from 'react'
 
 /**
- * Settings of one server, for its admins and owner; a member is sent back to
- * the server — the server would refuse every change anyway. Deleting is the
- * owner's alone. Changes by others arrive live and show up here as they come.
+ * Settings of one server, for those who may manage it or its roles; anyone
+ * else is sent back to the server — the server would refuse every change
+ * anyway. Each section shows only to the permission it takes, and deleting is
+ * the owner's alone. Changes by others arrive live and show up here as they come.
  */
 const WorkspaceSettingsPage = () => {
   const { workspaceId } = useParams()
@@ -31,7 +36,9 @@ const WorkspaceSettingsPage = () => {
   if (!membership) {
     return <Navigate to="/" replace />
   }
-  if (!hasPermission(membership, 'manageServer')) {
+  const managesServer = hasPermission(membership, 'manageServer')
+  const managesRoles = hasPermission(membership, 'manageRoles')
+  if (!managesServer && !managesRoles) {
     return <Navigate to={`/s/${membership.workspace.id}`} replace />
   }
 
@@ -50,12 +57,21 @@ const WorkspaceSettingsPage = () => {
           </Link>
           <h1 className="text-2xl font-semibold">Настройки сервера</h1>
           <nav aria-label="Разделы настроек" className="flex gap-4 text-sm">
-            <a href="#overview" className="text-fg-muted hover:text-fg">
-              Обзор
-            </a>
-            <a href="#permissions" className="text-fg-muted hover:text-fg">
-              Права участников
-            </a>
+            {managesServer && (
+              <>
+                <a href="#overview" className="text-fg-muted hover:text-fg">
+                  Обзор
+                </a>
+                <a href="#permissions" className="text-fg-muted hover:text-fg">
+                  Права участников
+                </a>
+              </>
+            )}
+            {managesRoles && (
+              <a href="#roles" className="text-fg-muted hover:text-fg">
+                Роли
+              </a>
+            )}
             {isOwner && (
               <a href="#delete" className="text-fg-muted hover:text-fg">
                 Удаление сервера
@@ -64,13 +80,23 @@ const WorkspaceSettingsPage = () => {
           </nav>
         </header>
 
-        <Section id="overview" title="Обзор">
-          <WorkspaceOverviewForm workspace={workspace} />
-        </Section>
+        {managesServer && (
+          <>
+            <Section id="overview" title="Обзор">
+              <WorkspaceOverviewForm workspace={workspace} />
+            </Section>
 
-        <Section id="permissions" title="Права участников">
-          <MemberPermissionsForm workspace={workspace} />
-        </Section>
+            <Section id="permissions" title="Права участников">
+              <MemberPermissionsForm workspace={workspace} />
+            </Section>
+          </>
+        )}
+
+        {managesRoles && (
+          <Section id="roles" title="Роли">
+            <RolesSettings workspaceId={workspace.id} />
+          </Section>
+        )}
 
         {isOwner && (
           <Section id="delete" title="Удаление сервера">
