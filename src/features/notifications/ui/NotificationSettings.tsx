@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
 import { Switch } from '@/shared/ui/switch'
 
+import { PushSettings } from './PushSettings'
 import {
   setFriendNotificationsEnabled,
   useFriendNotificationsEnabled,
@@ -104,6 +105,8 @@ export const NotificationSettings = () => {
         </div>
         <Switch id={friendsId} checked={friendsEnabled} onCheckedChange={handleFriendsChange} />
       </div>
+
+      <PushSettings />
     </div>
   )
 }

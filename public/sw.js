@@ -106,3 +106,46 @@ async function cacheFirstAsset(request) {
   }
   return response
 }
+
+// Web Push (orbit-server internal/push). The payload is what the server chose
+// to say — who wrote and where, never the text — and `url` is a path inside
+// the app. Every push shows a notification: browsers punish silent ones.
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    // A payload that is not JSON still deserves a notification.
+  }
+  const title = typeof data.title === 'string' && data.title !== '' ? data.title : 'Orbit'
+  const path = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : '/'
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: typeof data.body === 'string' ? data.body : undefined,
+      tag: typeof data.tag === 'string' ? data.tag : undefined,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { path },
+    }),
+  )
+})
+
+// A click brings an open Orbit window forward and lets the app route there
+// itself; with no window open it starts one on that path.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const raw = event.notification.data && event.notification.data.path
+  const path = typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/'
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const own = windows.find((client) => new URL(client.url).origin === self.location.origin)
+      if (own) {
+        await own.focus()
+        own.postMessage({ type: 'orbit:open', path })
+        return
+      }
+      await self.clients.openWindow(path)
+    })(),
+  )
+})

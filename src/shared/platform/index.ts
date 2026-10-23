@@ -7,9 +7,11 @@ export type {
   PlatformMediaDevices,
   PlatformNotification,
   PlatformNotifications,
+  PlatformPush,
   PlatformScreenCapture,
   PlatformSecretStore,
   PlatformSystem,
+  PushSubscriptionData,
   ScreenCapture,
   ScreenCaptureOptions,
 } from './platform-adapter'

@@ -20,6 +20,8 @@ export {
   listConversations,
   startConversation,
   createChannelVoiceToken,
+  createPushSubscription,
+  deletePushSubscription,
   getAttachmentLink,
   getKeyBundle,
   getLiveness,
