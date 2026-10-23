@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DisconnectReason } from 'livekit-client'
 
@@ -276,7 +276,10 @@ describe('VoiceRoomProvider push-to-talk', () => {
       deafened: 'false',
       'push-to-talk': 'true',
     })
-    expect(screen.getByRole('status', { name: 'muted' })).toBeEmptyDOMElement()
+    // The attribute is set by an effect after the join; the list follows its event.
+    await waitFor(() => {
+      expect(screen.getByRole('status', { name: 'muted' })).toBeEmptyDOMElement()
+    })
   })
 
   it('opens the microphone while held and closes it 200 ms after the release', async () => {
