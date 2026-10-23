@@ -12,6 +12,7 @@ vi.mock('@/features/select-device', () => ({
 }))
 vi.mock('@/features/notifications', () => ({
   NotificationSettings: () => <p>Настройки уведомлений</p>,
+  forgetPushOnThisDevice: () => Promise.resolve(),
 }))
 vi.mock('@/features/install-app', () => ({
   InstallApp: () => null,

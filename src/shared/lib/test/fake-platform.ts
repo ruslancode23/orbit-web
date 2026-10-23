@@ -2,6 +2,7 @@ import type {
   PlatformSecretStore,
   PlatformAutostart,
   PlatformInstall,
+  PlatformPush,
   PlatformMediaDevices,
   PlatformNotifications,
   PlatformScreenCapture,
@@ -43,6 +44,18 @@ export function createFakePlatform() {
     secretStore: createFakeSecretStore(),
     system: {
       describe: vi.fn<PlatformSystem['describe']>(() => 'FakeBrowser/1.0 (TestOS)'),
+    },
+    push: {
+      isSupported: vi.fn<PlatformPush['isSupported']>(() => Promise.resolve(true)),
+      current: vi.fn<PlatformPush['current']>(() => Promise.resolve(null)),
+      subscribe: vi.fn<PlatformPush['subscribe']>(() =>
+        Promise.resolve({
+          endpoint: 'https://fcm.googleapis.com/fcm/send/fake',
+          keys: { p256dh: 'p256dh', auth: 'auth' },
+        }),
+      ),
+      unsubscribe: vi.fn<PlatformPush['unsubscribe']>(() => Promise.resolve()),
+      onOpen: vi.fn<PlatformPush['onOpen']>(() => () => undefined),
     },
     install: {
       isSupported: vi.fn<PlatformInstall['isSupported']>(() => true),

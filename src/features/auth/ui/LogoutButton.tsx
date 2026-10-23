@@ -7,7 +7,12 @@ import { Button } from '@/shared/ui/button'
 
 import { clearSecretChats } from '../model/clear-secret-chats'
 
-export const LogoutButton = () => {
+interface LogoutButtonProps {
+  /** Runs while the session is still alive, before the sign-out: device cleanup such as push. */
+  beforeSignOut?: () => Promise<void>
+}
+
+export const LogoutButton = ({ beforeSignOut }: LogoutButtonProps) => {
   const navigate = useNavigate()
   const forgetSession = useForgetSession()
 
@@ -26,7 +31,7 @@ export const LogoutButton = () => {
       disabled={signOut.isPending}
       onClick={() => {
         // While the session is still alive, end this device's secret chats.
-        void clearSecretChats().finally(() => {
+        void Promise.allSettled([clearSecretChats(), beforeSignOut?.()]).finally(() => {
           signOut.mutate({})
         })
       }}

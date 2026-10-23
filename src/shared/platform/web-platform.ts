@@ -1,4 +1,5 @@
 import { createWebInstall } from './web-install'
+import { createWebPush } from './web-push'
 import { createWebSecretStore } from './web-secret-store'
 
 import type { NotificationPermissionState, PlatformAdapter } from './platform-adapter'
@@ -118,6 +119,8 @@ export function createWebPlatform(): PlatformAdapter {
     system: {
       describe: () => (typeof navigator === 'undefined' ? 'unknown' : navigator.userAgent),
     },
+
+    push: createWebPush(),
 
     autostart: {
       isSupported: () => false,

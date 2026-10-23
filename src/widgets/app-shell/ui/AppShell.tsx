@@ -15,6 +15,7 @@ import {
   useDirectMessageNotifications,
   useFriendNotifications,
   useMessageNotifications,
+  usePushNotificationOpen,
   useSecretNotifications,
 } from '@/features/notifications'
 import { ProfileOnboarding } from '@/features/user-card'
@@ -90,6 +91,7 @@ const Shell = () => {
   useDirectMessageNotifications()
   useFriendNotifications()
   useSecretNotifications()
+  usePushNotificationOpen()
   useVoiceShortcuts()
   usePushToTalk()
   useLeaveLostWorkspace(workspaceId)

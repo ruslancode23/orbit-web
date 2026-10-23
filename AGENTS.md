@@ -452,6 +452,22 @@ PNG/JPEG/WebP до 5 МБ проверяются на клиенте тольк�
 на устройстве в `localStorage`; разрешение браузера спрашивается только по действию человека — при
 выборе режима или по кнопке, никогда при загрузке.
 
+Push-уведомления (FEAT-4, SCRUM-126) — когда у аккаунта нет открытой вкладки, личку и упоминания
+доставляет сервер через Web Push (orbit-server, README «Push-уведомления»). Включаются на устройстве
+переключателем «Когда Orbit закрыт» во вкладке «Уведомления» (`PushSettings`, `usePushSubscription`):
+разрешение браузера спрашивается только при включении, затем `getPlatform().push.subscribe(publicKey)`
+с ключом из `GET /push/config` и `POST /push/subscriptions`; id подписки хранится в localStorage
+(`orbit.push.subscription-id`). Выключение и выход из аккаунта (`forgetPushOnThisDevice`, проп
+`beforeSignOut` у `LogoutButton`) удаляют подписку на сервере и в браузере. Браузерный Push API — только
+в `PlatformAdapter.push` (`web-push.ts`). Показ и клик — в `public/sw.js`: обработчик `push` рисует
+уведомление из payload (заголовок, кто и где, `tag` по каналу; текста сообщения в нём нет), клик
+фокусирует окно Orbit и шлёт ему `orbit:open` с путём, а `usePushNotificationOpen` в `AppShell` переходит
+туда без перезагрузки; без окна открывается новое. Работает только в сборке с service worker (не в
+`pnpm dev`) и на iOS — после «На экран „Домой“». Обработку в worker проверяет `e2e/pwa.spec.ts`
+(push через CDP `ServiceWorker.deliverPushMessage`; headless Chromium не показывает уведомления, поэтому
+`showNotification` подменяется пробой). Настройки «только упоминания» и заглушённые беседы живут на
+устройстве и серверу неизвестны — push их пока не учитывает (FEAT-5, SCRUM-127).
+
 Поля int64 (`seq`) в телах запросов уходят числами: генератор пишет `bigint` строкой, сервер такую
 строку отклоняет, поэтому `bodySerializer` задан в `shared/api/client-config.ts`.
 

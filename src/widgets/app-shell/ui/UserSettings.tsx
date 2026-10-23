@@ -4,7 +4,7 @@ import { useSession } from '@/entities/session'
 import { LogoutButton } from '@/features/auth'
 import { ClaimGuest } from '@/features/claim-guest'
 import { InstallApp } from '@/features/install-app'
-import { NotificationSettings } from '@/features/notifications'
+import { forgetPushOnThisDevice, NotificationSettings } from '@/features/notifications'
 import { DeviceSettings } from '@/features/select-device'
 import { AccountSettings, PrivacySettings, ProfileSettings } from '@/features/user-card'
 import { Button } from '@/shared/ui/button'
@@ -169,7 +169,7 @@ export const UserSettings = ({
                 />
               )}
               <div className="border-t border-border pt-4">
-                <LogoutButton />
+                <LogoutButton beforeSignOut={forgetPushOnThisDevice} />
               </div>
             </TabsContent>
           </Tabs>

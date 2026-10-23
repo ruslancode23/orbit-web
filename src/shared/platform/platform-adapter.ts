@@ -15,6 +15,31 @@ export interface PlatformAdapter {
   /** Where secret chat keys and decrypted history live; never leaves the device. */
   secretStore: PlatformSecretStore
   system: PlatformSystem
+  push: PlatformPush
+}
+
+/** What the browser hands over to send pushes to it: `PushSubscription.toJSON()`. */
+export interface PushSubscriptionData {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}
+
+/**
+ * Web Push through the service worker. It exists only in a build with the
+ * worker registered (not in `pnpm dev`) and in browsers with the Push API;
+ * iOS needs the app added to the home screen first.
+ */
+export interface PlatformPush {
+  /** A service worker is registered and the browser can receive pushes. */
+  isSupported: () => Promise<boolean>
+  /** This browser's current subscription, or null. */
+  current: () => Promise<PushSubscriptionData | null>
+  /** Subscribes with the server's VAPID key (base64url). Rejects with `NotAllowedError` when refused. */
+  subscribe: (applicationServerKey: string) => Promise<PushSubscriptionData>
+  /** Removes this browser's subscription; nothing to remove is not an error. */
+  unsubscribe: () => Promise<void>
+  /** The person clicked a push notification; `path` is where in the app it points. */
+  onOpen: (listener: (path: string) => void) => () => void
 }
 
 /** What the app runs in, for a bug report: the browser and the OS, or the desktop shell. */
