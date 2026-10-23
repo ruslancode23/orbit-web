@@ -13,6 +13,7 @@ import {
   listFriendsQueryKey,
   listInvitesQueryKey,
   listMessagesQueryKey,
+  listNotificationSettingsQueryKey,
   listUnreadQueryKey,
   listUserBlocksQueryKey,
   listWorkspaceBansQueryKey,
@@ -81,6 +82,7 @@ const SERVER_EVENTS: LiveEvent[] = [
   { type: 'bans.changed', workspaceId },
   { type: 'privacy.changed' },
   { type: 'devices.changed' },
+  { type: 'notification_settings.updated', payload: { scope: 'channel', targetId: channelId } },
 ]
 
 /** A cache with something under every key an event may touch. */
@@ -104,6 +106,7 @@ const seeded = (): QueryClient => {
     listUserBlocksQueryKey(),
     getDmPolicyQueryKey(),
     listDevicesQueryKey(),
+    listNotificationSettingsQueryKey(),
     getUserProfileQueryKey({ path: { userId } }),
     ['listSecretChats', 'device-1'],
   ]

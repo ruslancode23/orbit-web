@@ -1,4 +1,5 @@
 import type { LiveEvent } from '@/entities/live'
+import type { NotificationLevel } from '@/entities/notification-setting'
 
 import type { NotificationMode } from './mode'
 
@@ -19,6 +20,8 @@ export interface NotifyContext {
   pageVisible: boolean
   /** «Не беспокоить» silences every notification, whatever the mode says. */
   muted: boolean
+  /** What the server would do here: the channel's and its server's level. */
+  serverLevel: NotificationLevel
 }
 
 const MAX_BODY = 140
@@ -37,7 +40,12 @@ export function shouldNotify(message: IncomingMessage, context: NotifyContext): 
   if (message.channelId === context.openChannelId && context.pageVisible) {
     return false
   }
-  if (context.mode === 'mentions') {
+  if (context.serverLevel === 'none') {
+    return false
+  }
+  // The device mode may narrow what the server allows, never widen it: either
+  // «только упоминания» silences the plain messages.
+  if (context.mode === 'mentions' || context.serverLevel === 'mentions') {
     return message.mentions.includes(context.myId)
   }
   return true

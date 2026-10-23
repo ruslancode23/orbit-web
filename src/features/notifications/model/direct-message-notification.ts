@@ -1,11 +1,13 @@
+import type { NotificationLevel } from '@/entities/notification-setting'
+
 import type { IncomingMessage, NotifyContext } from './message-notification'
 
 /** What a direct dialogue adds to the usual notification gate. */
 export interface DirectNotifyContext extends Omit<NotifyContext, 'openChannelId'> {
   /** The dialogue on screen, if any; `/me` alone is the list, not a dialogue. */
   openConversationId: string | undefined
-  /** The conversation switch in the dialogue menu, kept on this device. */
-  conversationMuted: boolean
+  /** What the server would do for this dialogue: every message by default. */
+  serverLevel: NotificationLevel
 }
 
 /**
@@ -13,8 +15,8 @@ export interface DirectNotifyContext extends Omit<NotifyContext, 'openChannelId'
  *
  * A dialogue is not a channel: it has no crowd to be noisy, so every message
  * notifies while notifications are on, whatever the channel mode says. Turning
- * notifications off, «Не беспокоить», the switch of this one dialogue, the
- * reader's own message and the dialogue already on screen still stay quiet.
+ * notifications off, «Не беспокоить», this dialogue's own level on the server,
+ * the reader's own message and the dialogue already on screen stay quiet.
  */
 export const shouldNotifyDirect = (
   message: IncomingMessage,
@@ -29,7 +31,10 @@ export const shouldNotifyDirect = (
   if (message.author === undefined || message.author.id === context.myId) {
     return false
   }
-  if (context.conversationMuted) {
+  if (context.serverLevel === 'none') {
+    return false
+  }
+  if (context.serverLevel === 'mentions' && !message.mentions.includes(context.myId)) {
     return false
   }
   return !(context.pageVisible && message.channelId === context.openConversationId)

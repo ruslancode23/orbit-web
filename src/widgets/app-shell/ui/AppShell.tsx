@@ -7,6 +7,7 @@ import {
   useIncomingFriendRequestCount,
 } from '@/entities/friend'
 import { useLive, usePresenceActivity } from '@/entities/live'
+import { useMoveLegacyConversationMutes } from '@/entities/notification-setting'
 import { describeUnread, UnreadBadge, useConversationUnreadTotal } from '@/entities/unread'
 import { useVoiceRoom, VoiceRoomProvider } from '@/entities/voice-room'
 import { can, hasPermission, useWorkspace, useWorkspaces } from '@/entities/workspace'
@@ -88,6 +89,8 @@ const Shell = () => {
   }
   usePresenceActivity()
   useMessageNotifications({ workspaceId, channelId })
+  // Dialogues muted on this device before the server owned the setting move once.
+  useMoveLegacyConversationMutes()
   useDirectMessageNotifications()
   useFriendNotifications()
   useSecretNotifications()

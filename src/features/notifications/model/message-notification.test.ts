@@ -19,6 +19,7 @@ const context: NotifyContext = {
   openChannelId: 'c-other',
   pageVisible: true,
   muted: false,
+  serverLevel: 'all',
 }
 
 it('notifies about someone else’s message in another channel', () => {
@@ -40,6 +41,25 @@ it('stays quiet about the channel on screen, but not about a hidden tab', () => 
 it('stays quiet in «Не беспокоить», whatever the mode says', () => {
   expect(shouldNotify(fromBoris, { ...context, muted: true })).toBe(false)
   expect(shouldNotify(fromBoris, { ...context, muted: true, mode: 'mentions' })).toBe(false)
+})
+
+it('follows the server level: a silent channel never notifies', () => {
+  expect(shouldNotify(fromBoris, { ...context, serverLevel: 'none' })).toBe(false)
+  const mentioned = { ...fromBoris, mentions: [me] }
+  expect(shouldNotify(mentioned, { ...context, serverLevel: 'none' })).toBe(false)
+})
+
+it('needs a mention when the channel speaks on mentions', () => {
+  expect(shouldNotify(fromBoris, { ...context, serverLevel: 'mentions' })).toBe(false)
+  const mentioned = { ...fromBoris, mentions: [me] }
+  expect(shouldNotify(mentioned, { ...context, serverLevel: 'mentions' })).toBe(true)
+})
+
+it('lets the device mode narrow the server level, not widen it', () => {
+  // The device says mentions and the server says every message: mentions win.
+  expect(shouldNotify(fromBoris, { ...context, mode: 'mentions', serverLevel: 'all' })).toBe(false)
+  // The device says all but the channel is mentions-only: the channel wins.
+  expect(shouldNotify(fromBoris, { ...context, mode: 'all', serverLevel: 'mentions' })).toBe(false)
 })
 
 it('follows the mode', () => {

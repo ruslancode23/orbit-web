@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { NotificationLevelDropdownMenu } from '@/entities/notification-setting'
 import { WorkspaceAvatar, type Workspace, type WorkspaceRole } from '@/entities/workspace'
 import { CreateChannel } from '@/features/create-channel'
 import { ManageInvites } from '@/features/manage-invites'
@@ -95,6 +96,10 @@ export const WorkspaceMenu = ({
                 Участники и баны
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <NotificationLevelDropdownMenu
+              target={{ scope: 'workspace', targetId: workspace.id }}
+            />
             {canOpenSettings && (
               <>
                 <DropdownMenuSeparator />

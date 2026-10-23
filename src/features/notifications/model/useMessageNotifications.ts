@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router'
 
 import { useChannels } from '@/entities/channel'
 import { useLive } from '@/entities/live'
+import {
+  effectiveNotificationLevel,
+  useNotificationSettingsIndex,
+} from '@/entities/notification-setting'
 import { useSession } from '@/entities/session'
 import { useWorkspace } from '@/entities/workspace'
 import { isPageVisible } from '@/shared/lib/page-visibility'
@@ -30,6 +34,7 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
   const muted = useNotificationsMuted()
   const { data: channels } = useChannels(workspaceId)
   const { membership } = useWorkspace(workspaceId)
+  const notificationSettings = useNotificationSettingsIndex()
   const navigate = useNavigate()
 
   const myId = user?.id
@@ -50,6 +55,11 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
         openChannelId: channelId,
         pageVisible: isPageVisible(),
         muted,
+        serverLevel: effectiveNotificationLevel(notificationSettings, {
+          scope: 'channel',
+          targetId: message.channelId,
+          workspaceId,
+        }),
       }
       if (!shouldNotify(message, context)) {
         return
@@ -67,5 +77,16 @@ export function useMessageNotifications({ workspaceId, channelId }: Where): void
         },
       })
     })
-  }, [listen, mode, muted, myId, channelId, workspaceId, channels, workspaceName, navigate])
+  }, [
+    listen,
+    mode,
+    muted,
+    myId,
+    channelId,
+    workspaceId,
+    channels,
+    workspaceName,
+    navigate,
+    notificationSettings,
+  ])
 }
