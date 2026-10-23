@@ -72,7 +72,7 @@ it('saves an emoji, a text and a deadline', async () => {
   const { queryClient, onClose } = renderDialog()
 
   await userEvent.click(screen.getByRole('button', { name: '😎' }))
-  await userEvent.type(screen.getByLabelText('Текст статуса'), 'На встрече до шести')
+  await userEvent.type(screen.getByLabelText('Текст подписи'), 'На встрече до шести')
   await userEvent.selectOptions(screen.getByLabelText('Срок'), '4h')
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
 
@@ -85,7 +85,7 @@ it('saves an emoji, a text and a deadline', async () => {
       },
     ])
   })
-  expect(await screen.findByText('Статус обновлён')).toBeInTheDocument()
+  expect(await screen.findByText('Подпись обновлена')).toBeInTheDocument()
   expect(
     queryClient.getQueryData(getUserProfileQueryKey({ path: { userId: me.id } })),
   ).toMatchObject({ customStatus: { emoji: '😎', text: 'На встрече до шести' } })
@@ -100,12 +100,12 @@ it('clears the current status', async () => {
   const calls = stubStatusApi(me)
   const { onClose } = renderDialog(withStatus)
 
-  await userEvent.click(screen.getByRole('button', { name: 'Очистить статус' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Очистить подпись' }))
 
   await waitFor(() => {
     expect(calls).toEqual([{ method: 'DELETE', path: '/api/v1/users/me/status' }])
   })
-  expect(await screen.findByText('Статус очищен')).toBeInTheDocument()
+  expect(await screen.findByText('Подпись очищена')).toBeInTheDocument()
   expect(onClose).toHaveBeenCalled()
 })
 
@@ -123,6 +123,6 @@ it('does not offer to clear a status that is not set', () => {
   stubStatusApi(me)
   renderDialog()
 
-  const dialog = screen.getByRole('dialog', { name: 'Задать статус' })
-  expect(within(dialog).queryByRole('button', { name: 'Очистить статус' })).not.toBeInTheDocument()
+  const dialog = screen.getByRole('dialog', { name: 'Подпись к статусу' })
+  expect(within(dialog).queryByRole('button', { name: 'Очистить подпись' })).not.toBeInTheDocument()
 })

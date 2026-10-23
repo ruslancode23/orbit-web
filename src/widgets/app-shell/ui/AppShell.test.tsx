@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
-import { LiveProvider } from '@/entities/live'
+import { LiveProvider, setPresenceChoice } from '@/entities/live'
 import { createFakePlatform, renderWithProviders } from '@/shared/lib/test'
 import { setPlatform } from '@/shared/platform'
 
@@ -145,6 +145,8 @@ const stubApi = (
 
 afterEach(() => {
   sockets.length = 0
+  // The chosen status is kept on the device; «Не беспокоить» would silence the next test.
+  setPresenceChoice('auto')
   setPlatform(null)
   vi.unstubAllGlobals()
 })
@@ -245,6 +247,22 @@ it('names the signed-in account and offers to sign out', async () => {
   await userEvent.click(await screen.findByRole('tab', { name: 'Аккаунт' }))
 
   expect(await screen.findByRole('button', { name: 'Выйти' })).toBeInTheDocument()
+})
+
+it('paints the avatar dot with the chosen status, not with the connection', async () => {
+  stubApi('member')
+  renderShell()
+  const panel = await screen.findByRole('region', { name: 'Пользователь' })
+  const dot = () => panel.querySelector('[data-status]')
+  await vi.waitFor(() => {
+    expect(dot()).toHaveAttribute('data-status', 'online')
+  })
+
+  await userEvent.click(within(panel).getByRole('button', { name: /Открыть меню статуса/ }))
+  await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Не беспокоить' }))
+
+  expect(dot()).toHaveAttribute('data-status', 'dnd')
+  expect(dot()).toHaveClass('bg-danger')
 })
 
 it('marks unread channels and mentions, and the server in the rail', async () => {

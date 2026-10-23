@@ -62,7 +62,7 @@ interface SetStatusDialogProps {
 
 /**
  * The custom status: a short line next to the name, an emoji and a deadline
- * the server measures. «Очистить статус» removes it; saving without either
+ * the server measures. «Очистить подпись» removes it; saving without either
  * field is refused here instead of being sent as an empty status.
  */
 export const SetStatusDialog = ({ profile, onClose }: SetStatusDialogProps) => {
@@ -91,7 +91,7 @@ export const SetStatusDialog = ({ profile, onClose }: SetStatusDialogProps) => {
     const nextEmoji = values.emoji.trim()
     const nextText = values.text.trim()
     if (nextEmoji === '' && nextText === '') {
-      setError('root', { message: 'Добавьте эмодзи или текст — или очистите статус.' })
+      setError('root', { message: 'Добавьте эмодзи или текст — или очистите подпись.' })
       return
     }
     try {
@@ -103,13 +103,13 @@ export const SetStatusDialog = ({ profile, onClose }: SetStatusDialogProps) => {
         },
       })
       applyUserProfile(queryClient, saved)
-      toast('Статус обновлён', 'success')
+      toast('Подпись обновлена', 'success')
       onClose()
     } catch (error) {
       setFailure(
         isApiError(error) && error.message !== ''
           ? error.message
-          : 'Не получилось обновить статус. Попробуйте ещё раз.',
+          : 'Не получилось обновить подпись. Попробуйте ещё раз.',
       )
     }
   })
@@ -119,13 +119,13 @@ export const SetStatusDialog = ({ profile, onClose }: SetStatusDialogProps) => {
     try {
       const saved = await clearStatus.mutateAsync({})
       applyUserProfile(queryClient, saved)
-      toast('Статус очищен', 'success')
+      toast('Подпись очищена', 'success')
       onClose()
     } catch (error) {
       setFailure(
         isApiError(error) && error.message !== ''
           ? error.message
-          : 'Не получилось очистить статус. Попробуйте ещё раз.',
+          : 'Не получилось очистить подпись. Попробуйте ещё раз.',
       )
     }
   }
@@ -143,7 +143,7 @@ export const SetStatusDialog = ({ profile, onClose }: SetStatusDialogProps) => {
     >
       <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
         <div className="flex flex-col gap-1">
-          <DialogTitle>Задать статус</DialogTitle>
+          <DialogTitle>Подпись к статусу</DialogTitle>
           <DialogDescription>
             Короткая строка рядом с именем. Срок считает сервер, поэтому он не зависит от часов на
             устройстве.
@@ -181,7 +181,7 @@ export const SetStatusDialog = ({ profile, onClose }: SetStatusDialogProps) => {
           </fieldset>
 
           <div className="flex flex-col gap-1">
-            <Label htmlFor={textId}>Текст статуса</Label>
+            <Label htmlFor={textId}>Текст подписи</Label>
             <Input
               id={textId}
               maxLength={128}
@@ -221,7 +221,7 @@ export const SetStatusDialog = ({ profile, onClose }: SetStatusDialogProps) => {
                 disabled={pending}
                 onClick={() => void clear()}
               >
-                Очистить статус
+                Очистить подпись
               </Button>
             ) : (
               <span />

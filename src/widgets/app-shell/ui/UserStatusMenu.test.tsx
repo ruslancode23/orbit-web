@@ -38,7 +38,13 @@ class FakeSocket {
 
 const sockets: FakeSocket[] = []
 
-const StatusProbe = ({ onReportBug = () => undefined }: { onReportBug?: () => void }) => {
+const StatusProbe = ({
+  onReportBug = () => undefined,
+  signature = '',
+}: {
+  onReportBug?: () => void
+  signature?: string
+}) => {
   const { status, choose } = useMyStatus()
   return (
     <UserStatusMenu
@@ -46,6 +52,7 @@ const StatusProbe = ({ onReportBug = () => undefined }: { onReportBug?: () => vo
       onStatusChange={choose}
       onEditProfile={() => undefined}
       onSetStatus={() => undefined}
+      signature={signature}
       onReportBug={onReportBug}
     >
       <span>Анна</span>
@@ -53,11 +60,14 @@ const StatusProbe = ({ onReportBug = () => undefined }: { onReportBug?: () => vo
   )
 }
 
-const renderMenu = (onReportBug?: () => void) => {
+const renderMenu = (onReportBug?: () => void, signature?: string) => {
   vi.stubGlobal('WebSocket', FakeSocket)
   renderWithProviders(
     <LiveProvider enabled>
-      <StatusProbe {...(onReportBug === undefined ? {} : { onReportBug })} />
+      <StatusProbe
+        {...(onReportBug === undefined ? {} : { onReportBug })}
+        {...(signature === undefined ? {} : { signature })}
+      />
     </LiveProvider>,
   )
   const socket = sockets[0]
@@ -106,12 +116,23 @@ it('opens with the keyboard and returns focus on Escape', async () => {
   expect(button).toHaveFocus()
 })
 
-it('offers the status and profile editors next to the statuses', async () => {
+it('offers the signature and profile editors next to the statuses', async () => {
   renderMenu()
   await userEvent.click(trigger())
 
-  expect(screen.getByRole('menuitem', { name: 'Задать статус' })).toBeInTheDocument()
+  // «Статус» names the presence only: the emoji and text are the signature.
+  expect(screen.getByRole('menuitem', { name: 'Задать подпись' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: /статус/i })).not.toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Редактировать профиль' })).toBeInTheDocument()
+})
+
+it('shows the current signature and offers to change it', async () => {
+  renderMenu(undefined, '☕ На встрече')
+  await userEvent.click(trigger())
+
+  expect(
+    screen.getByRole('menuitem', { name: /^Изменить подпись.*☕ На встрече$/ }),
+  ).toBeInTheDocument()
 })
 
 it('offers to report a problem', async () => {

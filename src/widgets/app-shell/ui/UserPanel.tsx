@@ -5,7 +5,12 @@ import { useSession } from '@/entities/session'
 import { UserAvatar, userDisplayName } from '@/entities/user'
 import { useVoiceRoom } from '@/entities/voice-room'
 import { DeviceMenu } from '@/features/select-device'
-import { EditProfileDialog, ReportBugDialog, SetStatusDialog } from '@/features/user-card'
+import {
+  EditProfileDialog,
+  ReportBugDialog,
+  SetStatusDialog,
+  visibleCustomStatus,
+} from '@/features/user-card'
 import { Avatar } from '@/shared/ui/avatar'
 import {
   HeadphonesIcon,
@@ -19,6 +24,7 @@ import { useToast } from '@/shared/ui/toast'
 
 import { UserSettings } from './UserSettings'
 import { UserStatusMenu } from './UserStatusMenu'
+import { STATUS_DOT, useEffectiveStatus } from '../model/my-status'
 
 const CONNECTION = {
   connecting: { text: 'Подключаемся к серверу…', className: 'bg-warning' },
@@ -36,6 +42,7 @@ export const UserPanel = () => {
   const { user } = useSession()
   const { status } = useLive()
   const { status: presence, choose } = useMyStatus()
+  const effective = useEffectiveStatus(presence)
   const { isMicrophoneMuted, isDeafened, setMicrophoneMuted, setDeafened } = useVoiceRoom()
   const toast = useToast()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -71,19 +78,22 @@ export const UserPanel = () => {
     }
   }
 
+  // The dot is the status the others see; the connection only speaks up when
+  // it is not fine, under the name.
   const avatar = (
-    <span className="relative shrink-0">
+    <span className="relative inline-flex shrink-0">
       {user ? (
         <UserAvatar profile={user} size={32} decorative />
       ) : (
         <Avatar name="…" size={32} decorative />
       )}
-      <span
-        aria-hidden="true"
-        title={connection.text}
-        className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-surface ${connection.className}`}
-      />
-      <span className="sr-only">{connection.text}</span>
+      {user && (
+        <span
+          aria-hidden="true"
+          data-status={effective}
+          className={`absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-surface ${STATUS_DOT[effective]}`}
+        />
+      )}
     </span>
   )
 
@@ -93,6 +103,15 @@ export const UserPanel = () => {
       {user?.isGuest === true && (
         <span className="w-fit rounded bg-surface-hover px-1 text-[10px] tracking-wide text-fg-muted uppercase">
           гость
+        </span>
+      )}
+      {status !== 'open' && (
+        <span role="status" className="flex items-center gap-1 truncate text-xs text-fg-muted">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 shrink-0 rounded-full ${connection.className}`}
+          />
+          {connection.text}
         </span>
       )}
     </span>
@@ -113,6 +132,7 @@ export const UserPanel = () => {
                 onSetStatus={() => {
                   setStatusOpen(true)
                 }}
+                signature={visibleCustomStatus(user)}
                 onReportBug={() => {
                   setReportOpen(true)
                 }}
@@ -154,7 +174,7 @@ export const UserPanel = () => {
           ) : (
             <>
               {avatar}
-              <p className="truncate text-sm font-medium">{name}</p>
+              {identity}
             </>
           )}
 
