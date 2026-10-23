@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 
-import { usePresenceActivityState, type PresenceChoice } from '@/entities/live'
+import { type PresenceChoice } from '@/entities/live'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,27 +14,14 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { BugIcon, EditIcon, PlusIcon, SmileIcon } from '@/shared/ui/icon'
 
-type VisibleStatus = Exclude<PresenceChoice, 'auto'>
+import {
+  STATUS_DOT,
+  STATUS_LABEL,
+  useEffectiveStatus,
+  type VisibleStatus,
+} from '../model/my-status'
 
-interface StatusOption {
-  value: VisibleStatus
-  label: string
-  dot: string
-}
-
-const STATUS_OPTIONS: readonly StatusOption[] = [
-  { value: 'online', label: 'В сети', dot: 'bg-success' },
-  { value: 'idle', label: 'Не активен', dot: 'bg-warning' },
-  { value: 'dnd', label: 'Не беспокоить', dot: 'bg-danger' },
-  { value: 'invisible', label: 'Невидимка', dot: 'bg-fg-muted' },
-]
-
-const LABEL: Record<VisibleStatus, string> = {
-  online: 'В сети',
-  idle: 'Не активен',
-  dnd: 'Не беспокоить',
-  invisible: 'Невидимка',
-}
+const STATUS_OPTIONS: readonly VisibleStatus[] = ['online', 'idle', 'dnd', 'invisible']
 
 const isVisibleStatus = (value: string): value is VisibleStatus =>
   value === 'online' || value === 'idle' || value === 'dnd' || value === 'invisible'
@@ -45,6 +32,8 @@ interface UserStatusMenuProps {
   /** Absent for a guest, whose card explains how to get an editable profile. */
   onEditProfile?: () => void
   onSetStatus: () => void
+  /** The emoji and text shown next to the name, or '' when there is none. */
+  signature: string
   /** Opens the profile settings; only offered while the account has no picture. */
   onAddPhoto?: () => void
   /** Opens the bug report form. */
@@ -54,7 +43,9 @@ interface UserStatusMenuProps {
 }
 
 /**
- * The status menu behind the person at the bottom of the sidebar. `auto` is
+ * The status menu behind the person at the bottom of the sidebar: the
+ * presence (online, idle, do not disturb, invisible) and the signature — the
+ * emoji and text next to the name — which used to share the word «статус». `auto` is
  * not a menu item: the tick follows the tab while the status is automatic, and
  * picking an item pins that status until it is changed again. Radix gives the
  * radio group arrows, Enter and Esc, and returns the focus to the trigger.
@@ -64,13 +55,12 @@ export const UserStatusMenu = ({
   onStatusChange,
   onEditProfile,
   onSetStatus,
+  signature,
   onAddPhoto,
   onReportBug,
   children,
 }: UserStatusMenuProps) => {
-  const activity = usePresenceActivityState()
-  const effective: VisibleStatus =
-    status === 'auto' ? (activity === 'idle' ? 'idle' : 'online') : status
+  const effective = useEffectiveStatus(status)
 
   return (
     <DropdownMenu>
@@ -82,7 +72,9 @@ export const UserStatusMenu = ({
           {children}
           {/* The visible name is already here, so the name of the control is
               built from it and this line: no aria-label to fall out of step. */}
-          <span className="sr-only">Статус: «{LABEL[effective]}». Открыть меню статуса.</span>
+          <span className="sr-only">
+            Статус: «{STATUS_LABEL[effective]}». Открыть меню статуса.
+          </span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" aria-label="Статус" className="w-56">
@@ -96,17 +88,23 @@ export const UserStatusMenu = ({
           }}
         >
           {STATUS_OPTIONS.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
-              <span aria-hidden="true" className={`size-2.5 rounded-full ${option.dot}`} />
-              {option.label}
+            <DropdownMenuRadioItem key={option} value={option}>
+              <span aria-hidden="true" className={`size-2.5 rounded-full ${STATUS_DOT[option]}`} />
+              {STATUS_LABEL[option]}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuGroup>
           <DropdownMenuSeparator />
+          {/* The presence above is the status; the emoji and text are its signature. */}
           <DropdownMenuItem onSelect={onSetStatus}>
-            <SmileIcon className="size-4 text-fg-muted" />
-            Задать статус
+            <SmileIcon className="size-4 shrink-0 text-fg-muted" />
+            <span className="flex min-w-0 flex-col">
+              <span>{signature === '' ? 'Задать подпись' : 'Изменить подпись'}</span>
+              {signature !== '' && (
+                <span className="truncate text-xs text-fg-muted">{signature}</span>
+              )}
+            </span>
           </DropdownMenuItem>
           {onAddPhoto !== undefined && (
             <DropdownMenuItem onSelect={onAddPhoto}>
