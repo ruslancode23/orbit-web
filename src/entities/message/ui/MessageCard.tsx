@@ -218,7 +218,7 @@ export const MessageCard = ({
 
           {editing ??
             (hasText && (
-              <p className={cn('text-sm whitespace-pre-wrap', deleted && 'text-fg-muted italic')}>
+              <div className={cn('text-sm whitespace-pre-wrap', deleted && 'text-fg-muted italic')}>
                 {deleted ? (
                   'Сообщение удалено'
                 ) : (
@@ -230,7 +230,7 @@ export const MessageCard = ({
                 {!deleted && message.editedAt && (
                   <span className="ml-1 text-[11px] text-fg-muted">(изменено)</span>
                 )}
-              </p>
+              </div>
             ))}
 
           {!deleted && attachments}

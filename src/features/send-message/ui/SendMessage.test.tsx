@@ -213,3 +213,37 @@ it('names the message it answers and clears the reply after sending', async () =
     expect(onSent).toHaveBeenCalled()
   })
 })
+
+it('wraps the selection with bold and inline code from the keyboard', async () => {
+  stubApi()
+  renderWithProviders(<SendMessage workspaceId={workspaceId} channelId={channelId} />, {
+    route: '/',
+  })
+  const field = screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Сообщение' })
+  await userEvent.type(field, 'жирный')
+  field.setSelectionRange(0, field.value.length)
+
+  await userEvent.keyboard('{Control>}b{/Control}')
+  expect(field).toHaveValue('**жирный**')
+
+  field.setSelectionRange(0, field.value.length)
+  await userEvent.keyboard('{Control>}e{/Control}')
+  expect(field).toHaveValue('`**жирный**`')
+})
+
+it('wraps the selection with italic and strike from the keyboard', async () => {
+  stubApi()
+  renderWithProviders(<SendMessage workspaceId={workspaceId} channelId={channelId} />, {
+    route: '/',
+  })
+  const field = screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Сообщение' })
+  await userEvent.type(field, 'текст')
+  field.setSelectionRange(0, field.value.length)
+
+  await userEvent.keyboard('{Control>}i{/Control}')
+  expect(field).toHaveValue('*текст*')
+
+  field.setSelectionRange(0, field.value.length)
+  await userEvent.keyboard('{Control>}{Shift>}x{/Shift}{/Control}')
+  expect(field).toHaveValue('~~*текст*~~')
+})

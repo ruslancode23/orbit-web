@@ -1,5 +1,7 @@
 import type { Message, MessageKind, SystemMessage } from '@/shared/api'
 
+import { plainMessageText } from '../lib/markdown'
+
 export type { Message }
 
 /**
@@ -143,7 +145,7 @@ export function messagePreview(message: Message, limit = 120): string {
   if (message.deletedAt !== undefined) {
     return 'Сообщение удалено'
   }
-  const content = message.content.replace(/\s+/g, ' ').trim()
+  const content = plainMessageText(message.content).replace(/\s+/g, ' ').trim()
   // A message of files alone is previewed by their names.
   const files = message.attachments?.map((file) => file.fileName).join(', ') ?? ''
   const text = content === '' && files !== '' ? `Вложение: ${files}` : content
