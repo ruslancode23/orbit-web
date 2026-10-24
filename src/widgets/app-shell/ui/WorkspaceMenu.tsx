@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { MessageSearch } from '@/entities/message'
 import { NotificationLevelDropdownMenu } from '@/entities/notification-setting'
-import { WorkspaceAvatar, type Workspace, type WorkspaceRole } from '@/entities/workspace'
+import {
+  useWorkspaceMembers,
+  WorkspaceAvatar,
+  type Workspace,
+  type WorkspaceRole,
+} from '@/entities/workspace'
 import { CreateChannel } from '@/features/create-channel'
 import { ManageInvites } from '@/features/manage-invites'
 import { ManageMembers } from '@/features/manage-members'
@@ -13,7 +19,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { ChevronDownIcon, LinkIcon, PlusIcon, SettingsIcon, UsersIcon } from '@/shared/ui/icon'
+import {
+  ChevronDownIcon,
+  LinkIcon,
+  PlusIcon,
+  SearchIcon,
+  SettingsIcon,
+  UsersIcon,
+} from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 
 interface WorkspaceMenuProps {
@@ -47,6 +60,13 @@ export const WorkspaceMenu = ({
   const [invitesOpen, setInvitesOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const { data: members } = useWorkspaceMembers(workspace.id)
+  const people = (members ?? []).map((member) => ({
+    id: member.user.id,
+    nickname: member.user.nickname,
+    displayName: member.user.displayName,
+  }))
 
   return (
     <>
@@ -96,6 +116,14 @@ export const WorkspaceMenu = ({
                 Участники и баны
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem
+              onSelect={() => {
+                setSearchOpen(true)
+              }}
+            >
+              <SearchIcon className="size-4 text-fg-muted" />
+              Поиск по серверу
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <NotificationLevelDropdownMenu
               target={{ scope: 'workspace', targetId: workspace.id }}
@@ -130,6 +158,14 @@ export const WorkspaceMenu = ({
         role={role}
         open={membersOpen}
         onOpenChange={setMembersOpen}
+      />
+      <MessageSearch
+        workspaceId={workspace.id}
+        people={people}
+        defaultScope="workspace"
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        hotkey={false}
       />
     </>
   )

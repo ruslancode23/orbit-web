@@ -83,6 +83,8 @@ export type {
   LoginRequest,
   Message,
   MessageKind,
+  MessageSearchHit,
+  MessageSearchPage,
   NotificationScope,
   NotificationSetting,
   NotificationSettings,
@@ -110,6 +112,7 @@ export type {
   Permission,
   Role,
   RoleUpdateRequest,
+  SearchMessagesData,
   ChannelOverride,
   WorkspaceUpdateRequest,
 } from './generated/types.gen'

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { channelAllows, useChannels, type Channel } from '@/entities/channel'
+import { MessageSearch, type SearchPerson } from '@/entities/message'
 import { ParticipantTile } from '@/entities/participant'
 import { useVoiceRoom } from '@/entities/voice-room'
-import { can, hasPermission, useWorkspace } from '@/entities/workspace'
+import { can, hasPermission, useWorkspace, useWorkspaceMembers } from '@/entities/workspace'
 import { ClaimGuest } from '@/features/claim-guest'
 import { useVoiceChannel } from '@/features/join-voice-channel'
 import { ManageInvites } from '@/features/manage-invites'
@@ -25,6 +26,7 @@ const ChannelPage = () => {
   const { workspaceId, channelId } = useParams()
   const { data: channels } = useChannels(workspaceId)
   const { membership } = useWorkspace(workspaceId)
+  const { data: members } = useWorkspaceMembers(workspaceId)
   const [invitesOpen, setInvitesOpen] = useState(false)
   const channel = channels?.find((item) => item.id === channelId)
   const navigate = useNavigate()
@@ -51,6 +53,11 @@ const ChannelPage = () => {
 
   const canInvite = can(membership, 'canInvite')
   const canManage = hasPermission(membership, 'manageServer')
+  const people: SearchPerson[] = (members ?? []).map((member) => ({
+    id: member.user.id,
+    nickname: member.user.nickname,
+    displayName: member.user.displayName,
+  }))
   const openInvites = () => {
     setInvitesOpen(true)
   }
@@ -66,7 +73,13 @@ const ChannelPage = () => {
         />
       ) : (
         <section aria-label="Канал" className="flex min-h-0 flex-1 flex-col">
-          <ChannelHeader channel={channel} canInvite={canInvite} onInvite={openInvites} />
+          <ChannelHeader
+            workspaceId={workspaceId}
+            channel={channel}
+            canInvite={canInvite}
+            onInvite={openInvites}
+            people={people}
+          />
           <div className="flex min-h-0 flex-1">
             <ChannelChat
               workspaceId={workspaceId}
@@ -97,14 +110,23 @@ const ChannelPage = () => {
 }
 
 interface ChannelHeaderProps {
+  workspaceId: string
   channel: Channel | undefined
   canInvite: boolean
   onInvite: () => void
+  people: SearchPerson[]
   /** A voice channel shows a speaker instead of a hash. */
   voice?: boolean
 }
 
-const ChannelHeader = ({ channel, canInvite, onInvite, voice = false }: ChannelHeaderProps) => {
+const ChannelHeader = ({
+  workspaceId,
+  channel,
+  canInvite,
+  onInvite,
+  people,
+  voice = false,
+}: ChannelHeaderProps) => {
   const memberOpen = useMemberPanelOpen()
   const Icon = voice ? SpeakerIcon : HashIcon
 
@@ -126,6 +148,14 @@ const ChannelHeader = ({ channel, canInvite, onInvite, voice = false }: ChannelH
         </>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        {!voice && channel !== undefined && (
+          <MessageSearch
+            workspaceId={workspaceId}
+            channelId={channel.id}
+            people={people}
+            defaultScope="channel"
+          />
+        )}
         {canInvite && (
           <IconButton label="Пригласить людей" onClick={onInvite}>
             <LinkIcon />
@@ -162,7 +192,14 @@ const VoiceChannelPage = ({
 
   return (
     <section aria-label="Голосовой канал" className="flex min-h-0 flex-1 flex-col">
-      <ChannelHeader channel={channel} canInvite={canInvite} onInvite={onInvite} voice />
+      <ChannelHeader
+        workspaceId={workspaceId}
+        channel={channel}
+        canInvite={canInvite}
+        onInvite={onInvite}
+        people={[]}
+        voice
+      />
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
           {here ? (

@@ -8,6 +8,7 @@ import {
   useConversation,
 } from '@/entities/conversation'
 import { asList, useBlockedUsers, useFriendActions, useFriends } from '@/entities/friend'
+import { MessageSearch } from '@/entities/message'
 import { NotificationLevelDropdownMenu } from '@/entities/notification-setting'
 import { useSession } from '@/entities/session'
 import { UserAvatar, UserAvatarStack, UserName, userDisplayName } from '@/entities/user'
@@ -180,46 +181,60 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
           )}
         </div>
         {isGroup ? (
-          <GroupActions conversation={conversation} className="ml-auto" />
+          <>
+            <MessageSearch
+              conversationId={conversationId}
+              people={conversation.members}
+              defaultScope="conversation"
+            />
+            <GroupActions conversation={conversation} className="ml-auto" />
+          </>
         ) : (
           peer && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton label="Действия с диалогом" className="ml-auto">
-                  <MoreIcon />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <SecretChatMenuItem userId={peer.id} nickname={peer.nickname} />
-                <DropdownMenuSeparator />
-                <NotificationLevelDropdownMenu
-                  target={{ scope: 'conversation', targetId: conversationId }}
-                />
-                <DropdownMenuSeparator />
-                {blockedPeer ? (
-                  <DropdownMenuItem
-                    disabled={actions.isPending}
-                    onSelect={() => {
-                      actions.unblockUser(peer.id)
-                    }}
-                  >
-                    <BanIcon className="size-4 text-fg-muted" />
-                    Разблокировать
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    className="text-danger"
-                    disabled={actions.isPending}
-                    onSelect={() => {
-                      actions.blockUser(peer.id)
-                    }}
-                  >
-                    <BanIcon className="size-4" />
-                    Заблокировать
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <MessageSearch
+                conversationId={conversationId}
+                people={conversation.members}
+                defaultScope="conversation"
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton label="Действия с диалогом" className="ml-auto">
+                    <MoreIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <SecretChatMenuItem userId={peer.id} nickname={peer.nickname} />
+                  <DropdownMenuSeparator />
+                  <NotificationLevelDropdownMenu
+                    target={{ scope: 'conversation', targetId: conversationId }}
+                  />
+                  <DropdownMenuSeparator />
+                  {blockedPeer ? (
+                    <DropdownMenuItem
+                      disabled={actions.isPending}
+                      onSelect={() => {
+                        actions.unblockUser(peer.id)
+                      }}
+                    >
+                      <BanIcon className="size-4 text-fg-muted" />
+                      Разблокировать
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      className="text-danger"
+                      disabled={actions.isPending}
+                      onSelect={() => {
+                        actions.blockUser(peer.id)
+                      }}
+                    >
+                      <BanIcon className="size-4" />
+                      Заблокировать
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           )
         )}
       </header>
