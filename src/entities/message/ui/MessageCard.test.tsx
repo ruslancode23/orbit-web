@@ -57,7 +57,7 @@ it('leaves the text alone when the message mentions someone else', () => {
     { route: '/' },
   )
 
-  expect(screen.getByText('@Anna привет').tagName).toBe('P')
+  expect(screen.getByText('@Anna привет').tagName).toBe('SPAN')
 })
 
 it('shows a reply preview and jumps to the message it answers', async () => {

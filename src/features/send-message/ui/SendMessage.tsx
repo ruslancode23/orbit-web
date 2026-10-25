@@ -269,7 +269,49 @@ export const SendMessage = ({
     setActiveIndex(0)
   }
 
+  // The formatting buttons of the composer, as keyboard shortcuts: the
+  // selection is wrapped, or an empty pair is left with the caret inside.
+  const applyFormat = (before: string, after = before) => {
+    const field = fieldRef.current
+    if (!field) {
+      return
+    }
+    const start = field.selectionStart
+    const end = field.selectionEnd
+    const selected = text.slice(start, end)
+    const next = `${text.slice(0, start)}${before}${selected}${after}${text.slice(end)}`
+    setValue('content', next, { shouldDirty: true })
+    const caretFrom = start + before.length
+    requestAnimationFrame(() => {
+      field.focus()
+      field.setSelectionRange(caretFrom, caretFrom + selected.length)
+    })
+  }
+
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.metaKey || event.ctrlKey) {
+      const key = event.key.toLowerCase()
+      if (key === 'b') {
+        event.preventDefault()
+        applyFormat('**')
+        return
+      }
+      if (key === 'i') {
+        event.preventDefault()
+        applyFormat('*')
+        return
+      }
+      if (key === 'e') {
+        event.preventDefault()
+        applyFormat('`')
+        return
+      }
+      if (key === 'x' && event.shiftKey) {
+        event.preventDefault()
+        applyFormat('~~')
+        return
+      }
+    }
     if (open) {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()

@@ -17,3 +17,10 @@ export { MessageCard } from './ui/MessageCard'
 export { MessageSearch, type SearchPerson, type SearchScope } from './ui/MessageSearch'
 export { MessageText } from './ui/MessageText'
 export { searchHitHref, searchHitPlace, splitHeadline } from './model/search'
+export {
+  parseInline,
+  parseMessage,
+  plainMessageText,
+  type BlockNode,
+  type InlineNode,
+} from './lib/markdown'

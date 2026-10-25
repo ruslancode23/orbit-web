@@ -1,4 +1,5 @@
 import type { LiveEvent } from '@/entities/live'
+import { plainMessageText } from '@/entities/message'
 import type { NotificationLevel } from '@/entities/notification-setting'
 
 import type { NotificationMode } from './mode'
@@ -53,10 +54,8 @@ export function shouldNotify(message: IncomingMessage, context: NotifyContext): 
 
 /** «Anna: текст», shortened: the notification is a pointer, not the message. */
 export function notificationBody(message: IncomingMessage): string {
-  const text =
-    message.content.length > MAX_BODY
-      ? `${message.content.slice(0, MAX_BODY - 1)}…`
-      : message.content
+  const plain = plainMessageText(message.content)
+  const text = plain.length > MAX_BODY ? `${plain.slice(0, MAX_BODY - 1)}…` : plain
   return message.author ? `${message.author.nickname}: ${text}` : text
 }
 
