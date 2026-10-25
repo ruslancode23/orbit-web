@@ -225,6 +225,11 @@ it('wraps the selection with bold and inline code from the keyboard', async () =
 
   await userEvent.keyboard('{Control>}b{/Control}')
   expect(field).toHaveValue('**жирный**')
+  // The shortcut puts the caret around the inner text on the next frame; the
+  // frame would otherwise reset the selection set for the second wrap.
+  await waitFor(() => {
+    expect(field.selectionStart).toBe(2)
+  })
 
   field.setSelectionRange(0, field.value.length)
   await userEvent.keyboard('{Control>}e{/Control}')
@@ -242,6 +247,9 @@ it('wraps the selection with italic and strike from the keyboard', async () => {
 
   await userEvent.keyboard('{Control>}i{/Control}')
   expect(field).toHaveValue('*текст*')
+  await waitFor(() => {
+    expect(field.selectionStart).toBe(1)
+  })
 
   field.setSelectionRange(0, field.value.length)
   await userEvent.keyboard('{Control>}{Shift>}x{/Shift}{/Control}')

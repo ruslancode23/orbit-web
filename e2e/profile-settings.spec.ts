@@ -60,6 +60,33 @@ test('an uploaded avatar is shown in the feed', async ({ page }) => {
   await expect(avatar).toHaveAttribute('src', /.+/)
 })
 
+test('the window fills the screen and keeps its box between sections', async ({ page }) => {
+  const nickname = unique('sections')
+  await openWorkspace(page, nickname)
+  await openProfileTab(page)
+
+  const viewport = page.viewportSize()
+  if (!viewport) {
+    throw new Error('The browser has no viewport.')
+  }
+  const screen = { x: 0, y: 0, width: viewport.width, height: viewport.height }
+  const dialog = page.getByRole('dialog', { name: 'Настройки пользователя' })
+  expect(await dialog.boundingBox()).toEqual(screen)
+
+  for (const name of [
+    'Голос и видео',
+    'Уведомления',
+    'Приватность',
+    'Приложение',
+    'Аккаунт',
+    'Профиль',
+  ]) {
+    await page.getByRole('tab', { name }).click()
+    await expect(page.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true')
+    expect(await dialog.boundingBox()).toEqual(screen)
+  }
+})
+
 test('a new display name is shown in the member column', async ({ page }) => {
   const nickname = unique('display')
   const displayName = unique('Анна')
