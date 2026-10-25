@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { useSession } from '@/entities/session'
 import { UserAvatar, userDisplayName } from '@/entities/user'
@@ -39,11 +39,17 @@ const SectionHeading = ({ title, hint }: { title: string; hint: string }) => {
   )
 }
 
-const CLOSE_BUTTON =
-  'inline-flex size-9 shrink-0 items-center justify-center rounded-md text-fg-muted transition-colors duration-150 hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none'
-
-const TAB_TRIGGER =
-  'flex-none justify-start px-3 py-2 text-left text-sm whitespace-nowrap md:w-full'
+/** A section in the left rail: the same trigger, only its section differs. */
+const SettingsTab = ({ value, children }: { value: string; children: ReactNode }) => {
+  return (
+    <TabsTrigger
+      value={value}
+      className="flex-none justify-start px-3 py-2 text-left text-sm whitespace-nowrap md:w-full"
+    >
+      {children}
+    </TabsTrigger>
+  )
+}
 
 /**
  * The one place for everything that belongs to the person: profile, devices,
@@ -129,24 +135,12 @@ export const UserSettings = ({
                 aria-label="Разделы настроек"
                 className="w-full flex-row flex-wrap rounded-none bg-transparent p-0 md:flex-col md:flex-nowrap"
               >
-                <TabsTrigger value="profile" className={TAB_TRIGGER}>
-                  Профиль
-                </TabsTrigger>
-                <TabsTrigger value="voice" className={TAB_TRIGGER}>
-                  Голос и видео
-                </TabsTrigger>
-                <TabsTrigger value="notifications" className={TAB_TRIGGER}>
-                  Уведомления
-                </TabsTrigger>
-                <TabsTrigger value="privacy" className={TAB_TRIGGER}>
-                  Приватность
-                </TabsTrigger>
-                <TabsTrigger value="app" className={TAB_TRIGGER}>
-                  Приложение
-                </TabsTrigger>
-                <TabsTrigger value="account" className={TAB_TRIGGER}>
-                  Аккаунт
-                </TabsTrigger>
+                <SettingsTab value="profile">Профиль</SettingsTab>
+                <SettingsTab value="voice">Голос и видео</SettingsTab>
+                <SettingsTab value="notifications">Уведомления</SettingsTab>
+                <SettingsTab value="privacy">Приватность</SettingsTab>
+                <SettingsTab value="app">Приложение</SettingsTab>
+                <SettingsTab value="account">Аккаунт</SettingsTab>
               </TabsList>
 
               {user && (
@@ -243,7 +237,7 @@ export const UserSettings = ({
                 type="button"
                 aria-label="Закрыть"
                 title="Закрыть"
-                className={`absolute top-3 right-3 z-10 md:top-4 md:right-4 ${CLOSE_BUTTON}`}
+                className="absolute top-3 right-3 z-10 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-fg-muted transition-colors duration-150 hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none md:top-4 md:right-4"
               >
                 <XIcon />
               </button>
