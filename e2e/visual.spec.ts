@@ -181,8 +181,9 @@ test.describe('visual snapshots', () => {
 
     await page.getByRole('button', { name: 'Настройки пользователя' }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
+    // Full screen and opaque, and everything it shows is fixed, so the picture
+    // needs no masks — the ones for the page under it would only paint over it.
     await expect(page).toHaveScreenshot('settings.png', {
-      mask: masks,
       animations: 'disabled',
       caret: 'hide',
       scale: 'css',
