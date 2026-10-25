@@ -11,6 +11,7 @@ import {
   useAttachmentUploads,
   useFileDrop,
 } from '@/features/attach-file'
+import { RemovePreviewButton } from '@/features/message-actions'
 import { SendMessage, type MentionPerson } from '@/features/send-message'
 import { isApiError } from '@/shared/api'
 import { usePageVisible } from '@/shared/lib/page-visibility'
@@ -354,6 +355,11 @@ export const ChannelChat = ({
                     replyTo={replyTarget}
                     editing={editingId === message.id}
                     highlighted={highlightedId === message.id}
+                    {...(message.preview !== undefined &&
+                    user !== undefined &&
+                    message.author?.id === user.id
+                      ? { previewAction: <RemovePreviewButton message={message} /> }
+                      : {})}
                     onStartEdit={() => {
                       setEditingId(message.id)
                     }}
