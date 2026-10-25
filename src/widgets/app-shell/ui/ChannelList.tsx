@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { NavLink } from 'react-router'
 
 import { channelAllows, useChannels, type Channel } from '@/entities/channel'
+import {
+  effectiveNotificationLevel,
+  useNotificationSettingsIndex,
+} from '@/entities/notification-setting'
 import { describeUnread, UnreadBadge, useWorkspaceUnread } from '@/entities/unread'
 import { useVoicePresence } from '@/entities/voice-presence'
 import { useVoiceRoom } from '@/entities/voice-room'
@@ -65,6 +69,7 @@ export const ChannelList = ({
   const { data: channels } = useChannels(workspaceId)
   const { data: unread } = useWorkspaceUnread(workspaceId, { watched: true })
   const { data: voicePresence } = useVoicePresence(workspaceId)
+  const notificationSettings = useNotificationSettingsIndex()
   const { activeChannel, participants, screenShares, isSharingScreen, room } = useVoiceRoom()
   const [textOpen, setTextOpen] = useState(() => readGroupOpen(TEXT_GROUP_KEY))
   const [voiceOpen, setVoiceOpen] = useState(() => readGroupOpen(VOICE_GROUP_KEY))
@@ -122,6 +127,12 @@ export const ChannelList = ({
                       ? { unread: counts.unread, mentions: counts.mentions }
                       : { unread: 0, mentions: 0 }
                   const description = describeUnread(shown)
+                  const silent =
+                    effectiveNotificationLevel(notificationSettings, {
+                      scope: 'channel',
+                      targetId: channel.id,
+                      workspaceId,
+                    }) === 'none'
                   return (
                     <ChannelContextMenu
                       key={channel.id}
@@ -149,6 +160,7 @@ export const ChannelList = ({
                           className={({ isActive }) =>
                             cn(
                               'flex items-center gap-1.5 rounded-md py-1 pr-14 pl-2 text-sm transition-colors',
+                              silent && 'opacity-60',
                               isActive
                                 ? 'bg-surface-hover text-fg'
                                 : 'text-fg-muted hover:bg-surface-hover hover:text-fg',

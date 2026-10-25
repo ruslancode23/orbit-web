@@ -1,4 +1,5 @@
 import type { Channel } from '@/entities/channel'
+import { NotificationLevelContextMenu } from '@/entities/notification-setting'
 import { useMarkChannelsRead } from '@/entities/unread'
 import { copyText } from '@/shared/lib/clipboard'
 import {
@@ -80,6 +81,10 @@ export const ChannelContextMenu = ({
           <CopyIcon className="size-4 text-fg-muted" />
           Копировать ссылку
         </ContextMenuItem>
+        <ContextMenuSeparator />
+        <NotificationLevelContextMenu
+          target={{ scope: 'channel', targetId: channel.id, workspaceId }}
+        />
         {(canInvite || canManage) && <ContextMenuSeparator />}
         {canInvite && (
           <ContextMenuItem onSelect={onInvite}>

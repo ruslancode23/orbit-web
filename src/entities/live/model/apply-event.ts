@@ -14,6 +14,7 @@ import {
   listConversationsQueryKey,
   listInvitesQueryKey,
   listMessagesQueryKey,
+  listNotificationSettingsQueryKey,
   listRolesQueryKey,
   listUnreadQueryKey,
   listWorkspaceBansQueryKey,
@@ -239,6 +240,11 @@ export const applyEvent = (queryClient: QueryClient, event: LiveEvent) => {
       queryKey: listWorkspaceBansQueryKey({ path: { workspaceId: event.workspaceId } }),
     })
   }
+  // This account changed how loudly a server, channel or conversation speaks:
+  // its other devices ask for the rows again.
+  if (event.type === 'notification_settings.updated') {
+    void queryClient.invalidateQueries({ queryKey: listNotificationSettingsQueryKey() })
+  }
   // This account's own settings changed on another device: its block list,
   // who may write to it, who may send requests, its devices.
   if (event.type === 'privacy.changed') {
@@ -308,6 +314,7 @@ const LIVE_QUERIES = [
   'getFriendRequestPolicy',
   'listRoles',
   'listChannelOverrides',
+  'listNotificationSettings',
 ] as const
 
 /**

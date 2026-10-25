@@ -2,11 +2,14 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 import { useLive } from '@/entities/live'
+import {
+  effectiveNotificationLevel,
+  useNotificationSettingsIndex,
+} from '@/entities/notification-setting'
 import { useSession } from '@/entities/session'
 import { isPageVisible } from '@/shared/lib/page-visibility'
 import { getPlatform } from '@/shared/platform'
 
-import { isConversationMuted } from './conversation-mute'
 import { conversationIdFromPath, shouldNotifyDirect } from './direct-message-notification'
 import { incomingMessage, notificationBody } from './message-notification'
 import { useNotificationMode } from './mode'
@@ -24,6 +27,7 @@ export function useDirectMessageNotifications(): void {
   const muted = useNotificationsMuted()
   const location = useLocation()
   const navigate = useNavigate()
+  const notificationSettings = useNotificationSettingsIndex()
   const openConversationId = conversationIdFromPath(location.pathname)
 
   const myId = user?.id
@@ -47,7 +51,10 @@ export function useDirectMessageNotifications(): void {
           openConversationId,
           pageVisible: isPageVisible(),
           muted,
-          conversationMuted: isConversationMuted(message.channelId),
+          serverLevel: effectiveNotificationLevel(notificationSettings, {
+            scope: 'conversation',
+            targetId: message.channelId,
+          }),
         })
       ) {
         return
@@ -62,5 +69,5 @@ export function useDirectMessageNotifications(): void {
         },
       })
     })
-  }, [listen, mode, muted, myId, openConversationId, navigate])
+  }, [listen, mode, muted, myId, openConversationId, navigate, notificationSettings])
 }

@@ -8,9 +8,9 @@ import {
   useConversation,
 } from '@/entities/conversation'
 import { asList, useBlockedUsers, useFriendActions, useFriends } from '@/entities/friend'
+import { NotificationLevelDropdownMenu } from '@/entities/notification-setting'
 import { useSession } from '@/entities/session'
 import { UserAvatar, UserAvatarStack, UserName, userDisplayName } from '@/entities/user'
-import { setConversationMuted, useConversationMuted } from '@/features/notifications'
 import { SecretChatMenuItem } from '@/features/start-secret-chat'
 import { UserCard } from '@/features/user-card'
 import { isApiError } from '@/shared/api'
@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { BanIcon, BellIcon, MoreIcon, UsersIcon } from '@/shared/ui/icon'
+import { BanIcon, MoreIcon, UsersIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { ChannelChat } from '@/widgets/channel-chat'
@@ -82,7 +82,6 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
   const { data: friends } = useFriends()
   const { data: blocks } = useBlockedUsers()
   const actions = useFriendActions()
-  const notificationsMuted = useConversationMuted(conversationId)
   // A pair dialogue refuses a send with 404 when the other side blocked this
   // account; the server does not tell which side, so this is all the client sees.
   const [unavailable, setUnavailable] = useState(false)
@@ -193,14 +192,9 @@ const ConversationView = ({ conversationId }: { conversationId: string }) => {
               <DropdownMenuContent align="end">
                 <SecretChatMenuItem userId={peer.id} nickname={peer.nickname} />
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setConversationMuted(conversationId, !notificationsMuted)
-                  }}
-                >
-                  <BellIcon className="size-4 text-fg-muted" />
-                  {notificationsMuted ? 'Включить уведомления' : 'Выключить уведомления'}
-                </DropdownMenuItem>
+                <NotificationLevelDropdownMenu
+                  target={{ scope: 'conversation', targetId: conversationId }}
+                />
                 <DropdownMenuSeparator />
                 {blockedPeer ? (
                   <DropdownMenuItem

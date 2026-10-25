@@ -87,3 +87,45 @@ export const DropdownMenuRadioItem = ({
     </Primitive.RadioItem>
   )
 }
+
+/** The item that opens a nested menu; the arrow says there is more. */
+export const DropdownMenuSub = Primitive.Sub
+export const DropdownMenuSubTrigger = ({
+  className,
+  children,
+  ...props
+}: ComponentProps<typeof Primitive.SubTrigger>) => {
+  return (
+    <Primitive.SubTrigger
+      className={cn(
+        'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface-hover data-[state=open]:bg-surface-hover',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <span aria-hidden="true" className="ml-auto text-fg-muted">
+        ›
+      </span>
+    </Primitive.SubTrigger>
+  )
+}
+
+export const DropdownMenuSubContent = ({
+  className,
+  ...props
+}: ComponentProps<typeof Primitive.SubContent>) => {
+  return (
+    <Primitive.Portal>
+      <Primitive.SubContent
+        sideOffset={4}
+        collisionPadding={8}
+        className={cn(
+          'z-50 min-w-48 overflow-hidden rounded-panel border border-border bg-surface-raised p-1 text-fg shadow-popover',
+          className,
+        )}
+        {...props}
+      />
+    </Primitive.Portal>
+  )
+}

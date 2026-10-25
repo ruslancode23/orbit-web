@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 
+import { NotificationLevelContextMenu } from '@/entities/notification-setting'
 import {
   describeUnread,
   totalUnread,
@@ -96,6 +97,8 @@ export const ServerLink = ({ membership, watched }: ServerLinkProps) => {
             <CheckIcon className="size-4 text-fg-muted" />
             Отметить прочитанным
           </ContextMenuItem>
+          <ContextMenuSeparator />
+          <NotificationLevelContextMenu target={{ scope: 'workspace', targetId: workspace.id }} />
           {(canInvite || canOpenSettings) && <ContextMenuSeparator />}
           {canInvite && (
             <ContextMenuItem

@@ -2,7 +2,6 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
-import { setConversationMuted } from '@/features/notifications'
 import { StartConversation } from '@/features/user-card'
 import { renderWithProviders } from '@/shared/lib/test'
 
@@ -79,6 +78,7 @@ const stubApi = ({
   members = [],
 }: StubOptions = {}): StubState => {
   const state: StubState = { calls: [], renameBodies: [], memberBodies: [], blocks: [...blocks] }
+  const settings: Record<string, unknown>[] = []
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: unknown) => {
@@ -101,6 +101,38 @@ const stubApi = ({
         const id = url.pathname.split('/').at(-1)
         state.blocks = state.blocks.filter((user) => user.id !== id)
         return new Response(null, { status: 204 })
+      }
+      if (url.pathname === '/api/v1/notification-settings') {
+        return json({ items: settings })
+      }
+      if (url.pathname.startsWith('/api/v1/notification-settings/')) {
+        const [, , , , scope, targetId] = url.pathname.split('/')
+        if (request.method === 'DELETE') {
+          const index = settings.findIndex(
+            (item) => item.scope === scope && item.targetId === targetId,
+          )
+          if (index >= 0) {
+            settings.splice(index, 1)
+          }
+          return new Response(null, { status: 204 })
+        }
+        const body = (await request.clone().json()) as { level: string; mutedUntil: string | null }
+        const stored = {
+          scope,
+          targetId,
+          level: body.level,
+          mutedUntil: body.mutedUntil,
+          updatedAt: '2026-10-24T10:00:00Z',
+        }
+        const index = settings.findIndex(
+          (item) => item.scope === scope && item.targetId === targetId,
+        )
+        if (index >= 0) {
+          settings[index] = stored
+        } else {
+          settings.push(stored)
+        }
+        return json(stored)
       }
       if (url.pathname === '/api/v1/conversations/unread') {
         return json({ unread: 0, mentions: 0 })
@@ -179,7 +211,6 @@ const renderPage = (route = '/me', { withList = false } = {}) =>
   )
 
 afterEach(() => {
-  setConversationMuted('c-direct', false)
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
@@ -245,19 +276,29 @@ it('explains a send refused with 404 as a blocked dialogue, not a network failur
 })
 
 it('turns the notifications of one dialogue off and on from its menu', async () => {
-  stubApi()
+  const state = stubApi()
   renderPage('/me/c-direct')
 
   await screen.findByRole('heading', { name: 'Боб', level: 1 })
   await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
-  await userEvent.click(await screen.findByRole('menuitem', { name: 'Выключить уведомления' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Уведомления' }))
+  await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Ничего' }))
+
+  await waitFor(() => {
+    expect(state.calls).toContain('PUT /api/v1/notification-settings/conversation/c-direct')
+  })
 
   await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
-  expect(await screen.findByRole('menuitem', { name: 'Включить уведомления' })).toBeInTheDocument()
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Уведомления' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Включить уведомления' }))
 
-  await userEvent.click(screen.getByRole('menuitem', { name: 'Включить уведомления' }))
+  await waitFor(() => {
+    expect(state.calls).toContain('DELETE /api/v1/notification-settings/conversation/c-direct')
+  })
+
   await userEvent.click(screen.getByRole('button', { name: 'Действия с диалогом' }))
-  expect(await screen.findByRole('menuitem', { name: 'Выключить уведомления' })).toBeInTheDocument()
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Уведомления' }))
+  expect(screen.queryByRole('menuitem', { name: 'Включить уведомления' })).not.toBeInTheDocument()
 })
 
 it('names a group by its title and offers the group actions', async () => {

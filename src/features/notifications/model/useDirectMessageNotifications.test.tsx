@@ -4,11 +4,11 @@ import { act } from '@testing-library/react'
 import type * as LiveModule from '@/entities/live'
 import type { LiveEvent } from '@/entities/live'
 import { setPresenceChoice } from '@/entities/live'
-import { getCurrentUserQueryKey } from '@/shared/api'
+import { getCurrentUserQueryKey, listNotificationSettingsQueryKey } from '@/shared/api'
+import type { NotificationSetting } from '@/shared/api'
 import { createFakePlatform, renderWithProviders } from '@/shared/lib/test'
 import { setPlatform } from '@/shared/platform'
 
-import { setConversationMuted } from './conversation-mute'
 import { setNotificationMode } from './mode'
 import { useDirectMessageNotifications } from './useDirectMessageNotifications'
 
@@ -57,11 +57,23 @@ const Probe = () => {
   return null
 }
 
-const renderProbe = (route = '/me/other') => {
+const conversationSetting = (
+  targetId: string,
+  level: NotificationSetting['level'],
+): NotificationSetting => ({
+  scope: 'conversation',
+  targetId,
+  level,
+  mutedUntil: null,
+  updatedAt: new Date('2026-10-24T10:00:00Z'),
+})
+
+const renderProbe = (route = '/me/other', settings: NotificationSetting[] = []) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
   queryClient.setQueryData(getCurrentUserQueryKey(), anna)
+  queryClient.setQueryData(listNotificationSettingsQueryKey(), { items: settings })
   return renderWithProviders(<Probe />, { route, queryClient })
 }
 
@@ -79,14 +91,12 @@ beforeEach(() => {
   state.listeners = []
   setPresenceChoice('auto')
   setNotificationMode('mentions')
-  setConversationMuted('c-direct', false)
   platform = createFakePlatform()
   setPlatform(platform)
 })
 
 afterEach(() => {
   setPlatform(null)
-  setConversationMuted('c-direct', false)
   vi.unstubAllGlobals()
 })
 
@@ -111,14 +121,22 @@ it('stays quiet for the dialogue that is open and visible', () => {
 })
 
 it('stays quiet for a dialogue whose notifications are off', () => {
-  renderProbe()
-  act(() => {
-    setConversationMuted('c-direct', true)
-  })
-
+  renderProbe('/me/other', [conversationSetting('c-direct', 'none')])
   emit(messageEvent())
 
   expect(platform.notifications.show).not.toHaveBeenCalled()
+})
+
+it('mentions only when the dialogue is set to mentions', () => {
+  renderProbe('/me/other', [conversationSetting('c-direct', 'mentions')])
+  emit(messageEvent())
+  expect(platform.notifications.show).not.toHaveBeenCalled()
+
+  emit({
+    ...messageEvent(),
+    payload: { ...(messageEvent().payload as object), mentions: [anna.id] },
+  })
+  expect(platform.notifications.show).toHaveBeenCalledTimes(1)
 })
 
 it('«Не беспокоить» silences direct messages as well', () => {
