@@ -16,6 +16,8 @@ import {
 import { UserCard } from '@/features/user-card'
 import { cn } from '@/shared/lib/cn'
 
+import type { ReactNode } from 'react'
+
 interface MessageRowProps {
   message: Message
   /** The server of the channel; a dialogue has none and so no server role. */
@@ -35,6 +37,8 @@ interface MessageRowProps {
   replyTo?: Message
   editing: boolean
   highlighted: boolean
+  /** The author's button to remove the link preview, when there is one. */
+  previewAction?: ReactNode
   onStartEdit: () => void
   onStopEdit: () => void
   onReply: () => void
@@ -55,6 +59,7 @@ export const MessageRow = ({
   replyTo,
   editing,
   highlighted,
+  previewAction,
   onStartEdit,
   onStopEdit,
   onReply,
@@ -78,6 +83,7 @@ export const MessageRow = ({
         replyTo={replyTo}
         onJumpTo={onJumpTo}
         highlighted={highlighted}
+        {...(previewAction === undefined ? {} : { previewAction })}
         renderAuthorPart={(part, content) => {
           if (!message.author) {
             return content

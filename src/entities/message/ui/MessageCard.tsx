@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 
+import { env } from '@/shared/config'
 import { cn } from '@/shared/lib/cn'
 import { Avatar } from '@/shared/ui/avatar'
 import { BanIcon, ReplyIcon } from '@/shared/ui/icon'
@@ -40,6 +41,8 @@ interface MessageCardProps {
   actions?: ReactNode
   /** Reactions, laid out under the text. */
   children?: ReactNode
+  /** The author's way to remove the link preview, supplied by the feature above. */
+  previewAction?: ReactNode
   /**
    * The people of the conversation. A system line names the person it added
    * from this list; without it the line stays understandable but less exact.
@@ -64,6 +67,7 @@ export const MessageCard = ({
   attachments,
   actions,
   children,
+  previewAction,
   people = [],
   renderAuthorPart,
 }: MessageCardProps) => {
@@ -233,11 +237,69 @@ export const MessageCard = ({
               </div>
             ))}
 
+          {!deleted && message.preview !== undefined && (
+            <LinkPreviewCard preview={message.preview} action={previewAction} />
+          )}
+
           {!deleted && attachments}
 
           {children}
         </div>
       </div>
     </article>
+  )
+}
+
+interface LinkPreviewCardProps {
+  preview: NonNullable<Message['preview']>
+  action?: ReactNode
+}
+
+/**
+ * The OpenGraph card under a message. The image is lazy and has a fixed box, so
+ * a feed that is already on screen does not jump when it arrives; it also comes
+ * through this server, never from the page the card was read on.
+ */
+const LinkPreviewCard = ({ preview, action }: LinkPreviewCardProps) => {
+  const [imageFailed, setImageFailed] = useState(false)
+  const image =
+    preview.imageUrl === undefined
+      ? undefined
+      : `${env.apiUrl.replace(/\/+$/u, '')}${preview.imageUrl}`
+  const showImage = image !== undefined && !imageFailed
+
+  return (
+    <div className="relative mt-1 max-w-md">
+      <a
+        href={preview.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex overflow-hidden rounded-md border border-border bg-surface transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+      >
+        {showImage && (
+          <img
+            src={image}
+            alt=""
+            width={96}
+            height={96}
+            loading="lazy"
+            className="size-24 shrink-0 bg-surface-hover object-cover"
+            onError={() => {
+              setImageFailed(true)
+            }}
+          />
+        )}
+        <span className="flex min-w-0 flex-col gap-0.5 p-2">
+          {preview.siteName !== undefined && (
+            <span className="truncate text-xs text-fg-muted">{preview.siteName}</span>
+          )}
+          <span className="line-clamp-2 text-sm font-semibold text-fg">{preview.title}</span>
+          {preview.description !== undefined && (
+            <span className="line-clamp-2 text-xs text-fg-muted">{preview.description}</span>
+          )}
+        </span>
+      </a>
+      {action !== undefined && <div className="absolute top-1 right-1">{action}</div>}
+    </div>
   )
 }

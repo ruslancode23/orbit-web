@@ -49,6 +49,7 @@ export type {
   Device,
   DeviceRegistration,
   KeyBundle,
+  LinkPreview,
   OneTimeKey,
   SecretChat,
   SecretChatPeer,

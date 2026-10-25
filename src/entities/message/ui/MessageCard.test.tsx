@@ -116,3 +116,34 @@ it('says a message was edited or deleted', () => {
   )
   expect(screen.getByText('Сообщение удалено')).toBeInTheDocument()
 })
+
+it('draws a link preview and the author action beside it', () => {
+  const withPreview: Message = makeMessage({
+    preview: {
+      id: 'p-1',
+      url: 'https://orbit.chat/docs',
+      title: 'Документация Orbit',
+      description: 'Как всё устроено',
+      siteName: 'Orbit',
+      imageUrl: '/api/v1/link-previews/p-1/image',
+    },
+  })
+  renderWithProviders(
+    <MessageCard
+      message={withPreview}
+      startsGroup
+      previewAction={<button type="button" aria-label="Убрать превью" />}
+    />,
+    { route: '/' },
+  )
+
+  const card = screen.getByRole('link', { name: /Документация Orbit/ })
+  expect(card).toHaveAttribute('href', 'https://orbit.chat/docs')
+  expect(card).toHaveAttribute('rel', 'noopener noreferrer')
+  expect(screen.getByText('Orbit')).toBeInTheDocument()
+  expect(screen.getByText('Как всё устроено')).toBeInTheDocument()
+  const image = screen.getByRole('presentation', { hidden: true })
+  expect(image).toHaveAttribute('loading', 'lazy')
+  expect(image).toHaveAttribute('src', 'http://localhost:8080/api/v1/link-previews/p-1/image')
+  expect(screen.getByRole('button', { name: 'Убрать превью' })).toBeInTheDocument()
+})
