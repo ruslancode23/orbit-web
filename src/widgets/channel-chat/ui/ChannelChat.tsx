@@ -1,5 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router'
 
 import { type Message } from '@/entities/message'
 import { useSession } from '@/entities/session'
@@ -72,8 +73,12 @@ export const ChannelChat = ({
 }: ChannelChatProps) => {
   const { user } = useSession()
   const authorClasses = useAuthorClasses(workspaceId)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // A search result opens the history around its message, not at the newest one.
+  const atSeq = searchParams.get('at') ?? undefined
+  const at = atSeq !== undefined && /^\d+$/u.test(atSeq) ? atSeq : undefined
   const { messages, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useChannelHistory(channelId)
+    useChannelHistory(channelId, at === undefined ? undefined : Number(at) + 25)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Whether the reader has touched the scrolling since the feed was last pinned:
   // a wheel, a touch, a key or the scrollbar. Only that may unpin the feed.
@@ -82,6 +87,8 @@ export const ChannelChat = ({
   const [replyTo, setReplyTo] = useState<Message | undefined>(undefined)
   const [editingId, setEditingId] = useState<string | undefined>(undefined)
   const [highlightedId, setHighlightedId] = useState<string | undefined>(undefined)
+  // The message a search result named is scrolled to once, when its window arrives.
+  const jumpedRef = useRef<string | undefined>(undefined)
   const pageVisible = usePageVisible()
   const uploads = useAttachmentUploads(channelId)
   const { dragging, dropProps } = useFileDrop(uploads.add)
@@ -91,7 +98,7 @@ export const ChannelChat = ({
     workspaceId,
     channelId,
     newestSeq: messages.at(-1)?.seq,
-    viewing: atBottom && pageVisible && !isPending,
+    viewing: at === undefined && atBottom && pageVisible && !isPending,
   })
 
   // Where the cursor stood when the channel was opened. Reading moves the
@@ -170,6 +177,31 @@ export const ChannelChat = ({
       clearTimeout(timer)
     }
   }, [highlightedId])
+
+  // A search result landed: put its message in the middle and mark it.
+  useEffect(() => {
+    if (at === undefined || messages.length === 0) {
+      return undefined
+    }
+    const key = `${channelId}:${at}`
+    if (jumpedRef.current === key) {
+      return undefined
+    }
+    const index = messages.findIndex((message) => String(message.seq) === at)
+    if (index === -1) {
+      return undefined
+    }
+    jumpedRef.current = key
+    readerScrolledRef.current = true
+    setAtBottom(false)
+    const frame = requestAnimationFrame(() => {
+      virtualizer.scrollToIndex(index, { align: 'center' })
+      setHighlightedId(messages[index]?.id)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [at, messages, channelId, virtualizer])
 
   // Opening a channel starts at the newest message, as a chat should.
   useLayoutEffect(() => {
@@ -346,6 +378,13 @@ export const ChannelChat = ({
               variant="subtle"
               className="pointer-events-auto size-9 rounded-full shadow-popover"
               onClick={() => {
+                if (at !== undefined) {
+                  // Leave the old window: the history goes back to the newest page.
+                  const next = new URLSearchParams(searchParams)
+                  next.delete('at')
+                  setSearchParams(next, { replace: true })
+                  jumpedRef.current = undefined
+                }
                 setAtBottom(true)
               }}
             >
