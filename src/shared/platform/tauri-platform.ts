@@ -20,6 +20,7 @@ import type {
   PlatformAutostart,
   PlatformBadge,
   PlatformInstall,
+  PlatformLinks,
   PlatformNotifications,
   PlatformPush,
   PlatformPushToTalk,
@@ -108,6 +109,33 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     },
   }
 
+  // The shell already sends external links to the OS browser (it blocks the navigation); this
+  // side only hears the invites the OS opens for us.
+  const links: PlatformLinks = {
+    isDesktop: () => true,
+    onOpen(listener) {
+      let stop: (() => void) | undefined
+      let cancelled = false
+      void listen<string>(DEEP_LINK_EVENT, (event) => {
+        listener(event.payload)
+      })
+        .then((unlisten) => {
+          if (cancelled) {
+            unlisten()
+          } else {
+            stop = unlisten
+          }
+        })
+        .catch((error: unknown) => {
+          console.warn('Orbit: deep link listener was not registered', error)
+        })
+      return () => {
+        cancelled = true
+        stop?.()
+      }
+    },
+  }
+
   // The shell owns the shortcut, so the key reaches the app while another window is focused.
   const pushToTalk: PlatformPushToTalk = {
     isSupported: () => true,
@@ -185,6 +213,7 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     notifications,
     badge,
     pushToTalk,
+    links,
     // Keys and sessions move behind the OS keychain; the history keeps its attachments in
     // IndexedDB until they have a binary channel (see the store's own note).
     secretStore: createTauriSecretStore(),
@@ -194,6 +223,9 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     system: { describe: () => description },
   }
 }
+
+/** The shell emits this when the OS opens an `orbit://` link. */
+const DEEP_LINK_EVENT = 'orbit://open-url'
 
 /** The shell emits this when the push-to-talk key goes down or up, from any window. */
 const PUSH_TO_TALK_EVENT = 'orbit://push-to-talk'

@@ -189,6 +189,26 @@ describe('desktop platform: notification click', () => {
   })
 })
 
+describe('desktop platform: links', () => {
+  it('reports the desktop shell and delivers the invite the OS opened', async () => {
+    const stop = vi.fn()
+    shell.listen.mockResolvedValue(stop)
+    const platform = await createDesktopPlatform()
+    const listener = vi.fn()
+
+    expect(platform.links.isDesktop()).toBe(true)
+    const off = platform.links.onOpen(listener)
+    await Promise.resolve()
+    const [event, handler] = shell.listen.mock.calls[0] ?? []
+    handler?.({ payload: 'orbit://invite/abc' })
+
+    expect(event).toBe('orbit://open-url')
+    expect(listener).toHaveBeenCalledWith('orbit://invite/abc')
+    off()
+    expect(stop).toHaveBeenCalledOnce()
+  })
+})
+
 describe('desktop platform: push-to-talk', () => {
   it('asks the shell to own the shortcut and reports whether it agreed', async () => {
     shell.invoke.mockResolvedValue('shift+control+Backquote')

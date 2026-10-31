@@ -1,10 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import { createTauriPlatform, setPlatform } from '@/shared/platform'
+import { createTauriPlatform, deepLinkPath, getPlatform, setPlatform } from '@/shared/platform'
 import { registerServiceWorker } from '@/shared/pwa'
 
 import { App } from './App'
+import { router } from '../routes/router'
 import '../styles/index.css'
 
 const root = document.getElementById('root')
@@ -37,4 +38,12 @@ void installPlatform().finally(() => {
   if (!isDesktop) {
     registerServiceWorker()
   }
+
+  // An invite opened from a browser lands on the invite page, whether or not someone is signed in.
+  getPlatform().links.onOpen((url) => {
+    const path = deepLinkPath(url)
+    if (path !== null) {
+      void router.navigate(path)
+    }
+  })
 })
