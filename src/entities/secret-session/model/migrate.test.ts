@@ -9,6 +9,9 @@ const legacyKeys = async () => {
   const account = await sealWith(wrap, JSON.stringify({ pickle: 'account' }))
   const session = await sealWith(wrap, JSON.stringify({ pickle: 'session' }))
   await legacy.set('secret', 'device', { deviceId: 'device-1' })
+  await legacy.set('secret-messages', 'chat-1', [
+    { id: 'm1', kind: 'file', file: { name: 'a.txt', blob: new Blob(['attachment']) } },
+  ])
   await legacy.set('secret', 'account', account)
   await legacy.set('secret-chat', 'chat-1', { chat: { id: 'chat-1' }, session })
   return legacy
@@ -36,6 +39,17 @@ describe('secret store migration', () => {
     await expect(openWith(wrap, movedChat?.session as never)).resolves.toContain('session')
   })
 
+  it('moves the history with its attachment', async () => {
+    const legacy = await legacyKeys()
+    const target = keychain()
+
+    await migrateSecretStore(target, legacy)
+
+    const moved = await target.get<{ file: { blob: Blob } }[]>('secret-messages', 'chat-1', null)
+    expect(moved).toHaveLength(1)
+    await expect(moved?.[0]?.file.blob.text()).resolves.toBe('attachment')
+  })
+
   it('leaves nothing readable in IndexedDB afterwards', async () => {
     const legacy = await legacyKeys()
     const target = keychain()
@@ -45,6 +59,7 @@ describe('secret store migration', () => {
     await expect(legacy.get('secret', 'account', null)).resolves.toBeNull()
     await expect(legacy.get('secret', 'wrap', null)).resolves.toBeNull()
     await expect(legacy.keys('secret-chat')).resolves.toEqual([])
+    await expect(legacy.keys('secret-messages')).resolves.toEqual([])
   })
 
   it('does nothing on a second run', async () => {
