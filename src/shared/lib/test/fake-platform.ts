@@ -127,6 +127,7 @@ export function createFakeSecretStore(): PlatformSecretStore {
     return created
   }
   return {
+    backend: 'indexeddb',
     get: <T>(scope: string, key: string, fallback: T | null) =>
       Promise.resolve((scopeOf(scope).get(key) as T | undefined) ?? fallback),
     set: <T>(scope: string, key: string, value: T) => {

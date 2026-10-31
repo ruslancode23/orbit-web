@@ -8,10 +8,15 @@ import {
   type OlmEngine,
   type OlmIdentity,
   type SafetyNumber,
+  ensureWrapKey,
+  openWith,
+  sealWith,
+  type Sealed,
 } from '@/shared/crypto'
-import { base64ToBytes, bytesToBase64 } from '@/shared/lib/base64'
 import { readSecretDevice, SECRET_SCOPE, type StoredSecretDevice } from '@/shared/lib/secret-device'
 import type { PlatformSecretStore } from '@/shared/platform'
+
+import { migrateSecretStore } from './migrate'
 
 import type { SecretApi } from './api'
 
@@ -32,12 +37,7 @@ const accountScope = SECRET_SCOPE
 const chatScope = 'secret-chat'
 const messagesScope = 'secret-messages'
 
-interface Sealed {
-  iv: string
-  data: string
-}
-
-interface SecretChatState {
+export interface SecretChatState {
   chat: SecretChat
   /** Recomputed locally on open, never stored. */
   safetyNumber: SafetyNumber
@@ -157,25 +157,6 @@ const envelopeTTL = (timerSeconds: number): Date => {
   return new Date(Date.now() + bounded)
 }
 
-const sealWith = async (key: CryptoKey, plain: string): Promise<Sealed> => {
-  const iv = crypto.getRandomValues(new Uint8Array(12))
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    new TextEncoder().encode(plain),
-  )
-  return { iv: bytesToBase64(iv), data: bytesToBase64(new Uint8Array(ciphertext)) }
-}
-
-const openWith = async (key: CryptoKey, sealed: Sealed): Promise<string> => {
-  const plaintext = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: base64ToBytes(sealed.iv) },
-    key,
-    base64ToBytes(sealed.data),
-  )
-  return new TextDecoder().decode(plaintext)
-}
-
 /**
  * One browser's secret chats: its Olm account, one session per chat, and the
  * decrypted history on this device only. Nothing here touches the network
@@ -219,9 +200,21 @@ export class SecretSession {
     deviceName: string,
     engine: OlmEngine = createWorkerEngine(),
   ): Promise<SecretSession> {
+    // A desktop install may still keep its keys in IndexedDB; move them before reading any.
+    await migrateSecretStore(store)
+
     const wrapKey = await ensureWrapKey(store)
     const stored = await readSecretDevice(store)
     const sealed = await store.get<Sealed>(accountScope, 'account', null)
+
+    if (stored !== null && sealed === null) {
+      // Half a device: the public half is here, the sealed account is not. Registering a new
+      // device would silently throw away every old chat, so this is an error, not a fresh start.
+      throw new SecretKeyError('Ключи секретных чатов недоступны на этом устройстве.')
+    }
+    if (stored === null && sealed !== null) {
+      throw new SecretKeyError('Ключи секретных чатов недоступны на этом устройстве.')
+    }
 
     if (stored && sealed) {
       await engine.unpickleAccount(await openWith(wrapKey, sealed))
@@ -767,19 +760,6 @@ export class SecretSession {
 }
 
 export class SecretKeyError extends Error {}
-
-const ensureWrapKey = async (store: PlatformSecretStore): Promise<CryptoKey> => {
-  const existing = await store.get<CryptoKey>(accountScope, 'wrap', null)
-  if (existing) {
-    return existing
-  }
-  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
-    'encrypt',
-    'decrypt',
-  ])
-  await store.set(accountScope, 'wrap', key)
-  return key
-}
 
 export const timerLabel = (seconds: number): string => {
   switch (seconds) {

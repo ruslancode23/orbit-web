@@ -60,6 +60,11 @@ export interface PlatformSystem {
  * browser implementation and the decrypted text never leaves this store.
  */
 export interface PlatformSecretStore {
+  /**
+   * Where the values actually live: IndexedDB in a browser, the OS keychain behind the desktop
+   * shell. Migration from one to the other is decided by this, not by guessing.
+   */
+  readonly backend: 'indexeddb' | 'keychain'
   /** `fallback` is returned when nothing was stored yet. */
   get: <T>(scope: string, key: string, fallback: T | null) => Promise<T | null>
   /** Resolves with what was stored, so a caller can chain a write. */
