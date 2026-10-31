@@ -7,13 +7,14 @@ import type { SecretChatState } from './session'
 
 const accountScope = 'secret'
 const chatScope = 'secret-chat'
+const messagesScope = 'secret-messages'
 
 /**
  * Moves the keys of an existing browser install out of IndexedDB (DESK-7).
  *
- * The history is not touched: its attachments are `Blob`s and stay where they are. The account is
- * written last, so an interrupted run leaves nothing that looks migrated and simply runs again.
- * The old values are removed only after the new ones decrypt.
+ * Attachments travel as `Blob`s: the target store moves them into their own encrypted files, so the
+ * history moves too. The account is written last, so an interrupted run leaves nothing that looks
+ * migrated and simply runs again; the old values are removed only after the new ones decrypt.
  */
 export async function migrateSecretStore(
   target: PlatformSecretStore,
@@ -54,6 +55,18 @@ export async function migrateSecretStore(
     await target.set(chatScope, id, moved)
   }
 
+  // The history keeps its shape: the target store's codec deals with the attachments.
+  const histories: string[] = await legacy.keys(messagesScope)
+  const historySizes = new Map<string, number>()
+  for (const id of histories) {
+    const messages = await legacy.get<unknown[]>(messagesScope, id, null)
+    if (messages === null) {
+      continue
+    }
+    await target.set(messagesScope, id, messages)
+    historySizes.set(id, messages.length)
+  }
+
   const resealedAccount = await reseal(legacyAccount)
   if (device !== null) {
     await target.set(accountScope, 'device', device)
@@ -69,7 +82,15 @@ export async function migrateSecretStore(
     }
   }
 
+  for (const [id, size] of historySizes) {
+    const moved = await target.get<unknown[]>(messagesScope, id, null)
+    if (moved?.length !== size) {
+      throw new SecretKeyError('История секретных чатов не перенеслась полностью.')
+    }
+  }
+
   await legacy.clear(chatScope)
+  await legacy.clear(messagesScope)
   await legacy.remove(accountScope, 'account')
   await legacy.remove(accountScope, 'wrap')
   await legacy.remove(accountScope, 'device')
