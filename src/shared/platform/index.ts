@@ -16,3 +16,16 @@ export type {
   ScreenCaptureOptions,
 } from './platform-adapter'
 export { createWebPlatform } from './web-platform'
+
+import type { PlatformAdapter } from './platform-adapter'
+
+/**
+ * The desktop implementation, loaded only when the app runs inside the Tauri shell.
+ *
+ * A static import would put `@tauri-apps/*` into the browser bundle and read Tauri internals
+ * that do not exist there; a dynamic one keeps it in a chunk the browser never requests.
+ */
+export async function createTauriPlatform(): Promise<PlatformAdapter> {
+  const { createDesktopPlatform } = await import('./tauri-platform')
+  return createDesktopPlatform()
+}
