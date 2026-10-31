@@ -12,6 +12,8 @@ export interface PlatformAdapter {
   badge: PlatformBadge
   /** Push-to-talk outside the window; only the desktop shell can hear it. */
   pushToTalk: PlatformPushToTalk
+  /** Links that leave the app and invites that come back into it (DESK-8). */
+  links: PlatformLinks
   mediaDevices: PlatformMediaDevices
   screenCapture: PlatformScreenCapture
   autostart: PlatformAutostart
@@ -72,6 +74,18 @@ export interface PlatformSecretStore {
   remove: (scope: string, key: string) => Promise<void>
   keys: (scope: string) => Promise<string[]>
   clear: (scope: string) => Promise<void>
+}
+
+/**
+ * Where a link goes. In a browser an external link is a new tab; inside the desktop shell the
+ * window has no address bar, so the shell hands it to the OS browser instead, and `orbit://`
+ * links that the OS opens are delivered back to the page.
+ */
+export interface PlatformLinks {
+  /** The page runs inside the desktop shell. */
+  isDesktop: () => boolean
+  /** The OS opened an `orbit://` link; returns the unsubscribe function. */
+  onOpen: (listener: (url: string) => void) => () => void
 }
 
 /**

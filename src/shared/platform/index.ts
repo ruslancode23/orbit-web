@@ -5,6 +5,7 @@ export type {
   PlatformAutostart,
   PlatformBadge,
   PlatformInstall,
+  PlatformLinks,
   PlatformMediaDevices,
   PlatformNotification,
   PlatformNotifications,
@@ -18,6 +19,7 @@ export type {
   ScreenCaptureOptions,
 } from './platform-adapter'
 export { createWebPlatform } from './web-platform'
+export { deepLinkPath } from './deep-link'
 export { createWebSecretStore } from './web-secret-store'
 
 import type { PlatformAdapter } from './platform-adapter'

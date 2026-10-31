@@ -19,6 +19,15 @@ afterEach(() => {
   Reflect.deleteProperty(navigator, 'mediaDevices')
 })
 
+describe('web platform: links', () => {
+  it('is not the desktop shell and hears no deep links', () => {
+    const platform = createWebPlatform()
+
+    expect(platform.links.isDesktop()).toBe(false)
+    expect(platform.links.onOpen(() => undefined)).toBeTypeOf('function')
+  })
+})
+
 describe('web platform: icon badge', () => {
   it('uses the browser badge when the page is an installed app', () => {
     const setAppBadge = vi.fn(() => Promise.resolve())

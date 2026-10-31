@@ -135,6 +135,12 @@ export function createWebPlatform(): PlatformAdapter {
       },
     },
 
+    links: {
+      // A browser opens external links itself, and it cannot receive an orbit:// link.
+      isDesktop: () => false,
+      onOpen: () => noop,
+    },
+
     pushToTalk: {
       // The tab hears the keyboard only while it has focus; the page keeps its own listeners.
       isSupported: () => false,

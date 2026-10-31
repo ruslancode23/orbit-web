@@ -2,7 +2,8 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 
-import { renderWithProviders } from '@/shared/lib/test'
+import { createFakePlatform, renderWithProviders } from '@/shared/lib/test'
+import { setPlatform } from '@/shared/platform'
 
 import InvitePage from './InvitePage'
 
@@ -99,6 +100,26 @@ const renderPage = () =>
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  setPlatform(null)
+})
+
+it('offers the desktop app to a browser', async () => {
+  stubApi()
+  renderPage()
+
+  expect(await screen.findByRole('button', { name: 'Открыть в приложении' })).toBeInTheDocument()
+})
+
+it('does not offer the app from inside the app', async () => {
+  stubApi()
+  setPlatform({
+    ...createFakePlatform(),
+    links: { isDesktop: () => true, onOpen: () => () => undefined },
+  })
+  renderPage()
+
+  await screen.findByRole('heading', { name: 'Команда' })
+  expect(screen.queryByRole('button', { name: 'Открыть в приложении' })).not.toBeInTheDocument()
 })
 
 it('shows what the link leads to and a guest entrance to a newcomer', async () => {

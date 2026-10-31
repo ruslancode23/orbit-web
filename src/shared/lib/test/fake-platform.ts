@@ -5,6 +5,7 @@ import type {
   PlatformInstall,
   PlatformPush,
   PlatformPushToTalk,
+  PlatformLinks,
   PlatformMediaDevices,
   PlatformNotifications,
   PlatformScreenCapture,
@@ -61,6 +62,10 @@ export function createFakePlatform() {
       ),
       unsubscribe: vi.fn<PlatformPush['unsubscribe']>(() => Promise.resolve()),
       onOpen: vi.fn<PlatformPush['onOpen']>(() => () => undefined),
+    },
+    links: {
+      isDesktop: vi.fn<PlatformLinks['isDesktop']>(() => false),
+      onOpen: vi.fn<PlatformLinks['onOpen']>(() => () => undefined),
     },
     pushToTalk: {
       isSupported: vi.fn<PlatformPushToTalk['isSupported']>(() => false),

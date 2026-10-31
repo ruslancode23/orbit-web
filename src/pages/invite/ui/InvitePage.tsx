@@ -4,6 +4,8 @@ import { Link, useLocation, useParams } from 'react-router'
 import { useSession } from '@/entities/session'
 import { AcceptInvite, GuestJoinForm } from '@/features/accept-invite'
 import { isApiError, previewInviteOptions } from '@/shared/api'
+import { getPlatform } from '@/shared/platform'
+import { Button } from '@/shared/ui/button'
 import { Logo } from '@/shared/ui/logo'
 import { PageLoader } from '@/shared/ui/page-loader'
 
@@ -66,6 +68,19 @@ const InvitePage = () => {
             {memberCount} {membersWord(memberCount)}
           </p>
         </header>
+
+        {!getPlatform().links.isDesktop() && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              // The OS hands `orbit://` to the app; a browser without it stays where it is.
+              window.location.href = `orbit://invite/${code}`
+            }}
+          >
+            Открыть в приложении
+          </Button>
+        )}
 
         {isSignedIn ? (
           <div className="flex flex-col gap-3">
