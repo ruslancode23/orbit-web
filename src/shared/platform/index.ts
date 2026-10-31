@@ -9,6 +9,7 @@ export type {
   PlatformNotification,
   PlatformNotifications,
   PlatformPush,
+  PlatformPushToTalk,
   PlatformScreenCapture,
   PlatformSecretStore,
   PlatformSystem,

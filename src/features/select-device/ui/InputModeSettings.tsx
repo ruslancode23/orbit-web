@@ -1,8 +1,18 @@
 import { useId, useState, type KeyboardEvent } from 'react'
 
 import { describeKey, RESERVED_KEYS, useVoiceRoom, type InputMode } from '@/entities/voice-room'
+import { getPlatform } from '@/shared/platform'
 import { Button } from '@/shared/ui/button'
 import { useToast } from '@/shared/ui/toast'
+
+/** A bare modifier cannot be pressed alone, so it cannot be a push-to-talk key. */
+const isModifierKey = (code: string): boolean =>
+  ['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock'].some(
+    (modifier) =>
+      code === modifier ||
+      code.startsWith(`${modifier}Left`) ||
+      code.startsWith(`${modifier}Right`),
+  )
 
 const MODES: readonly { value: InputMode; label: string; description: string }[] = [
   {
@@ -26,6 +36,8 @@ const MODES: readonly { value: InputMode; label: string; description: string }[]
 export const InputModeSettings = () => {
   const { inputMode, setInputMode, pushToTalkKey, setPushToTalkKey } = useVoiceRoom()
   const toast = useToast()
+  // The desktop shell hears the key outside the window; the page then uses ⌘⇧/Ctrl+Shift with it.
+  const globalKey = getPlatform().pushToTalk.isSupported()
   const id = useId()
   const [capturing, setCapturing] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
@@ -52,6 +64,11 @@ export const InputModeSettings = () => {
     }
     if (RESERVED_KEYS.has(event.code)) {
       setRefusal(`${describeKey(event.code)} занята интерфейсом — выберите другую клавишу.`)
+      return
+    }
+    if (isModifierKey(event.code)) {
+      // A modifier alone cannot be a shortcut: it cannot be pressed on its own.
+      setRefusal('Нужна обычная клавиша, а не модификатор — выберите другую.')
       return
     }
     setPushToTalkKey(event.code)
@@ -106,7 +123,7 @@ export const InputModeSettings = () => {
           <div className="flex items-center gap-2">
             <span className="text-sm">Клавиша</span>
             <kbd className="rounded border border-border bg-surface-hover px-2 py-0.5 font-mono text-sm">
-              {describeKey(pushToTalkKey)}
+              {globalKey ? `⌘⇧${describeKey(pushToTalkKey)}` : describeKey(pushToTalkKey)}
             </kbd>
             <Button
               size="sm"
@@ -133,7 +150,9 @@ export const InputModeSettings = () => {
           <p id={`${id}-key-hint`} className="text-xs text-fg-muted">
             {capturing
               ? 'Esc — отмена.'
-              : 'Работает, пока вкладка Orbit открыта и активна. Отпущенная клавиша закрывает микрофон через 0,2 с.'}
+              : globalKey
+                ? 'В приложении клавиша работает в любом окне, вместе с ⌘⇧ (Ctrl+Shift на Windows). Отпущенная клавиша закрывает микрофон через 0,2 с.'
+                : 'Работает, пока вкладка Orbit открыта и активна. Отпущенная клавиша закрывает микрофон через 0,2 с.'}
           </p>
         </div>
       )}

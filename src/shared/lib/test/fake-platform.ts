@@ -4,6 +4,7 @@ import type {
   PlatformBadge,
   PlatformInstall,
   PlatformPush,
+  PlatformPushToTalk,
   PlatformMediaDevices,
   PlatformNotifications,
   PlatformScreenCapture,
@@ -60,6 +61,11 @@ export function createFakePlatform() {
       ),
       unsubscribe: vi.fn<PlatformPush['unsubscribe']>(() => Promise.resolve()),
       onOpen: vi.fn<PlatformPush['onOpen']>(() => () => undefined),
+    },
+    pushToTalk: {
+      isSupported: vi.fn<PlatformPushToTalk['isSupported']>(() => false),
+      register: vi.fn<PlatformPushToTalk['register']>(() => Promise.resolve(false)),
+      onChange: vi.fn<PlatformPushToTalk['onChange']>(() => () => undefined),
     },
     install: {
       isSupported: vi.fn<PlatformInstall['isSupported']>(() => true),

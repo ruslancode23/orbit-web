@@ -10,6 +10,8 @@ export interface PlatformAdapter {
   notifications: PlatformNotifications
   /** The unread number on the app's icon; see `PlatformBadge`. */
   badge: PlatformBadge
+  /** Push-to-talk outside the window; only the desktop shell can hear it. */
+  pushToTalk: PlatformPushToTalk
   mediaDevices: PlatformMediaDevices
   screenCapture: PlatformScreenCapture
   autostart: PlatformAutostart
@@ -65,6 +67,22 @@ export interface PlatformSecretStore {
   remove: (scope: string, key: string) => Promise<void>
   keys: (scope: string) => Promise<string[]>
   clear: (scope: string) => Promise<void>
+}
+
+/**
+ * Push-to-talk while the window is not focused. A browser tab stops seeing the keyboard the
+ * moment it loses focus, so only the desktop shell can offer this; everywhere else
+ * `isSupported()` is false and the page keeps its own key listeners.
+ */
+export interface PlatformPushToTalk {
+  isSupported: () => boolean
+  /**
+   * Asks the shell to own the shortcut. Resolves `false` when the OS refuses — the combination
+   * is already taken or cannot be parsed — and the page should say so rather than stay silent.
+   */
+  register: (accelerator: string | null) => Promise<boolean>
+  /** Pressed and released anywhere in the system; returns the unsubscribe function. */
+  onChange: (listener: (pressed: boolean) => void) => () => void
 }
 
 /**
