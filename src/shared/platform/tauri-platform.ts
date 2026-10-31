@@ -11,6 +11,7 @@ import {
 } from '@tauri-apps/plugin-notification'
 import { arch, platform, version as osVersion } from '@tauri-apps/plugin-os'
 
+import { createTauriSecretStore } from './tauri-secret-store'
 import { createWebPlatform } from './web-platform'
 
 import type {
@@ -184,6 +185,9 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     notifications,
     badge,
     pushToTalk,
+    // Keys and sessions move behind the OS keychain; the history keeps its attachments in
+    // IndexedDB until they have a binary channel (see the store's own note).
+    secretStore: createTauriSecretStore(),
     autostart,
     install,
     push,

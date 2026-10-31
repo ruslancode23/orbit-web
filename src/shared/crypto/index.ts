@@ -14,3 +14,5 @@ export {
   type OlmIdentity,
 } from './olm'
 export { calculateSafetyNumber, SAFETY_EMOJI, type SafetyNumber } from './safety-number'
+export { openWith, sealWith, type Sealed } from './sealed'
+export { ensureWrapKey } from './wrap-key'

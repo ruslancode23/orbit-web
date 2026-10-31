@@ -18,6 +18,7 @@ export type {
   ScreenCaptureOptions,
 } from './platform-adapter'
 export { createWebPlatform } from './web-platform'
+export { createWebSecretStore } from './web-secret-store'
 
 import type { PlatformAdapter } from './platform-adapter'
 

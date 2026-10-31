@@ -56,6 +56,7 @@ const transaction = async <T>(
  * IndexedDB clones it, which is how the Olm pickles stay wrapped at rest.
  */
 export const createWebSecretStore = (): PlatformSecretStore => ({
+  backend: 'indexeddb',
   async get<T>(scope: string, key: string, fallback: T | null): Promise<T | null> {
     const row = await transaction<StoredValue | undefined>('readonly', (store) =>
       store.get(idOf(scope, key)),
