@@ -1,5 +1,6 @@
 import { getTauriVersion, getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart'
 import {
@@ -20,6 +21,7 @@ import type {
   PlatformInstall,
   PlatformNotifications,
   PlatformPush,
+  PlatformPushToTalk,
 } from './platform-adapter'
 
 /**
@@ -105,6 +107,39 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     },
   }
 
+  // The shell owns the shortcut, so the key reaches the app while another window is focused.
+  const pushToTalk: PlatformPushToTalk = {
+    isSupported: () => true,
+    register: (accelerator) =>
+      // The shell answers with the chord it actually owns, or `null` when it let go; a refusal
+      // (no modifier, taken by another app) is an error, and the page falls back to its own key.
+      invoke<string | null>('set_push_to_talk', { accelerator })
+        .then((owned) => owned !== null)
+        .catch(() => false),
+    onChange(listener) {
+      let stop: (() => void) | undefined
+      let cancelled = false
+      void listen<{ pressed: boolean }>(PUSH_TO_TALK_EVENT, (event) => {
+        listener(event.payload.pressed)
+      })
+        .then((unlisten) => {
+          if (cancelled) {
+            unlisten()
+          } else {
+            stop = unlisten
+          }
+        })
+        .catch((error: unknown) => {
+          // Without the listener the key would do nothing at all — say it instead of guessing.
+          console.warn('Orbit: push-to-talk listener was not registered', error)
+        })
+      return () => {
+        cancelled = true
+        stop?.()
+      }
+    },
+  }
+
   // The shell paints the number on the icon; the web app only reports how many there are.
   const badge: PlatformBadge = {
     set(count) {
@@ -148,12 +183,16 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     ...web,
     notifications,
     badge,
+    pushToTalk,
     autostart,
     install,
     push,
     system: { describe: () => description },
   }
 }
+
+/** The shell emits this when the push-to-talk key goes down or up, from any window. */
+const PUSH_TO_TALK_EVENT = 'orbit://push-to-talk'
 
 /** Subscriptions that never fire: nothing on the desktop side raises these events. */
 const noop = (): void => undefined

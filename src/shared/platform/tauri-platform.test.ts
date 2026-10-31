@@ -20,12 +20,15 @@ const shell = vi.hoisted(() => ({
   arch: vi.fn(() => 'aarch64'),
   onAction: vi.fn<(callback: (event: ClickEvent) => void) => Promise<() => void>>(),
   invoke: vi.fn<(command: string, args?: unknown) => Promise<unknown>>(),
+  listen:
+    vi.fn<(event: string, handler: (event: { payload: unknown }) => void) => Promise<() => void>>(),
   unminimize: vi.fn<() => Promise<void>>(),
   show: vi.fn<() => Promise<void>>(),
   setFocus: vi.fn<() => Promise<void>>(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke }))
+vi.mock('@tauri-apps/api/event', () => ({ listen: shell.listen }))
 vi.mock('@tauri-apps/api/app', () => ({
   getVersion: shell.getVersion,
   getTauriVersion: shell.getTauriVersion,
@@ -68,6 +71,7 @@ beforeEach(() => {
   shell.arch.mockReturnValue('aarch64')
   shell.onAction.mockResolvedValue(() => undefined)
   shell.invoke.mockResolvedValue(undefined)
+  shell.listen.mockResolvedValue(() => undefined)
   shell.unminimize.mockResolvedValue()
   shell.show.mockResolvedValue()
   shell.setFocus.mockResolvedValue()
@@ -182,6 +186,48 @@ describe('desktop platform: notification click', () => {
 
     const ids = shell.sendNotification.mock.calls.map(([options]) => (options as { id: number }).id)
     expect(ids[0]).toBe(ids[1])
+  })
+})
+
+describe('desktop platform: push-to-talk', () => {
+  it('asks the shell to own the shortcut and reports whether it agreed', async () => {
+    shell.invoke.mockResolvedValue('shift+control+Backquote')
+
+    const platform = await createDesktopPlatform()
+
+    await expect(platform.pushToTalk.register('CommandOrControl+Shift+Backquote')).resolves.toBe(
+      true,
+    )
+    expect(shell.invoke).toHaveBeenCalledWith('set_push_to_talk', {
+      accelerator: 'CommandOrControl+Shift+Backquote',
+    })
+  })
+
+  it('turns a refused shortcut into false instead of throwing', async () => {
+    shell.invoke.mockRejectedValue(new Error('already taken'))
+
+    const platform = await createDesktopPlatform()
+
+    await expect(platform.pushToTalk.register('CommandOrControl+Shift+KeyY')).resolves.toBe(false)
+  })
+
+  it('reports both edges from the shell event and stops on unsubscribe', async () => {
+    const stop = vi.fn()
+    shell.listen.mockResolvedValue(stop)
+    const platform = await createDesktopPlatform()
+    const listener = vi.fn()
+
+    const off = platform.pushToTalk.onChange(listener)
+    await Promise.resolve()
+    const [, handler] = shell.listen.mock.calls[0] ?? []
+    handler?.({ payload: { pressed: true } })
+    handler?.({ payload: { pressed: false } })
+
+    expect(listener).toHaveBeenNthCalledWith(1, true)
+    expect(listener).toHaveBeenNthCalledWith(2, false)
+
+    off()
+    expect(stop).toHaveBeenCalledOnce()
   })
 })
 

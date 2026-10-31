@@ -12,6 +12,9 @@ const SCREEN_VIDEO: MediaTrackConstraints = {
   frameRate: 30,
 }
 
+/** Subscriptions that never fire: a browser has no push-to-talk outside the tab. */
+const noop = (): void => undefined
+
 /** The Badging API, optional in practice: lib.dom types it as always there. */
 interface AppBadging {
   setAppBadge?: (value?: number) => Promise<void>
@@ -130,6 +133,13 @@ export function createWebPlatform(): PlatformAdapter {
           count > 0 ? badging.setAppBadge(count) : (badging.clearAppBadge?.() ?? Promise.resolve())
         void applied.catch(() => undefined)
       },
+    },
+
+    pushToTalk: {
+      // The tab hears the keyboard only while it has focus; the page keeps its own listeners.
+      isSupported: () => false,
+      register: () => Promise.resolve(false),
+      onChange: () => noop,
     },
 
     install: createWebInstall(),
