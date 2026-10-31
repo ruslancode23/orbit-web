@@ -1,6 +1,7 @@
 import type {
   PlatformSecretStore,
   PlatformAutostart,
+  PlatformBadge,
   PlatformInstall,
   PlatformPush,
   PlatformMediaDevices,
@@ -22,6 +23,9 @@ export function createFakePlatform() {
         Promise.resolve('granted'),
       ),
       show: vi.fn<PlatformNotifications['show']>(),
+    },
+    badge: {
+      set: vi.fn<PlatformBadge['set']>(),
     },
     mediaDevices: {
       list: vi.fn<PlatformMediaDevices['list']>(() => Promise.resolve([])),

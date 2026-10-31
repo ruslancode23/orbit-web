@@ -3,6 +3,7 @@ export type {
   NotificationPermissionState,
   PlatformAdapter,
   PlatformAutostart,
+  PlatformBadge,
   PlatformInstall,
   PlatformMediaDevices,
   PlatformNotification,

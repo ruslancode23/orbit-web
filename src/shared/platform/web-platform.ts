@@ -12,6 +12,12 @@ const SCREEN_VIDEO: MediaTrackConstraints = {
   frameRate: 30,
 }
 
+/** The Badging API, optional in practice: lib.dom types it as always there. */
+interface AppBadging {
+  setAppBadge?: (value?: number) => Promise<void>
+  clearAppBadge?: () => Promise<void>
+}
+
 /** PlatformAdapter on browser APIs. Globals are read on each call, so tests can stub them. */
 export function createWebPlatform(): PlatformAdapter {
   return {
@@ -109,6 +115,20 @@ export function createWebPlatform(): PlatformAdapter {
           throw new DOMException('The capture has no video track', 'NotFoundError')
         }
         return { video, audio: stream.getAudioTracks()[0] ?? null }
+      },
+    },
+
+    badge: {
+      set(count) {
+        // Installed Chromium apps have an icon badge; a normal tab, Safari and Firefox do not,
+        // even though lib.dom declares the methods as always present.
+        const badging = navigator as unknown as AppBadging
+        if (typeof badging.setAppBadge !== 'function') {
+          return
+        }
+        const applied =
+          count > 0 ? badging.setAppBadge(count) : (badging.clearAppBadge?.() ?? Promise.resolve())
+        void applied.catch(() => undefined)
       },
     },
 
