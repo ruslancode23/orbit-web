@@ -40,6 +40,7 @@ import {
   toggleChannelSidebar,
   useChannelSidebarOpen,
 } from '../model/channel-sidebar'
+import { useAppBadge } from '../model/use-app-badge'
 import { useLeaveLostWorkspace } from '../model/use-leave-lost-workspace'
 import { usePushToTalk } from '../model/use-push-to-talk'
 import { useVoiceShortcuts } from '../model/use-voice-shortcuts'
@@ -88,6 +89,7 @@ const Shell = () => {
     watch(workspaceId)
   }
   usePresenceActivity()
+  useAppBadge(workspaceId)
   useMessageNotifications({ workspaceId, channelId })
   // Dialogues muted on this device before the server owned the setting move once.
   useMoveLegacyConversationMutes()

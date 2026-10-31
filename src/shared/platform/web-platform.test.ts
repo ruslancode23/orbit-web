@@ -19,6 +19,24 @@ afterEach(() => {
   Reflect.deleteProperty(navigator, 'mediaDevices')
 })
 
+describe('web platform: icon badge', () => {
+  it('uses the browser badge when the page is an installed app', () => {
+    const setAppBadge = vi.fn(() => Promise.resolve())
+    Object.defineProperty(navigator, 'setAppBadge', { configurable: true, value: setAppBadge })
+
+    createWebPlatform().badge.set(4)
+
+    expect(setAppBadge).toHaveBeenCalledWith(4)
+    Reflect.deleteProperty(navigator, 'setAppBadge')
+  })
+
+  it('does nothing in a browser without a badge', () => {
+    expect(() => {
+      createWebPlatform().badge.set(4)
+    }).not.toThrow()
+  })
+})
+
 describe('web platform: screen capture', () => {
   it('asks the browser for a capped screen with audio and returns its tracks', async () => {
     const video = new FakeMediaStreamTrack('video')

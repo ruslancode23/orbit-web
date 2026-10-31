@@ -1,4 +1,5 @@
 import { getTauriVersion, getVersion } from '@tauri-apps/api/app'
+import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart'
 import {
@@ -15,6 +16,7 @@ import type {
   NotificationPermissionState,
   PlatformAdapter,
   PlatformAutostart,
+  PlatformBadge,
   PlatformInstall,
   PlatformNotifications,
   PlatformPush,
@@ -103,6 +105,13 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     },
   }
 
+  // The shell paints the number on the icon; the web app only reports how many there are.
+  const badge: PlatformBadge = {
+    set(count) {
+      void invoke('set_unread', { count }).catch(noop)
+    },
+  }
+
   const autostart: PlatformAutostart = {
     isSupported: () => true,
     isEnabled: () => isEnabled(),
@@ -138,6 +147,7 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
   return {
     ...web,
     notifications,
+    badge,
     autostart,
     install,
     push,

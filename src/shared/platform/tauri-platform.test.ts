@@ -19,11 +19,13 @@ const shell = vi.hoisted(() => ({
   version: vi.fn(() => '27.0'),
   arch: vi.fn(() => 'aarch64'),
   onAction: vi.fn<(callback: (event: ClickEvent) => void) => Promise<() => void>>(),
+  invoke: vi.fn<(command: string, args?: unknown) => Promise<unknown>>(),
   unminimize: vi.fn<() => Promise<void>>(),
   show: vi.fn<() => Promise<void>>(),
   setFocus: vi.fn<() => Promise<void>>(),
 }))
 
+vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke }))
 vi.mock('@tauri-apps/api/app', () => ({
   getVersion: shell.getVersion,
   getTauriVersion: shell.getTauriVersion,
@@ -65,6 +67,7 @@ beforeEach(() => {
   shell.version.mockReturnValue('27.0')
   shell.arch.mockReturnValue('aarch64')
   shell.onAction.mockResolvedValue(() => undefined)
+  shell.invoke.mockResolvedValue(undefined)
   shell.unminimize.mockResolvedValue()
   shell.show.mockResolvedValue()
   shell.setFocus.mockResolvedValue()
@@ -179,6 +182,29 @@ describe('desktop platform: notification click', () => {
 
     const ids = shell.sendNotification.mock.calls.map(([options]) => (options as { id: number }).id)
     expect(ids[0]).toBe(ids[1])
+  })
+})
+
+describe('desktop platform: icon badge', () => {
+  const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+  it('sends the unread count to the shell', async () => {
+    const platform = await createDesktopPlatform()
+
+    platform.badge.set(3)
+    await settled()
+
+    expect(shell.invoke).toHaveBeenCalledWith('set_unread', { count: 3 })
+  })
+
+  it('clears the badge with zero and survives a failure', async () => {
+    shell.invoke.mockRejectedValue(new Error('no window'))
+
+    const platform = await createDesktopPlatform()
+    platform.badge.set(0)
+    await settled()
+
+    expect(shell.invoke).toHaveBeenCalledWith('set_unread', { count: 0 })
   })
 })
 

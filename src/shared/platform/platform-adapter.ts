@@ -8,6 +8,8 @@
  */
 export interface PlatformAdapter {
   notifications: PlatformNotifications
+  /** The unread number on the app's icon; see `PlatformBadge`. */
+  badge: PlatformBadge
   mediaDevices: PlatformMediaDevices
   screenCapture: PlatformScreenCapture
   autostart: PlatformAutostart
@@ -63,6 +65,15 @@ export interface PlatformSecretStore {
   remove: (scope: string, key: string) => Promise<void>
   keys: (scope: string) => Promise<string[]>
   clear: (scope: string) => Promise<void>
+}
+
+/**
+ * The unread number on the app's icon — the Dock badge on macOS, the taskbar badge or overlay on
+ * Windows, the installed web app's badge in a browser that supports one.
+ */
+export interface PlatformBadge {
+  /** Shows `count` unread items; `0` removes the badge. Never throws and never blocks. */
+  set: (count: number) => void
 }
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported'
