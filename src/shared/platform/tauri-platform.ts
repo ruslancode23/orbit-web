@@ -41,10 +41,35 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
     ? 'granted'
     : 'default'
 
-  // A click on a notification only reaches the app when the listener existed before the
-  // notification was shown, so it is registered here and not on the first message.
-  void onAction(() => {
-    void focusWindow().catch(noop)
+  // A desktop notification has no `tag` of its own, so a tag (the channel) gets a stable numeric
+  // id: the id comes back in the click event, which is how the adapter knows where the message
+  // came from. The OS does not replace a notification by id on macOS or Windows, so a busy
+  // channel stacks; grouping it would need a thread identifier the plugin does not pass on.
+  const clickHandlers = new Map<number, () => void>()
+  const idsByTag = new Map<string, number>()
+  let nextId = 1
+
+  const idOf = (tag: string | undefined): number => {
+    if (tag === undefined) {
+      return nextId++
+    }
+    const known = idsByTag.get(tag)
+    if (known !== undefined) {
+      return known
+    }
+    const id = nextId++
+    idsByTag.set(tag, id)
+    return id
+  }
+
+  // A click only reaches the app when the listener existed before the notification was shown,
+  // so it is registered here and not on the first message.
+  void onAction((performed) => {
+    const id = performed.notification?.id
+    const handler = id === undefined ? undefined : clickHandlers.get(id)
+    void focusWindow()
+      .then(() => handler?.())
+      .catch(noop)
   }).catch((error: unknown) => {
     // Without the listener the OS still activates the app on a click; this is the fallback,
     // and a silent failure here would be invisible until someone expects a click to work.
@@ -57,14 +82,20 @@ export async function createDesktopPlatform(): Promise<PlatformAdapter> {
       permission = toPermission(await requestPermission())
       return permission
     },
-    show({ title, body }) {
+    show({ title, body, tag, onClick }) {
       if (permission !== 'granted') {
         return
       }
+      const id = idOf(tag)
+      if (onClick === undefined) {
+        clickHandlers.delete(id)
+      } else {
+        clickHandlers.set(id, onClick)
+      }
       try {
-        // Desktop notifications have no `tag`: the OS groups them per app, and the plugin
-        // exposes no replacement id that works on both macOS and Windows.
-        sendNotification({ title, body })
+        // `group` groups the notifications in the system UI where the platform honours it;
+        // `id` is what comes back on a click.
+        sendNotification({ id, title, body, group: tag })
       } catch {
         // The OS refused at the last moment; the settings screen shows the permission state,
         // and a failed notification is not worth an error dialog over a message.

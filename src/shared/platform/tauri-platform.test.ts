@@ -1,5 +1,11 @@
 import { createDesktopPlatform } from './tauri-platform'
 
+interface ClickEvent {
+  actionId: string
+  inputValue: string | null
+  notification: { id: number } | null
+}
+
 const shell = vi.hoisted(() => ({
   getVersion: vi.fn<() => Promise<string>>(),
   getTauriVersion: vi.fn<() => Promise<string>>(),
@@ -12,7 +18,7 @@ const shell = vi.hoisted(() => ({
   platform: vi.fn(() => 'macos'),
   version: vi.fn(() => '27.0'),
   arch: vi.fn(() => 'aarch64'),
-  onAction: vi.fn<(callback: () => void) => Promise<() => void>>(),
+  onAction: vi.fn<(callback: (event: ClickEvent) => void) => Promise<() => void>>(),
   unminimize: vi.fn<() => Promise<void>>(),
   show: vi.fn<() => Promise<void>>(),
   setFocus: vi.fn<() => Promise<void>>(),
@@ -102,10 +108,9 @@ describe('desktop platform: notifications', () => {
 
     platform.notifications.show({ title: 'Orbit', body: 'Новое сообщение', tag: 'channel-1' })
 
-    expect(shell.sendNotification).toHaveBeenCalledWith({
-      title: 'Orbit',
-      body: 'Новое сообщение',
-    })
+    expect(shell.sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Orbit', body: 'Новое сообщение', group: 'channel-1' }),
+    )
   })
 
   it('stays silent without permission', async () => {
@@ -131,18 +136,49 @@ describe('desktop platform: notifications', () => {
 })
 
 describe('desktop platform: notification click', () => {
+  /** The listener the adapter registered at creation. */
+  const click = (event: ClickEvent): void => {
+    const [callback] = shell.onAction.mock.calls[0] ?? []
+    callback?.(event)
+  }
+  // The focus chain awaits one window call after another; let the microtasks drain.
+  const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
   it('brings the window back when a notification is clicked', async () => {
     await createDesktopPlatform()
-    const [clicked] = shell.onAction.mock.calls[0] ?? []
-    expect(clicked).toBeTypeOf('function')
-
-    clicked?.()
-    // The focus chain awaits one window call after another; let the microtasks drain.
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    click({ actionId: 'tap', inputValue: null, notification: null })
+    await settled()
 
     expect(shell.unminimize).toHaveBeenCalledOnce()
     expect(shell.show).toHaveBeenCalledOnce()
     expect(shell.setFocus).toHaveBeenCalledOnce()
+  })
+
+  it('opens the channel the clicked notification belongs to', async () => {
+    const platform = await createDesktopPlatform()
+    const onClick = vi.fn()
+    platform.notifications.show({
+      title: 'Orbit',
+      body: 'Новое сообщение',
+      tag: 'channel-1',
+      onClick,
+    })
+    const [options] = shell.sendNotification.mock.calls[0] as [{ id: number }]
+    expect(options.id).toBeTypeOf('number')
+
+    click({ actionId: 'tap', inputValue: null, notification: { id: options.id } })
+    await settled()
+
+    expect(onClick).toHaveBeenCalledOnce()
+  })
+
+  it('gives every notification of one channel the same id', async () => {
+    const platform = await createDesktopPlatform()
+    platform.notifications.show({ title: 'Orbit', body: 'первое', tag: 'channel-1' })
+    platform.notifications.show({ title: 'Orbit', body: 'второе', tag: 'channel-1' })
+
+    const ids = shell.sendNotification.mock.calls.map(([options]) => (options as { id: number }).id)
+    expect(ids[0]).toBe(ids[1])
   })
 })
 
