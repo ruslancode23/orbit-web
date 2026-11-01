@@ -1,3 +1,5 @@
+import { DEFAULT_SCREEN_SHARE_QUALITY, type ScreenShareQuality } from '@/shared/platform'
+
 /**
  * How the microphone is captured: the browser's own processing. Each one is on
  * by default, as in LiveKit; a studio microphone or a music stream may want them off.
@@ -116,4 +118,24 @@ export const readPushToTalkKey = (): string => {
 
 export const savePushToTalkKey = (code: string): void => {
   write(PUSH_TO_TALK_KEY, code)
+}
+
+const SCREEN_RESOLUTION_KEY = 'orbit.voice.screen-resolution'
+const SCREEN_FRAME_RATE_KEY = 'orbit.voice.screen-frame-rate'
+
+/**
+ * What the next screen share asks the browser for (SCRUM-147). Anything never
+ * chosen, or an unknown stored value, keeps the old capture: 1080p at 30 fps.
+ */
+export const readScreenShareQuality = (): ScreenShareQuality => {
+  const resolution = read(SCREEN_RESOLUTION_KEY)
+  return {
+    resolution: resolution === '720p' ? '720p' : DEFAULT_SCREEN_SHARE_QUALITY.resolution,
+    frameRate: read(SCREEN_FRAME_RATE_KEY) === '60' ? 60 : DEFAULT_SCREEN_SHARE_QUALITY.frameRate,
+  }
+}
+
+export const saveScreenShareQuality = (quality: ScreenShareQuality): void => {
+  write(SCREEN_RESOLUTION_KEY, quality.resolution)
+  write(SCREEN_FRAME_RATE_KEY, String(quality.frameRate))
 }

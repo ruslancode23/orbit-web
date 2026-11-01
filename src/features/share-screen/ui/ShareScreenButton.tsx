@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { useVoiceRoom } from '@/entities/voice-room'
+import { useVoiceRoom, readScreenShareQuality } from '@/entities/voice-room'
 import { getPlatform, type ScreenCapture } from '@/shared/platform'
 import { ScreenIcon } from '@/shared/ui/icon'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -25,7 +25,13 @@ export const ShareScreenButton = () => {
         // Unpublishes and stops the screen and its audio at once, so nothing more is sent.
         await room.localParticipant.setScreenShareEnabled(false)
       } else {
-        await publishScreen(room, await getPlatform().screenCapture.capture({ audio: true }))
+        await publishScreen(
+          room,
+          await getPlatform().screenCapture.capture({
+            audio: true,
+            quality: readScreenShareQuality(),
+          }),
+        )
       }
     } catch (cause) {
       setError(describeShareError(cause))

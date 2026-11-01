@@ -1,16 +1,13 @@
+import {
+  DEFAULT_SCREEN_SHARE_QUALITY,
+  screenContentHint,
+  screenVideoConstraints,
+} from './screen-quality'
 import { createWebInstall } from './web-install'
 import { createWebPush } from './web-push'
 import { createWebSecretStore } from './web-secret-store'
 
 import type { NotificationPermissionState, PlatformAdapter } from './platform-adapter'
-
-// Same cap livekit-client applies to its own screen capture (ScreenSharePresets.h1080fps30):
-// an uncapped 4K screen encodes slowly and drops the bitrate.
-const SCREEN_VIDEO: MediaTrackConstraints = {
-  width: { ideal: 1920 },
-  height: { ideal: 1080 },
-  frameRate: 30,
-}
 
 /** Subscriptions that never fire: a browser has no push-to-talk outside the tab. */
 const noop = (): void => undefined
@@ -104,12 +101,15 @@ export function createWebPlatform(): PlatformAdapter {
 
     screenCapture: {
       isSupported: () => typeof mediaDevicesOrNull()?.getDisplayMedia === 'function',
-      async capture({ audio }) {
+      async capture({ audio, quality = DEFAULT_SCREEN_SHARE_QUALITY }) {
         const devices = mediaDevicesOrNull()
         if (typeof devices?.getDisplayMedia !== 'function') {
           throw new DOMException('Screen capture is not supported', 'NotSupportedError')
         }
-        const stream = await devices.getDisplayMedia({ video: SCREEN_VIDEO, audio })
+        const stream = await devices.getDisplayMedia({
+          video: screenVideoConstraints(quality),
+          audio,
+        })
         const [video] = stream.getVideoTracks()
         if (!video) {
           for (const track of stream.getTracks()) {
@@ -117,6 +117,7 @@ export function createWebPlatform(): PlatformAdapter {
           }
           throw new DOMException('The capture has no video track', 'NotFoundError')
         }
+        applyContentHint(video, screenContentHint(quality.frameRate))
         return { video, audio: stream.getAudioTracks()[0] ?? null }
       },
     },
@@ -188,4 +189,16 @@ function requireMediaDevices(): MediaDevices {
     throw new DOMException('Media devices are not available', 'NotSupportedError')
   }
   return devices
+}
+
+/**
+ * Tells the encoder what the picture is: smooth motion or sharp text. A track
+ * that does not take the hint must not fail the capture, so a refusal is ignored.
+ */
+function applyContentHint(track: MediaStreamTrack, hint: 'detail' | 'motion'): void {
+  try {
+    track.contentHint = hint
+  } catch {
+    // Some implementations expose `contentHint` read-only; the capture itself is fine.
+  }
 }
