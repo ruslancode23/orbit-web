@@ -1,3 +1,6 @@
+export { MIN_PASSWORD_LENGTH, SHORT_PASSWORD_MESSAGE } from './model/password'
+export { ForgotPasswordForm } from './ui/ForgotPasswordForm'
 export { LoginForm } from './ui/LoginForm'
 export { LogoutButton } from './ui/LogoutButton'
 export { RegisterForm } from './ui/RegisterForm'
+export { ResetPasswordForm } from './ui/ResetPasswordForm'

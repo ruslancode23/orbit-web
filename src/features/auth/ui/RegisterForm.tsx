@@ -9,10 +9,8 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
 import { AuthForm } from './AuthForm'
+import { MIN_PASSWORD_LENGTH, SHORT_PASSWORD_MESSAGE } from '../model/password'
 import { useReturnPath } from '../model/return-path'
-
-/** The server asks for at least this; saying so beforehand is kinder than a 400. */
-const MIN_PASSWORD_LENGTH = 10
 
 interface RegisterValues {
   nickname: string
@@ -93,10 +91,7 @@ export const RegisterForm = () => {
           aria-invalid={formState.errors.password ? true : undefined}
           {...register('password', {
             required: 'Придумайте пароль.',
-            minLength: {
-              value: MIN_PASSWORD_LENGTH,
-              message: `Пароль должен быть не короче ${String(MIN_PASSWORD_LENGTH)} символов.`,
-            },
+            minLength: { value: MIN_PASSWORD_LENGTH, message: SHORT_PASSWORD_MESSAGE },
           })}
         />
       </div>

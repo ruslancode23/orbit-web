@@ -2,10 +2,12 @@ import { createBrowserRouter } from 'react-router'
 
 import AboutBetaPage from '@/pages/about-beta'
 import DirectPage from '@/pages/direct'
+import ForgotPasswordPage from '@/pages/forgot-password'
 import InvitePage from '@/pages/invite'
 import LoginPage from '@/pages/login'
 import NewWorkspacePage from '@/pages/new-workspace'
 import RegisterPage from '@/pages/register'
+import ResetPasswordPage from '@/pages/reset-password'
 import ChannelPage from '@/pages/workspace'
 import WorkspaceSettingsPage from '@/pages/workspace-settings'
 import { AppShell, ShellPlaceholder } from '@/widgets/app-shell'
@@ -17,6 +19,9 @@ import { SecretChatRoute } from './SecretChatRoute'
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  // Открыты, как и вход: ссылка из письма должна работать без сессии.
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset', element: <ResetPasswordPage /> },
   // Open: someone deciding whether to join reads it before having an account.
   { path: '/beta', element: <AboutBetaPage /> },
   // Open on purpose: the link shows what it leads to before asking for a name.
