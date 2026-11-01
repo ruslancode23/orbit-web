@@ -6,6 +6,8 @@
  * Errors follow the browser's DOMException names on every platform, so callers handle one set:
  * `NotAllowedError` (the user refused or closed the picker), `NotFoundError`, `NotSupportedError`.
  */
+import type { ScreenShareQuality } from './screen-quality'
+
 export interface PlatformAdapter {
   notifications: PlatformNotifications
   /** The unread number on the app's icon; see `PlatformBadge`. */
@@ -153,6 +155,8 @@ export interface PlatformMediaDevices {
 export interface ScreenCaptureOptions {
   /** Ask for system or tab audio too; the user or the platform may still leave it out. */
   audio: boolean
+  /** Resolution and frame rate to ask for; without it the adapter keeps its default (1080p, 30 fps). */
+  quality?: ScreenShareQuality
 }
 
 export interface ScreenCapture {

@@ -169,7 +169,7 @@ export const UserSettings = ({
                   <TabsContent value="voice" className="flex flex-col gap-5">
                     <SectionHeading
                       title="Голос и видео"
-                      hint="Микрофон, динамики и обработка звука."
+                      hint="Микрофон, динамики, обработка звука и качество демонстрации экрана."
                     />
                     <DeviceSettings />
                   </TabsContent>

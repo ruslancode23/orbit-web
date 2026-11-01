@@ -59,7 +59,44 @@ describe('web platform: screen capture', () => {
       video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: 30 },
       audio: true,
     })
+    expect(video.contentHint).toBe('detail')
     expect(capture).toEqual({ video, audio })
+  })
+
+  it('captures at the chosen quality and hints motion for 60 fps', async () => {
+    const video = new FakeMediaStreamTrack('video')
+    const getDisplayMedia = vi.fn(() => Promise.resolve(stream(video)))
+    stubMediaDevices({ getDisplayMedia })
+
+    await createWebPlatform().screenCapture.capture({
+      audio: false,
+      quality: { resolution: '720p', frameRate: 60 },
+    })
+
+    expect(getDisplayMedia).toHaveBeenCalledWith({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: 60 },
+      audio: false,
+    })
+    expect(video.contentHint).toBe('motion')
+  })
+
+  it('still captures when the track refuses the content hint', async () => {
+    const video = new FakeMediaStreamTrack('video')
+    Object.defineProperty(video, 'contentHint', {
+      configurable: true,
+      get: () => '',
+      set: () => {
+        throw new TypeError('contentHint is read-only here')
+      },
+    })
+    stubMediaDevices({ getDisplayMedia: () => Promise.resolve(stream(video)) })
+
+    await expect(
+      createWebPlatform().screenCapture.capture({
+        audio: false,
+        quality: { resolution: '1080p', frameRate: 60 },
+      }),
+    ).resolves.toEqual({ video, audio: null })
   })
 
   it('returns no audio when the user did not share it', async () => {

@@ -56,6 +56,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setPlatform(null)
+  localStorage.clear()
 })
 
 describe('share screen', () => {
@@ -76,7 +77,10 @@ describe('share screen', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Показать экран' }))
 
-    expect(platform.screenCapture.capture).toHaveBeenCalledWith({ audio: true })
+    expect(platform.screenCapture.capture).toHaveBeenCalledWith({
+      audio: true,
+      quality: { resolution: '1080p', frameRate: 30 },
+    })
     expect(room.localParticipant.publishTrack).toHaveBeenCalledWith(capture.video, {
       source: 'screen_share',
     })
@@ -92,6 +96,19 @@ describe('share screen', () => {
     expect(room.localParticipant.setScreenShareEnabled).toHaveBeenLastCalledWith(false)
     expect(screen.getByRole('button', { name: 'Показать экран' })).toBeInTheDocument()
     expect(screen.queryByText('Вы показываете экран')).not.toBeInTheDocument()
+  })
+
+  it('captures at the quality chosen in the voice settings', async () => {
+    localStorage.setItem('orbit.voice.screen-resolution', '720p')
+    localStorage.setItem('orbit.voice.screen-frame-rate', '60')
+    await renderConnected()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Показать экран' }))
+
+    expect(platform.screenCapture.capture).toHaveBeenCalledWith({
+      audio: true,
+      quality: { resolution: '720p', frameRate: 60 },
+    })
   })
 
   it('follows the browser stopping the share with its own button', async () => {

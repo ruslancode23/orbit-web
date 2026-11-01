@@ -20,6 +20,12 @@ export type {
 } from './platform-adapter'
 export { createWebPlatform } from './web-platform'
 export { deepLinkPath } from './deep-link'
+export {
+  DEFAULT_SCREEN_SHARE_QUALITY,
+  screenContentHint,
+  screenVideoConstraints,
+  type ScreenShareQuality,
+} from './screen-quality'
 export { createWebSecretStore } from './web-secret-store'
 
 import type { PlatformAdapter } from './platform-adapter'

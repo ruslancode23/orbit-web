@@ -13,6 +13,7 @@ import { useToast } from '@/shared/ui/toast'
 
 import { AudioProcessingSettings } from './AudioProcessingSettings'
 import { InputModeSettings } from './InputModeSettings'
+import { ScreenShareSettings } from './ScreenShareSettings'
 import { DEFAULT_DEVICE, deviceLabel, useAudioDevices } from '../model/useAudioDevices'
 import { useDeviceFallback } from '../model/useDeviceFallback'
 import { useMicrophoneLevel } from '../model/useMicrophoneLevel'
@@ -168,6 +169,8 @@ export const DeviceSettings = () => {
       <InputModeSettings />
 
       <AudioProcessingSettings />
+
+      <ScreenShareSettings />
 
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold">Динамики</h3>
