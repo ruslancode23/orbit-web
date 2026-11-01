@@ -17,6 +17,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { useToast } from '@/shared/ui/toast'
 
+import { DeleteAccount } from './DeleteAccount'
 import {
   describeEmailError,
   describeNicknameError,
@@ -61,22 +62,25 @@ const GuestAccount = ({
   const titleId = useId()
 
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium">@{profile.nickname}</span>
-        <span className="text-xs text-fg-muted">Вы вошли как гость.</span>
-      </div>
-      <div className="flex flex-col gap-2 rounded-md bg-surface p-3">
-        <h3 id={titleId} className="text-sm font-semibold">
-          Сначала создайте аккаунт
-        </h3>
-        <p className="text-xs text-fg-muted">
-          Пока у аккаунта нет пароля, ник и почту изменить нельзя. Создание аккаунта сохранит
-          серверы, сообщения и историю — гость станет полным аккаунтом с тем же id.
-        </p>
-        {claimGuest}
-      </div>
-    </section>
+    <div className="flex flex-col gap-5">
+      <section aria-labelledby={titleId} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium">@{profile.nickname}</span>
+          <span className="text-xs text-fg-muted">Вы вошли как гость.</span>
+        </div>
+        <div className="flex flex-col gap-2 rounded-md bg-surface p-3">
+          <h3 id={titleId} className="text-sm font-semibold">
+            Сначала создайте аккаунт
+          </h3>
+          <p className="text-xs text-fg-muted">
+            Пока у аккаунта нет пароля, ник и почту изменить нельзя. Создание аккаунта сохранит
+            серверы, сообщения и историю — гость станет полным аккаунтом с тем же id.
+          </p>
+          {claimGuest}
+        </div>
+      </section>
+      <DeleteAccount profile={profile} />
+    </div>
   )
 }
 
@@ -94,6 +98,7 @@ const FullAccount = ({ profile }: { profile: SelfProfile }) => {
       <NicknameForm profile={profile} />
       <EmailForm profile={profile} />
       <PasswordForm />
+      <DeleteAccount profile={profile} />
     </div>
   )
 }

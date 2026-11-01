@@ -1,4 +1,5 @@
 export { AccountSettings } from './ui/AccountSettings'
+export { DeleteAccount } from './ui/DeleteAccount'
 export { EditProfileDialog } from './ui/EditProfileDialog'
 export { PrivacySettings } from './ui/PrivacySettings'
 export { ProfileOnboarding } from './ui/ProfileOnboarding'

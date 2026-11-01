@@ -69,7 +69,12 @@ export const LoginForm = () => {
       </div>
 
       <div className="flex flex-col gap-1">
-        <Label htmlFor={passwordId}>Пароль</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={passwordId}>Пароль</Label>
+          <Link to="/forgot-password" className="text-xs text-accent underline underline-offset-2">
+            Забыли пароль?
+          </Link>
+        </div>
         <Input
           id={passwordId}
           type="password"
